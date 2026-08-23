@@ -360,7 +360,9 @@ func (svc *ModelService) CreateModel(ctx context.Context, input ent.CreateModelI
 		}
 	}
 
-	// Check if a model with the same developer and modelId already exists
+	// modelID is the global identity of a Model, matching the unique index on
+	// (model_id, deleted_at). Archived models still occupy that index, so this
+	// query must not filter by status.
 	existing, err := svc.entFromContext(ctx).Model.Query().
 		Where(model.ModelID(input.ModelID)).
 		First(ctx)
@@ -369,7 +371,9 @@ func (svc *ModelService) CreateModel(ctx context.Context, input ent.CreateModelI
 	}
 
 	if existing != nil {
-		return nil, xerrors.DuplicateNameError("model", input.ModelID)
+		return nil, xerrors.AlreadyExistsError(
+			fmt.Sprintf("model with modelId '%s'", input.ModelID),
+		)
 	}
 
 	createBuilder := svc.entFromContext(ctx).Model.Create().
@@ -392,6 +396,10 @@ func (svc *ModelService) BulkCreateModels(ctx context.Context, inputs []*ent.Cre
 	// Check for duplicates in the input
 	inputMap := make(map[string]bool)
 
+	// modelID is the global identity of a Model, matching the unique index on
+	// (model_id, deleted_at). Developer is metadata and must not be part of the key.
+	modelIDs := make([]string, 0, len(inputs))
+
 	for _, input := range inputs {
 		if input.Settings != nil {
 			if err := svc.validateModelSettings(input.Settings); err != nil {
@@ -399,38 +407,33 @@ func (svc *ModelService) BulkCreateModels(ctx context.Context, inputs []*ent.Cre
 			}
 		}
 
-		key := fmt.Sprintf("%s:%s", input.Developer, input.ModelID)
-		if inputMap[key] {
-			return nil, fmt.Errorf("duplicate model in input: developer '%s' and modelId '%s'", input.Developer, input.ModelID)
+		if inputMap[input.ModelID] {
+			return nil, xerrors.ValidationError(
+				fmt.Sprintf("duplicate modelId '%s' in input", input.ModelID),
+			)
 		}
 
-		inputMap[key] = true
+		inputMap[input.ModelID] = true
+		modelIDs = append(modelIDs, input.ModelID)
 	}
 
-	// Check if any models already exist
+	// Check if any models already exist. Archived models still occupy the
+	// unique index, so this query must not filter by status.
 	existingModels, err := svc.entFromContext(ctx).Model.Query().
-		Where(func(s *sql.Selector) {
-			var predicates []*sql.Predicate
-			for _, input := range inputs {
-				predicates = append(predicates, sql.And(
-					sql.EQ(model.FieldDeveloper, input.Developer),
-					sql.EQ(model.FieldModelID, input.ModelID),
-				))
-			}
-
-			s.Where(sql.Or(predicates...))
-		}).
+		Where(model.ModelIDIn(modelIDs...)).
 		All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to check existing models: %w", err)
 	}
 
 	if len(existingModels) > 0 {
-		existingKeys := lo.Map(existingModels, func(m *ent.Model, _ int) string {
-			return fmt.Sprintf("%s:%s", m.Developer, m.ModelID)
+		existingIDs := lo.Map(existingModels, func(m *ent.Model, _ int) string {
+			return m.ModelID
 		})
 
-		return nil, fmt.Errorf("models already exist: %v", existingKeys)
+		return nil, xerrors.AlreadyExistsError(
+			fmt.Sprintf("models with modelId %v", existingIDs),
+		)
 	}
 
 	// Create all models in a transaction

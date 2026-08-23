@@ -348,7 +348,7 @@ var (
 		Indexes: []*schema.Index{
 			{
 				Name:    "models_by_name",
-				Unique:  true,
+				Unique:  false,
 				Columns: []*schema.Column{ModelsColumns[7], ModelsColumns[3]},
 			},
 			{

@@ -13,6 +13,7 @@ import (
 	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
 
 func TestModelService_ValidateModelSettings(t *testing.T) {
@@ -1139,5 +1140,208 @@ func TestModelService_UpdateModel_WithRegexValidation(t *testing.T) {
 		require.Error(t, err)
 		require.Nil(t, updatedModel)
 		require.Contains(t, err.Error(), "invalid regex pattern")
+	})
+}
+
+// name is display-only metadata, so two developers may legitimately offer the
+// same display name (e.g. "GLM-5.2"). This is the behaviour the non-unique
+// models_by_name index exists to allow.
+func TestModelService_CreateModel_AllowsDuplicateNameAcrossDevelopers(t *testing.T) {
+	client := enttest.Open(t, dialect.SQLite, "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+	svc := &ModelService{
+		AbstractService: &AbstractService{
+			db: client,
+		},
+	}
+
+	first, err := svc.CreateModel(ctx, ent.CreateModelInput{
+		Developer: "zhipu",
+		ModelID:   "glm-5.2",
+		Name:      "GLM-5.2",
+		Icon:      "Zhipu",
+		Group:     "glm",
+		ModelCard: &objects.ModelCard{},
+		Settings:  &objects.ModelSettings{},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, first)
+
+	// Same display name, different modelID: must be accepted.
+	second, err := svc.CreateModel(ctx, ent.CreateModelInput{
+		Developer: "openrouter",
+		ModelID:   "openrouter/glm-5.2",
+		Name:      "GLM-5.2",
+		Icon:      "Zhipu",
+		Group:     "glm",
+		ModelCard: &objects.ModelCard{},
+		Settings:  &objects.ModelSettings{},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, second)
+	require.Equal(t, first.Name, second.Name)
+	require.NotEqual(t, first.ModelID, second.ModelID)
+}
+
+// modelID is the global identity of a Model, so a conflict must be reported
+// regardless of which developer claims it.
+func TestModelService_CreateModel_RejectsDuplicateModelIDAcrossDevelopers(t *testing.T) {
+	client := enttest.Open(t, dialect.SQLite, "file:ent?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := context.Background()
+	ctx = ent.NewContext(ctx, client)
+	ctx = authz.WithTestBypass(ctx)
+	svc := &ModelService{
+		AbstractService: &AbstractService{
+			db: client,
+		},
+	}
+
+	_, err := svc.CreateModel(ctx, ent.CreateModelInput{
+		Developer: "deepseek",
+		ModelID:   "deepseek-chat",
+		Name:      "DeepSeek Chat",
+		Icon:      "DeepSeek",
+		Group:     "deepseek",
+		ModelCard: &objects.ModelCard{},
+		Settings:  &objects.ModelSettings{},
+	})
+	require.NoError(t, err)
+
+	// Different developer, same modelID: must be rejected on identity grounds.
+	duplicate, err := svc.CreateModel(ctx, ent.CreateModelInput{
+		Developer: "some-reseller",
+		ModelID:   "deepseek-chat",
+		Name:      "DeepSeek Chat (resold)",
+		Icon:      "DeepSeek",
+		Group:     "deepseek",
+		ModelCard: &objects.ModelCard{},
+		Settings:  &objects.ModelSettings{},
+	})
+	require.Error(t, err)
+	require.Nil(t, duplicate)
+
+	coded, ok := xerrors.IsCodedError(err)
+	require.True(t, ok, "expected a coded error, got %T", err)
+	require.Equal(t, xerrors.ErrCodeAlreadyExists, coded.Code)
+	require.Contains(t, err.Error(), "deepseek-chat")
+}
+
+// BulkCreateModels keys on modelID alone. Previously the key was
+// developer+modelID, which let a conflicting modelID slip past the pre-check
+// and fail later against the unique (model_id, deleted_at) index.
+func TestModelService_BulkCreateModels_RejectsDuplicateModelID(t *testing.T) {
+	newInput := func(developer, modelID, name string) *ent.CreateModelInput {
+		return &ent.CreateModelInput{
+			Developer: developer,
+			ModelID:   modelID,
+			Name:      name,
+			Icon:      "DeepSeek",
+			Group:     "test-group",
+			ModelCard: &objects.ModelCard{},
+			Settings:  &objects.ModelSettings{},
+		}
+	}
+
+	t.Run("duplicate modelID within one batch is rejected", func(t *testing.T) {
+		client := enttest.Open(t, dialect.SQLite, "file:ent?mode=memory&_fk=0")
+		defer client.Close()
+
+		ctx := context.Background()
+		ctx = ent.NewContext(ctx, client)
+		ctx = authz.WithTestBypass(ctx)
+		svc := &ModelService{
+			AbstractService: &AbstractService{
+				db: client,
+			},
+		}
+
+		// Distinct developers, colliding modelID: the old developer+modelID key
+		// treated these as different rows.
+		created, err := svc.BulkCreateModels(ctx, []*ent.CreateModelInput{
+			newInput("dev-a", "shared-model", "Shared Model A"),
+			newInput("dev-b", "shared-model", "Shared Model B"),
+		})
+		require.Error(t, err)
+		require.Nil(t, created)
+
+		coded, ok := xerrors.IsCodedError(err)
+		require.True(t, ok, "expected a coded error, got %T", err)
+		require.Equal(t, xerrors.ErrCodeValidationFailed, coded.Code)
+		require.Contains(t, err.Error(), "shared-model")
+
+		// The batch must be rejected atomically.
+		count, err := client.Model.Query().Count(ctx)
+		require.NoError(t, err)
+		require.Zero(t, count)
+	})
+
+	t.Run("modelID already persisted is rejected", func(t *testing.T) {
+		client := enttest.Open(t, dialect.SQLite, "file:ent?mode=memory&_fk=0")
+		defer client.Close()
+
+		ctx := context.Background()
+		ctx = ent.NewContext(ctx, client)
+		ctx = authz.WithTestBypass(ctx)
+		svc := &ModelService{
+			AbstractService: &AbstractService{
+				db: client,
+			},
+		}
+
+		_, err := svc.BulkCreateModels(ctx, []*ent.CreateModelInput{
+			newInput("dev-a", "existing-model", "Existing Model"),
+		})
+		require.NoError(t, err)
+
+		created, err := svc.BulkCreateModels(ctx, []*ent.CreateModelInput{
+			newInput("dev-b", "existing-model", "Existing Model Again"),
+			newInput("dev-b", "brand-new-model", "Brand New Model"),
+		})
+		require.Error(t, err)
+		require.Nil(t, created)
+
+		coded, ok := xerrors.IsCodedError(err)
+		require.True(t, ok, "expected a coded error, got %T", err)
+		require.Equal(t, xerrors.ErrCodeAlreadyExists, coded.Code)
+		require.Contains(t, err.Error(), "existing-model")
+
+		// The whole batch is rejected, so the non-conflicting row is not created.
+		names := client.Model.Query().
+			Where(model.ModelIDIn("existing-model", "brand-new-model")).
+			AllX(ctx)
+		require.Len(t, names, 1)
+		require.Equal(t, "existing-model", names[0].ModelID)
+	})
+
+	t.Run("distinct modelIDs sharing a display name are accepted", func(t *testing.T) {
+		client := enttest.Open(t, dialect.SQLite, "file:ent?mode=memory&_fk=0")
+		defer client.Close()
+
+		ctx := context.Background()
+		ctx = ent.NewContext(ctx, client)
+		ctx = authz.WithTestBypass(ctx)
+		svc := &ModelService{
+			AbstractService: &AbstractService{
+				db: client,
+			},
+		}
+
+		created, err := svc.BulkCreateModels(ctx, []*ent.CreateModelInput{
+			newInput("zhipu", "glm-5.2", "GLM-5.2"),
+			newInput("openrouter", "openrouter/glm-5.2", "GLM-5.2"),
+		})
+		require.NoError(t, err)
+		require.Len(t, created, 2)
+
+		modelIDs := lo.Map(created, func(m *ent.Model, _ int) string {
+			return m.ModelID
+		})
+		require.ElementsMatch(t, []string{"glm-5.2", "openrouter/glm-5.2"}, modelIDs)
 	})
 }

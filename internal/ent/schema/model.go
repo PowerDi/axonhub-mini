@@ -25,9 +25,11 @@ func (Model) Mixin() []ent.Mixin {
 
 func (Model) Indexes() []ent.Index {
 	return []ent.Index{
+		// name is a display-only field: it is not a routing key and is not part of
+		// the Model identity. Keeping it unique only blocks legitimate imports
+		// (e.g. "GLM-5.2" offered by two developers), so the index is non-unique.
 		index.Fields("name", "deleted_at").
-			StorageKey("models_by_name").
-			Unique(),
+			StorageKey("models_by_name"),
 		index.Fields("model_id", "deleted_at").
 			StorageKey("models_by_model_id").
 			Unique(),
