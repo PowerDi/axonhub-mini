@@ -1,0 +1,234 @@
+name: Publish Docker image (GHCR)
+
+# Fork-owned image build. Runs only when triggered by hand, so pushing to main
+# does not spend runner minutes on a Docker build. Publishes to GHCR under this
+# repository's owner using the built-in GITHUB_TOKEN, so no registry secret is
+# required.
+on:
+  workflow_dispatch:
+    inputs:
+      arch:
+        description: Target architecture
+        type: choice
+        default: amd64
+        options:
+          - amd64
+          - arm64
+          - both
+      ref:
+        description: Branch, tag or commit to build
+        type: string
+        default: main
+      extra_tag:
+        description: Optional additional tag (e.g. prod, 20260824)
+        type: string
+        default: ''
+
+jobs:
+  prepare:
+    name: Pin commit & plan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      image: ${{ steps.plan.outputs.image }}
+      commit_sha: ${{ steps.plan.outputs.commit_sha }}
+      short_sha: ${{ steps.plan.outputs.short_sha }}
+      build_date: ${{ steps.plan.outputs.build_date }}
+      version: ${{ steps.plan.outputs.version }}
+      ref_slug: ${{ steps.plan.outputs.ref_slug }}
+    steps:
+      - name: Check out requested ref
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Plan build
+        id: plan
+        env:
+          ARCH: ${{ inputs.arch }}
+          REPO: ${{ github.repository }}
+          REF: ${{ inputs.ref }}
+        run: |
+          set -euo pipefail
+
+          case "$ARCH" in
+            amd64)
+              MATRIX='[{"arch":"amd64","platform":"linux/amd64","runner":"ubuntu-latest"}]'
+              ;;
+            arm64)
+              MATRIX='[{"arch":"arm64","platform":"linux/arm64","runner":"ubuntu-24.04-arm"}]'
+              ;;
+            both)
+              MATRIX='[{"arch":"amd64","platform":"linux/amd64","runner":"ubuntu-latest"},{"arch":"arm64","platform":"linux/arm64","runner":"ubuntu-24.04-arm"}]'
+              ;;
+            *)
+              echo "Unsupported arch: $ARCH" >&2
+              exit 1
+              ;;
+          esac
+
+          # GHCR rejects uppercase characters in image names.
+          IMAGE="ghcr.io/$(printf '%s' "$REPO" | tr '[:upper:]' '[:lower:]')"
+
+          # Tags are prefixed with the ref that was built, so a one-off build
+          # from another branch cannot overwrite the main tags. Anything that is
+          # not a valid tag component collapses to a dash.
+          PREFIX=$(printf '%s' "$REF" | tr -c 'A-Za-z0-9._-' '-' | sed -E 's/^-+//; s/-+$//' | cut -c1-40)
+          if [ -z "$PREFIX" ]; then
+            PREFIX=build
+          fi
+
+          BASE_VERSION=$(tr -d '[:space:]' < internal/build/VERSION)
+          if [ -z "$BASE_VERSION" ]; then
+            BASE_VERSION=v0.0.0
+          fi
+
+          BUILD_DATE=$(date -u +%Y%m%d)
+
+          # Keep the result parseable by Masterminds/semver: internal/ent/migrate
+          # /datamigrate/migrator.go parses build.Version and skips the system
+          # version update when it is invalid.
+          VERSION="${BASE_VERSION}-fork.${BUILD_DATE}"
+          if ! printf '%s\n' "$VERSION" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$'; then
+            echo "Refusing to build with non-semver version: $VERSION" >&2
+            exit 1
+          fi
+
+          {
+            printf 'matrix=%s\n' "$MATRIX"
+            printf 'image=%s\n' "$IMAGE"
+            printf 'ref_slug=%s\n' "$PREFIX"
+            printf 'commit_sha=%s\n' "$(git rev-parse HEAD)"
+            printf 'short_sha=%s\n' "$(git rev-parse --short=7 HEAD)"
+            printf 'build_date=%s\n' "$BUILD_DATE"
+            printf 'version=%s\n' "$VERSION"
+          } >> "$GITHUB_OUTPUT"
+
+  build_single_arch:
+    name: Build & push (${{ matrix.arch }}) [native]
+    needs: [prepare]
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out pinned commit
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ needs.prepare.outputs.commit_sha }}
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Write VERSION
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: printf '%s\n' "$VERSION" > internal/build/VERSION
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (labels)
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ needs.prepare.outputs.image }}
+
+      - name: Build & push single-arch
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: ${{ matrix.platform }}
+          push: true
+          tags: |
+            ${{ needs.prepare.outputs.image }}:${{ needs.prepare.outputs.ref_slug }}-${{ matrix.arch }}
+            ${{ needs.prepare.outputs.image }}:${{ needs.prepare.outputs.ref_slug }}-${{ needs.prepare.outputs.build_date }}-${{ needs.prepare.outputs.short_sha }}-${{ matrix.arch }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
+          provenance: false
+          sbom: false
+
+  create_manifest:
+    name: Create manifest
+    needs: [prepare, build_single_arch]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create & push manifests
+        env:
+          IMAGE: ${{ needs.prepare.outputs.image }}
+          ARCH_INPUT: ${{ inputs.arch }}
+          DATE: ${{ needs.prepare.outputs.build_date }}
+          SHA: ${{ needs.prepare.outputs.short_sha }}
+          SLUG: ${{ needs.prepare.outputs.ref_slug }}
+          EXTRA_TAG: ${{ inputs.extra_tag }}
+        run: |
+          set -euo pipefail
+
+          if [ "$ARCH_INPUT" = "both" ]; then
+            ARCHES="amd64 arm64"
+          else
+            ARCHES="$ARCH_INPUT"
+          fi
+
+          IMMUTABLE="${SLUG}-${DATE}-${SHA}"
+
+          SOURCES=""
+          for arch in $ARCHES; do
+            SOURCES="$SOURCES ${IMAGE}:${IMMUTABLE}-${arch}"
+          done
+
+          # shellcheck disable=SC2086
+          docker buildx imagetools create -t "${IMAGE}:${IMMUTABLE}" -t "${IMAGE}:${SLUG}" $SOURCES
+
+          if [ -n "$EXTRA_TAG" ]; then
+            if ! printf '%s\n' "$EXTRA_TAG" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._-]{0,126}$'; then
+              echo "Invalid extra tag: $EXTRA_TAG" >&2
+              exit 1
+            fi
+            # shellcheck disable=SC2086
+            docker buildx imagetools create -t "${IMAGE}:${EXTRA_TAG}" $SOURCES
+          fi
+
+      - name: Summary
+        env:
+          IMAGE: ${{ needs.prepare.outputs.image }}
+          DATE: ${{ needs.prepare.outputs.build_date }}
+          SHA: ${{ needs.prepare.outputs.short_sha }}
+          SLUG: ${{ needs.prepare.outputs.ref_slug }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          EXTRA_TAG: ${{ inputs.extra_tag }}
+        run: |
+          {
+            printf '### Pushed images\n\n'
+            printf '- `%s:%s`\n' "$IMAGE" "$SLUG"
+            printf '- `%s:%s-%s-%s`\n' "$IMAGE" "$SLUG" "$DATE" "$SHA"
+            if [ -n "$EXTRA_TAG" ]; then
+              printf '- `%s:%s`\n' "$IMAGE" "$EXTRA_TAG"
+            fi
+            printf '\nBuild version: `%s`\n' "$VERSION"
+          } >> "$GITHUB_STEP_SUMMARY"

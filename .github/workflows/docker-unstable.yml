@@ -6,6 +6,10 @@ on:
 
 jobs:
   prepare:
+    # Upstream-only: pushes to looplj/axonhub on Docker Hub. Guarding prepare is
+    # enough, the later jobs need it and skip with it. This fork builds its own
+    # images through docker-ghcr.yml instead.
+    if: github.repository_owner == 'looplj'
     name: Pin commit & date
     runs-on: ubuntu-slim
     permissions:

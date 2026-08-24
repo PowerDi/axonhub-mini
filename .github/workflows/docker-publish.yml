@@ -12,6 +12,9 @@ on:
 jobs:
   build_single_arch:
     name: Build & push (${{ matrix.arch }}) [native]
+    # Pushes to the upstream Docker Hub namespace with upstream's credentials.
+    # Forks build their own image via docker-ghcr.yml instead.
+    if: github.repository_owner == 'looplj'
     strategy:
       fail-fast: false
       matrix:
@@ -78,7 +81,7 @@ jobs:
     name: Create multi-arch manifests (Docker Hub)
     needs: [build_single_arch]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
+    if: github.repository_owner == 'looplj' && startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Extract tag
         run: echo "TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV

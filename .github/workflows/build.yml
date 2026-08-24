@@ -3,13 +3,11 @@ name: Build
 on:
   push:
     branches:
-      - unstable
-      - development
+      - main
       - 'release/**'
   pull_request:
     branches:
-      - unstable
-      - development
+      - main
       - 'release/**'
 
 env:
