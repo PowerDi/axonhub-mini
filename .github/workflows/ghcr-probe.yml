@@ -1,4 +1,4 @@
-name: ghcr-probe
+name: GHCR probe (temporary)
 
 on:
   workflow_dispatch:
@@ -10,56 +10,25 @@ jobs:
       contents: read
       packages: write
     steps:
-      - name: Inspect what GHCR actually grants
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push candidate package names
         env:
           ACTOR: ${{ github.actor }}
-          GHTOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
         run: |
           set -uo pipefail
-          decode() { printf '%s' "$1" | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null; }
-
-          for SCOPE in \
-            "repository:powerdi/axonhub-mini:pull,push" \
-            "repository:powerdi/ghcr-probe-fresh:pull,push"
-          do
-            echo "=================================================="
-            echo "scope: $SCOPE"
-            RESP=$(curl -sS -u "$ACTOR:$GHTOKEN" \
-              "https://ghcr.io/token?service=ghcr.io&scope=$SCOPE")
-            TOK=$(printf '%s' "$RESP" | jq -r '.token // empty')
-            if [ -z "$TOK" ]; then
-              echo "no token: $RESP"
-              continue
-            fi
-            echo "--- granted access claim ---"
-            decode "$TOK" | jq -c '{access, repository, repository_id, permissions}' 2>/dev/null \
-              || decode "$TOK"
-          done
-
-      - name: Try pushing a fresh package name
-        continue-on-error: true
-        env:
-          ACTOR: ${{ github.actor }}
-          GHTOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -uo pipefail
-          echo "$GHTOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
           printf 'FROM alpine:3.20\n' > /tmp/Dockerfile.probe
-          for NAME in axonhub-mini ghcr-probe-fresh; do
+          for NAME in axonhub axonhub-mini-image axonhub-mini; do
             echo "=== pushing ghcr.io/powerdi/$NAME:probe ==="
             docker build -q -t "ghcr.io/powerdi/$NAME:probe" -f /tmp/Dockerfile.probe /tmp >/dev/null
-            if docker push "ghcr.io/powerdi/$NAME:probe" 2>&1 | tail -3; then
+            if docker push "ghcr.io/powerdi/$NAME:probe" 2>&1 | tail -2; then
               echo "RESULT $NAME = ok"
             else
               echo "RESULT $NAME = failed"
             fi
           done
-
-      - name: Repository fork status seen by the run
-        env:
-          GHTOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          curl -sS -H "Authorization: Bearer $GHTOKEN" \
-            "https://api.github.com/repos/${{ github.repository }}" \
-            | jq -c '{fork, visibility, owner: .owner.login, owner_type: .owner.type, parent: .parent.full_name}'
