@@ -44,3 +44,8 @@ export const DEVELOPER_ICONS: Record<string, string> = {
   meta: 'Meta',
   ibm: 'IBM',
 };
+
+// MAX_ASSOCIATIONS caps how many association rules one Model may hold. It mirrors
+// MaxModelAssociations in internal/server/biz/model_import.go, which rejects
+// imports that would exceed it, so the UI must not offer a target already at the cap.
+export const MAX_ASSOCIATIONS = 10;

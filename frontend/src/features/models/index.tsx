@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { SortingState } from '@tanstack/react-table';
-import { IconPlus, IconSettings, IconAlertCircle } from '@tabler/icons-react';
+import { IconPlus, IconSettings, IconDownload } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -93,12 +93,15 @@ function CreateButton() {
   );
 }
 
+// Secondary to ImportUnassociatedButton: it adds models by typing IDs one at a
+// time, which the import flow does in bulk from what the channels already serve.
+// Kept because a model can be registered before any channel serves it.
 function BulkAddButton() {
   const { t } = useTranslation();
   const { setOpen } = useModels();
 
   return (
-    <Button variant='outline' onClick={() => setOpen('batchCreate')}>
+    <Button variant='ghost' onClick={() => setOpen('batchCreate')}>
       <IconPlus className='mr-2 h-4 w-4' />
       {t('models.actions.bulkAdd')}
     </Button>
@@ -117,14 +120,16 @@ function SettingsButton() {
   );
 }
 
-function DetectUnassociatedButton() {
+// Primary way to add models: it reads what the channels already serve, so the
+// user picks from real upstream model IDs instead of typing them.
+function ImportUnassociatedButton() {
   const { t } = useTranslation();
   const { setOpen } = useModels();
 
   return (
     <Button variant='outline' onClick={() => setOpen('unassociated')}>
-      <IconAlertCircle className='mr-2 h-4 w-4' />
-      {t('models.actions.detectUnassociated')}
+      <IconDownload className='mr-2 h-4 w-4' />
+      {t('models.actions.importUnassociated')}
     </Button>
   );
 }
@@ -135,7 +140,7 @@ function ActionButtons() {
     <div ref={scrollRef} className='flex gap-2 overflow-x-auto md:overflow-x-visible'>
       <PermissionGuard requiredScope='write_channels'>
         <>
-          <DetectUnassociatedButton />
+          <ImportUnassociatedButton />
           <SettingsButton />
           <BulkAddButton />
           <CreateButton />

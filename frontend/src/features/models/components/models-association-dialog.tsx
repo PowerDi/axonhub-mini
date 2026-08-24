@@ -3,6 +3,22 @@ import { z } from 'zod';
 import { useForm, useFieldArray, useWatch, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { IconPlus, IconTrash, IconChevronDown, IconChevronUp, IconInfoCircle } from '@tabler/icons-react';
+// Rows are draggable and priority tiers are droppable, rather than one sortable
+// list: dragging only ever moves a rule between tiers, and the order inside a
+// tier carries no meaning because rules sharing a priority are load-balanced.
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical } from 'lucide-react';
 import { useQueryModels } from '@/gql/models';
 import { useTranslation } from 'react-i18next';
 import { extractNumberIDAsNumber } from '@/lib/utils';
@@ -650,6 +666,62 @@ function sortAssociationsByPriority<T extends { priority?: number }>(association
   return [...associations].sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
 }
 
+/**
+ * One priority tier. Rules sharing a priority are load-balanced against each
+ * other, so a tier is the unit the router picks between, and the tier order is
+ * the failover order.
+ */
+interface PriorityGroup {
+  priority: number;
+  /** Indices into the `useFieldArray` fields, which is what AssociationRow needs. */
+  rows: { id: string; index: number }[];
+}
+
+/**
+ * Buckets rows by priority so the UI can show what the router actually does:
+ * one box per tier, tried top to bottom.
+ *
+ * Rows are keyed by field id rather than by array position because the field
+ * array is never reordered — only the priority values change.
+ */
+function groupRowsByPriority(rows: { id: string; index: number }[], priorityOf: (index: number) => number): PriorityGroup[] {
+  const buckets = new Map<number, { id: string; index: number }[]>();
+
+  for (const row of rows) {
+    const priority = priorityOf(row.index);
+    const bucket = buckets.get(priority);
+    if (bucket) {
+      bucket.push(row);
+    } else {
+      buckets.set(priority, [row]);
+    }
+  }
+
+  return [...buckets.entries()].sort(([a], [b]) => a - b).map(([priority, groupRows]) => ({ priority, rows: groupRows }));
+}
+
+const DROP_ID_TIER_PREFIX = 'priority-tier:';
+const DROP_ID_NEW_TIER = 'priority-tier:new';
+
+/**
+ * Resolves the priority a drop target stands for, or undefined when the id is
+ * not a tier at all. A new tier lands one past the current last one, clamped so
+ * it can never exceed what the priority input accepts.
+ */
+function priorityFromDropID(dropID: string, maxPriority: number): number | undefined {
+  if (dropID === DROP_ID_NEW_TIER) {
+    return Math.min(maxPriority + 1, MAX_ASSOCIATION_PRIORITY);
+  }
+
+  if (!dropID.startsWith(DROP_ID_TIER_PREFIX)) {
+    return undefined;
+  }
+
+  const parsed = Number(dropID.slice(DROP_ID_TIER_PREFIX.length));
+
+  return Number.isInteger(parsed) ? parsed : undefined;
+}
+
 function buildDeveloperChannelPreview(associations: AssociationFormRow[], channelOptions: ChannelOption[]): ModelChannelConnection[] {
   const seen = new Set<number>();
   const connections: ModelChannelConnection[] = [];
@@ -927,6 +999,56 @@ export function ModelsAssociationDialog() {
     });
   }, [append, fields.length, form, isDeveloperMode]);
 
+  const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
+
+  // Read priorities from the watched values rather than form.getValues so the
+  // groups re-render when a priority input changes, not only when a row is added.
+  const priorityGroups = useMemo(
+    () =>
+      groupRowsByPriority(
+        fields.map((field, index) => ({ id: field.id, index })),
+        (index) => watchedAssociations?.[index]?.priority ?? 0
+      ),
+    [fields, watchedAssociations]
+  );
+
+  const maxPriority = priorityGroups.length > 0 ? priorityGroups[priorityGroups.length - 1].priority : 0;
+
+  /**
+   * Moves a rule to the tier it was dropped on by rewriting its priority. The
+   * field array itself is left alone: priority is the only thing that decides
+   * routing order, and reordering the array would invalidate the indices every
+   * row's form field name is built from.
+   */
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over) {
+        return;
+      }
+
+      const index = fields.findIndex((field) => field.id === active.id);
+      if (index === -1) {
+        return;
+      }
+
+      const target = priorityFromDropID(String(over.id), maxPriority);
+      if (target === undefined) {
+        return;
+      }
+
+      const current = form.getValues(`associations.${index}.priority`) ?? 0;
+      if (current === target) {
+        return;
+      }
+
+      // shouldDirty keeps the save button enabled; shouldValidate re-runs the
+      // 0..MAX_ASSOCIATION_PRIORITY check that the number input also enforces.
+      form.setValue(`associations.${index}.priority`, target, { shouldDirty: true, shouldValidate: true });
+    },
+    [fields, form, maxPriority]
+  );
+
   // Filter connections by channel name
   const filteredConnections = useMemo(() => {
     if (!channelFilter.trim()) return connections;
@@ -1077,8 +1199,12 @@ export function ModelsAssociationDialog() {
 
                   {fields.length === 0 && <p className='text-muted-foreground py-8 text-center text-sm'>{t('models.dialogs.association.noRules')}</p>}
 
+                  {/* Column labels. The padding matches a row's total inset — the
+                      tier box's p-2 plus the row's own p-3 — so the headers stay
+                      above the fields they name. */}
                   {fields.length > 0 && (
-                    <div className='grid grid-cols-[2.25rem_3rem_1fr_2.25rem] sm:grid-cols-[2.25rem_3rem_14rem_1fr_2.25rem] items-center gap-2 border-b px-3 sm:px-[13px] pb-2'>
+                    <div className='grid grid-cols-[1.25rem_2.5rem_4rem_1fr_2.5rem] sm:grid-cols-[1.25rem_2.25rem_3rem_14rem_1fr_2.25rem] items-center gap-2 border-b px-5 sm:px-[21px] pb-2'>
+                      <div />
                       <div />
                       <div className='text-muted-foreground text-center text-xs font-medium'>{t('models.dialogs.association.priority')}</div>
                       <div className='text-muted-foreground text-center text-xs font-medium sm:block hidden'>{t('models.dialogs.association.type')}</div>
@@ -1087,26 +1213,33 @@ export function ModelsAssociationDialog() {
                     </div>
                   )}
 
-                  {fields
-                    .map((field, index) => ({ field, index }))
-                    .sort((a, b) => {
-                      const priorityA = form.getValues(`associations.${a.index}.priority`) ?? 0;
-                      const priorityB = form.getValues(`associations.${b.index}.priority`) ?? 0;
-                      return priorityA - priorityB;
-                    })
-                    .map(({ field, index }) => (
-                      <AssociationRow
-                        key={field.id}
-                        index={index}
-                        form={form}
-                        isDeveloperMode={isDeveloperMode}
-                        channelOptions={channelOptions}
-                        allModelOptions={allModelOptions}
-                        allTags={allTags}
-                        onRemove={() => remove(index)}
-                        portalContainer={dialogContentRef.current}
-                      />
-                    ))}
+                  {fields.length > 0 && (
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                      <div className='flex flex-col gap-3'>
+                        {priorityGroups.map((group) => (
+                          <PriorityTier key={group.priority} priority={group.priority} isOnlyTier={priorityGroups.length === 1}>
+                            {group.rows.map(({ id, index }) => (
+                              <AssociationRow
+                                key={id}
+                                rowID={id}
+                                index={index}
+                                form={form}
+                                isDeveloperMode={isDeveloperMode}
+                                channelOptions={channelOptions}
+                                allModelOptions={allModelOptions}
+                                allTags={allTags}
+                                onRemove={() => remove(index)}
+                                portalContainer={dialogContentRef.current}
+                              />
+                            ))}
+                          </PriorityTier>
+                        ))}
+
+                        {/* Only worth showing when splitting a tier is possible at all. */}
+                        {fields.length > 1 && maxPriority < MAX_ASSOCIATION_PRIORITY && <NewPriorityTierDropZone />}
+                      </div>
+                    </DndContext>
+                  )}
                 </form>
               </Form>
             </div>
@@ -1282,7 +1415,54 @@ function buildAssociationWhen(enabled?: boolean, value?: FilterBuilderGroupListV
   };
 }
 
+/**
+ * A droppable priority tier. Dropping a rule here rewrites its priority to this
+ * tier's, which is what makes the rule share the tier's load-balancing group.
+ */
+function PriorityTier({ priority, isOnlyTier, children }: { priority: number; isOnlyTier: boolean; children: React.ReactNode }) {
+  const { t } = useTranslation();
+  const { setNodeRef, isOver } = useDroppable({ id: `${DROP_ID_TIER_PREFIX}${priority}` });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`rounded-lg border border-dashed p-2 transition-colors ${isOver ? 'border-primary bg-primary/5' : 'border-transparent'}`}
+    >
+      <div className='mb-2 flex items-center gap-2 px-1'>
+        <Badge variant='outline' className='font-mono text-[10px]'>
+          P{priority}
+        </Badge>
+        {/* With a single tier there is no failover to explain, so the hint would be noise. */}
+        {!isOnlyTier && <span className='text-muted-foreground text-xs'>{t('models.dialogs.association.tierHint')}</span>}
+      </div>
+      <div className='flex flex-col gap-2'>{children}</div>
+    </div>
+  );
+}
+
+/**
+ * Trailing drop zone that splits a rule out into a tier of its own, which is the
+ * only way to create a new priority level by dragging.
+ */
+function NewPriorityTierDropZone() {
+  const { t } = useTranslation();
+  const { setNodeRef, isOver } = useDroppable({ id: DROP_ID_NEW_TIER });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`rounded-lg border border-dashed py-3 text-center text-xs transition-colors ${
+        isOver ? 'border-primary bg-primary/5 text-primary' : 'text-muted-foreground'
+      }`}
+    >
+      {t('models.dialogs.association.newTierDropZone')}
+    </div>
+  );
+}
+
 interface AssociationRowProps {
+  /** Field-array id, stable across priority changes, used as the drag id. */
+  rowID: string;
   index: number;
   form: ReturnType<typeof useForm<AssociationFormData>>;
   isDeveloperMode: boolean;
@@ -1317,8 +1497,13 @@ function AssociationTypeSelectContent({ isDeveloperMode }: { isDeveloperMode: bo
   );
 }
 
-function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModelOptions, allTags, onRemove, portalContainer }: AssociationRowProps) {
+function AssociationRow({ rowID, index, form, isDeveloperMode, channelOptions, allModelOptions, allTags, onRemove, portalContainer }: AssociationRowProps) {
   const { t } = useTranslation();
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: rowID });
+
+  // Translate only: the row keeps its size while dragging, and useDraggable gives no
+  // transition of its own, so the row snaps back on release instead of animating.
+  const dragStyle = { transform: CSS.Translate.toString(transform) };
 
   const type = form.watch(`associations.${index}.type`);
   const channelId = form.watch(`associations.${index}.channelId`);
@@ -1394,8 +1579,25 @@ function AssociationRow({ index, form, isDeveloperMode, channelOptions, allModel
   }, [channelId, channelOptions, allModelOptions, showModel, type]);
 
   return (
-    <div className={`flex flex-col gap-3 rounded-lg border p-3 ${disabled ? 'opacity-50' : ''}`}>
-      <div className='grid grid-cols-[2.5rem_4rem_1fr_2.5rem] sm:grid-cols-[2.25rem_3rem_14rem_1fr_2.25rem] items-center gap-2'>
+    <div
+      ref={setNodeRef}
+      style={dragStyle}
+      className={`bg-card flex flex-col gap-3 rounded-lg border p-3 ${disabled ? 'opacity-50' : ''} ${
+        isDragging ? 'ring-primary/20 relative z-50 shadow-xl ring-2' : ''
+      }`}
+    >
+      <div className='grid grid-cols-[1.25rem_2.5rem_4rem_1fr_2.5rem] sm:grid-cols-[1.25rem_2.25rem_3rem_14rem_1fr_2.25rem] items-center gap-2'>
+        {/* Drag handle — moves the rule to another priority tier. The priority
+            input beside it does the same thing without a pointer. */}
+        <div
+          className='text-muted-foreground hover:text-foreground flex cursor-grab items-center justify-center active:cursor-grabbing'
+          aria-label={t('models.dialogs.association.dragToReprioritize')}
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className='h-3.5 w-3.5' />
+        </div>
+
         {/* Enable/Disable Switch */}
         <div className='flex items-center justify-center'>
           <Switch

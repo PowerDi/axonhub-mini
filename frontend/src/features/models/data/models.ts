@@ -3,7 +3,16 @@ import { graphqlRequest } from '@/gql/graphql';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useErrorHandler } from '@/hooks/use-error-handler';
-import { Model, ModelConnection, CreateModelInput, UpdateModelInput, modelConnectionSchema, modelSchema } from './schema';
+import {
+  Model,
+  ModelCard,
+  ModelConnection,
+  ModelType,
+  CreateModelInput,
+  UpdateModelInput,
+  modelConnectionSchema,
+  modelSchema,
+} from './schema';
 
 const MODELS_QUERY = `
   query GetModels(
@@ -778,6 +787,90 @@ export function useQueryModelChannelConnections() {
         queryModelChannelConnections: ModelChannelConnection[];
       }>(MODEL_CHANNEL_CONNECTIONS_QUERY, { associations });
       return data.queryModelChannelConnections;
+    },
+  });
+}
+
+const IMPORT_UNASSOCIATED_MODELS_MUTATION = `
+  mutation ImportUnassociatedModels($items: [ImportUnassociatedModelItem!]!) {
+    importUnassociatedModels(items: $items) {
+      created
+      appended
+      warnings
+      models {
+        id
+        modelID
+        name
+      }
+    }
+  }
+`;
+
+export interface ImportModelSourceInput {
+  channelId: number;
+  upstreamModelId: string;
+}
+
+export interface ImportModelMetadataInput {
+  modelId: string;
+  developer: string;
+  type?: ModelType;
+  name: string;
+  icon: string;
+  group: string;
+  modelCard?: ModelCard;
+  remark?: string;
+}
+
+/**
+ * One target Model per item. Set `targetModelId` to append the sources onto an
+ * existing Model, or `metadata` to create a new one — the backend rejects items
+ * that carry both or neither.
+ */
+export interface ImportUnassociatedModelItemInput {
+  targetModelId?: number;
+  metadata?: ImportModelMetadataInput;
+  sources: ImportModelSourceInput[];
+}
+
+export interface ImportUnassociatedModelsResult {
+  created: number;
+  appended: number;
+  warnings: string[];
+  models: Array<{ id: string; modelID: string; name: string }>;
+}
+
+export function useImportUnassociatedModels() {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const { handleError } = useErrorHandler();
+
+  return useMutation({
+    mutationFn: async (items: ImportUnassociatedModelItemInput[]) => {
+      const data = await graphqlRequest<{ importUnassociatedModels: ImportUnassociatedModelsResult }>(
+        IMPORT_UNASSOCIATED_MODELS_MUTATION,
+        { items }
+      );
+      return data.importUnassociatedModels;
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['models'] });
+      // The unassociated list is derived from the models it just changed, so it
+      // has to be dropped too or a reopened dialog shows the imported models
+      // as still unassociated.
+      queryClient.invalidateQueries({ queryKey: ['unassociatedChannels'] });
+      toast.success(
+        t('models.unassociated.import.success', {
+          created: result.created,
+          appended: result.appended,
+        })
+      );
+      // Warnings are advisory (an upstream model the channel does not list, or a
+      // source that was already associated); the import itself succeeded.
+      result.warnings.forEach((warning) => toast.warning(warning));
+    },
+    onError: (error) => {
+      handleError(error, { context: 'Import Unassociated Models' });
     },
   });
 }
