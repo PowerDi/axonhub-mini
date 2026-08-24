@@ -57,11 +57,17 @@ const modelExperimentalModeSchema = z
   })
   .passthrough();
 
-const modelExperimentalSchema = z
-  .object({
-    modes: z.record(z.string(), modelExperimentalModeSchema).optional(),
-  })
-  .passthrough();
+// Upstream publishes this either as a flag (`experimental: true`) or as an
+// object describing the experimental modes, so both forms have to parse. The
+// object form is listed first so it keeps winning where it applies.
+const modelExperimentalSchema = z.union([
+  z
+    .object({
+      modes: z.record(z.string(), modelExperimentalModeSchema).optional(),
+    })
+    .passthrough(),
+  z.boolean(),
+]);
 
 // Single model schema
 export const providerModelSchema = z.object({
