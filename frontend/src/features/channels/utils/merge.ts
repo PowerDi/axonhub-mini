@@ -57,12 +57,18 @@ export function mergeOverrideHeaders(existing: OverrideOperation[], template: Ov
  * - Existing ops not matched by template are preserved
  */
 export function mergeOverrideOperations(existing: OverrideOperation[], template: OverrideOperation[]): OverrideOperation[] {
+  // `path` is optional here but a plain string in the Go merge, where an absent
+  // path arrives as "". Collapsing undefined to '' keeps both sides grouping the
+  // same operations together.
+  const pathKey = (op: OverrideOperation) => op.path ?? '';
+
   const templateOpsByPath = new Map<string, OverrideOperation[]>();
   for (const op of template) {
     if (isReplacingBodyOverrideOperation(op)) {
-      const replacements = templateOpsByPath.get(op.path) || [];
+      const key = pathKey(op);
+      const replacements = templateOpsByPath.get(key) || [];
       replacements.push(op);
-      templateOpsByPath.set(op.path, replacements);
+      templateOpsByPath.set(key, replacements);
     }
   }
 
@@ -71,11 +77,12 @@ export function mergeOverrideOperations(existing: OverrideOperation[], template:
 
   for (const existingOp of existing) {
     if (isReplacingBodyOverrideOperation(existingOp)) {
-      const replacements = templateOpsByPath.get(existingOp.path);
+      const key = pathKey(existingOp);
+      const replacements = templateOpsByPath.get(key);
       if (replacements) {
-        if (!emittedTemplatePaths.has(existingOp.path)) {
+        if (!emittedTemplatePaths.has(key)) {
           result.push(...replacements);
-          emittedTemplatePaths.add(existingOp.path);
+          emittedTemplatePaths.add(key);
         }
         continue;
       }
@@ -84,7 +91,7 @@ export function mergeOverrideOperations(existing: OverrideOperation[], template:
   }
 
   for (const templateOp of template) {
-    if (isReplacingBodyOverrideOperation(templateOp) && emittedTemplatePaths.has(templateOp.path)) {
+    if (isReplacingBodyOverrideOperation(templateOp) && emittedTemplatePaths.has(pathKey(templateOp))) {
       continue;
     }
     result.push(templateOp);
