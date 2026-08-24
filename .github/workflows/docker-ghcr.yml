@@ -50,7 +50,8 @@ jobs:
         id: plan
         env:
           ARCH: ${{ inputs.arch }}
-          REPO: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
+          PACKAGE: axonhub
           REF: ${{ inputs.ref }}
         run: |
           set -euo pipefail
@@ -71,8 +72,14 @@ jobs:
               ;;
           esac
 
-          # GHCR rejects uppercase characters in image names.
-          IMAGE="ghcr.io/$(printf '%s' "$REPO" | tr '[:upper:]' '[:lower:]')"
+          # The package name deliberately differs from the repository name.
+          # GHCR auto-links a package whose name matches a repository, and it
+          # refuses to create such a package when that repository is a fork:
+          # pushing ghcr.io/<owner>/axonhub-mini fails with
+          # "denied: permission_denied: write_package" even though the job token
+          # carries Packages: write. Any other name is accepted.
+          # GHCR also rejects uppercase characters, hence the lowercasing.
+          IMAGE="ghcr.io/$(printf '%s' "$OWNER" | tr '[:upper:]' '[:lower:]')/${PACKAGE}"
 
           # Tags are prefixed with the ref that was built, so a one-off build
           # from another branch cannot overwrite the main tags. Anything that is
