@@ -102,6 +102,11 @@ func (r *mutationResolver) BulkDeleteModels(ctx context.Context, ids []*objects.
 	return true, nil
 }
 
+// ImportUnassociatedModels is the resolver for the importUnassociatedModels field.
+func (r *mutationResolver) ImportUnassociatedModels(ctx context.Context, items []*biz.ImportUnassociatedModelItem) (*biz.ImportUnassociatedModelsResult, error) {
+	return r.modelService.ImportUnassociatedModels(ctx, items)
+}
+
 // FetchModels is the resolver for the fetchModels field.
 func (r *queryResolver) FetchModels(ctx context.Context, input biz.FetchModelsInput) (*FetchModelsPayload, error) {
 	if err := authz.RequireScope(ctx, scopes.ScopeWriteChannels); err != nil {

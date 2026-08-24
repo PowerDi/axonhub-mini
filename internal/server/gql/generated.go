@@ -793,6 +793,13 @@ type ComplexityRoot struct {
 		Hour  func(childComplexity int) int
 	}
 
+	ImportUnassociatedModelsResult struct {
+		Appended func(childComplexity int) int
+		Created  func(childComplexity int) int
+		Models   func(childComplexity int) int
+		Warnings func(childComplexity int) int
+	}
+
 	InitializeSystemPayload struct {
 		Message func(childComplexity int) int
 		Success func(childComplexity int) int
@@ -1002,6 +1009,7 @@ type ComplexityRoot struct {
 		EnableAllChannelAPIKeys               func(childComplexity int, channelID objects.GUID) int
 		EnableChannelAPIKey                   func(childComplexity int, channelID objects.GUID, key string) int
 		EnableSelectedChannelAPIKeys          func(childComplexity int, channelID objects.GUID, keys []string) int
+		ImportUnassociatedModels              func(childComplexity int, items []*biz.ImportUnassociatedModelItem) int
 		LoadAPIKeyProfileTemplate             func(childComplexity int, input LoadAPIKeyProfileTemplateInput) int
 		PreviewPromptProtectionRule           func(childComplexity int, input PromptProtectionRulePreviewInput) int
 		RefreshProvidersCatalog               func(childComplexity int) int
@@ -2293,6 +2301,7 @@ type MutationResolver interface {
 	BulkDisableModels(ctx context.Context, ids []*objects.GUID) (bool, error)
 	BulkEnableModels(ctx context.Context, ids []*objects.GUID) (bool, error)
 	BulkDeleteModels(ctx context.Context, ids []*objects.GUID) (bool, error)
+	ImportUnassociatedModels(ctx context.Context, items []*biz.ImportUnassociatedModelItem) (*biz.ImportUnassociatedModelsResult, error)
 	Backup(ctx context.Context, input backup.BackupOptions) (*BackupPayload, error)
 	Restore(ctx context.Context, file graphql.Upload, input backup.RestoreOptions) (*RestorePayload, error)
 	UpdateAutoBackupSettings(ctx context.Context, input UpdateAutoBackupSettingsInput) (bool, error)
@@ -5123,6 +5132,31 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.HourlyRequestStats.Hour(childComplexity), true
 
+	case "ImportUnassociatedModelsResult.appended":
+		if e.complexity.ImportUnassociatedModelsResult.Appended == nil {
+			break
+		}
+
+		return e.complexity.ImportUnassociatedModelsResult.Appended(childComplexity), true
+	case "ImportUnassociatedModelsResult.created":
+		if e.complexity.ImportUnassociatedModelsResult.Created == nil {
+			break
+		}
+
+		return e.complexity.ImportUnassociatedModelsResult.Created(childComplexity), true
+	case "ImportUnassociatedModelsResult.models":
+		if e.complexity.ImportUnassociatedModelsResult.Models == nil {
+			break
+		}
+
+		return e.complexity.ImportUnassociatedModelsResult.Models(childComplexity), true
+	case "ImportUnassociatedModelsResult.warnings":
+		if e.complexity.ImportUnassociatedModelsResult.Warnings == nil {
+			break
+		}
+
+		return e.complexity.ImportUnassociatedModelsResult.Warnings(childComplexity), true
+
 	case "InitializeSystemPayload.message":
 		if e.complexity.InitializeSystemPayload.Message == nil {
 			break
@@ -6314,6 +6348,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.EnableSelectedChannelAPIKeys(childComplexity, args["channelID"].(objects.GUID), args["keys"].([]string)), true
+	case "Mutation.importUnassociatedModels":
+		if e.complexity.Mutation.ImportUnassociatedModels == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_importUnassociatedModels_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ImportUnassociatedModels(childComplexity, args["items"].([]*biz.ImportUnassociatedModelItem)), true
 	case "Mutation.loadApiKeyProfileTemplate":
 		if e.complexity.Mutation.LoadAPIKeyProfileTemplate == nil {
 			break
@@ -11615,6 +11660,9 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputGetCacheDiagnosticsInput,
 		ec.unmarshalInputGetChannelProbeDataInput,
 		ec.unmarshalInputHeaderEntryInput,
+		ec.unmarshalInputImportModelMetadata,
+		ec.unmarshalInputImportModelSource,
+		ec.unmarshalInputImportUnassociatedModelItem,
 		ec.unmarshalInputInitializeSystemInput,
 		ec.unmarshalInputLoadApiKeyProfileTemplateInput,
 		ec.unmarshalInputModelAssociationInput,
@@ -12774,6 +12822,17 @@ func (ec *executionContext) field_Mutation_enableSelectedChannelAPIKeys_args(ctx
 		return nil, err
 	}
 	args["keys"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_importUnassociatedModels_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "items", ec.unmarshalNImportUnassociatedModelItem2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐImportUnassociatedModelItemᚄ)
+	if err != nil {
+		return nil, err
+	}
+	args["items"] = arg0
 	return args, nil
 }
 
@@ -28789,6 +28848,152 @@ func (ec *executionContext) fieldContext_HourlyRequestStats_count(_ context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _ImportUnassociatedModelsResult_created(ctx context.Context, field graphql.CollectedField, obj *biz.ImportUnassociatedModelsResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ImportUnassociatedModelsResult_created,
+		func(ctx context.Context) (any, error) {
+			return obj.Created, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ImportUnassociatedModelsResult_created(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImportUnassociatedModelsResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImportUnassociatedModelsResult_appended(ctx context.Context, field graphql.CollectedField, obj *biz.ImportUnassociatedModelsResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ImportUnassociatedModelsResult_appended,
+		func(ctx context.Context) (any, error) {
+			return obj.Appended, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ImportUnassociatedModelsResult_appended(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImportUnassociatedModelsResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImportUnassociatedModelsResult_models(ctx context.Context, field graphql.CollectedField, obj *biz.ImportUnassociatedModelsResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ImportUnassociatedModelsResult_models,
+		func(ctx context.Context) (any, error) {
+			return obj.Models, nil
+		},
+		nil,
+		ec.marshalNModel2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐModelᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ImportUnassociatedModelsResult_models(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImportUnassociatedModelsResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Model_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Model_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Model_updatedAt(ctx, field)
+			case "developer":
+				return ec.fieldContext_Model_developer(ctx, field)
+			case "modelID":
+				return ec.fieldContext_Model_modelID(ctx, field)
+			case "type":
+				return ec.fieldContext_Model_type(ctx, field)
+			case "name":
+				return ec.fieldContext_Model_name(ctx, field)
+			case "icon":
+				return ec.fieldContext_Model_icon(ctx, field)
+			case "group":
+				return ec.fieldContext_Model_group(ctx, field)
+			case "modelCard":
+				return ec.fieldContext_Model_modelCard(ctx, field)
+			case "settings":
+				return ec.fieldContext_Model_settings(ctx, field)
+			case "status":
+				return ec.fieldContext_Model_status(ctx, field)
+			case "remark":
+				return ec.fieldContext_Model_remark(ctx, field)
+			case "associatedChannelCount":
+				return ec.fieldContext_Model_associatedChannelCount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Model", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImportUnassociatedModelsResult_warnings(ctx context.Context, field graphql.CollectedField, obj *biz.ImportUnassociatedModelsResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ImportUnassociatedModelsResult_warnings,
+		func(ctx context.Context) (any, error) {
+			return obj.Warnings, nil
+		},
+		nil,
+		ec.marshalNString2ᚕstringᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ImportUnassociatedModelsResult_warnings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImportUnassociatedModelsResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _InitializeSystemPayload_success(ctx context.Context, field graphql.CollectedField, obj *InitializeSystemPayload) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -37052,6 +37257,57 @@ func (ec *executionContext) fieldContext_Mutation_bulkDeleteModels(ctx context.C
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_bulkDeleteModels_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_importUnassociatedModels(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_importUnassociatedModels,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().ImportUnassociatedModels(ctx, fc.Args["items"].([]*biz.ImportUnassociatedModelItem))
+		},
+		nil,
+		ec.marshalNImportUnassociatedModelsResult2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐImportUnassociatedModelsResult,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_importUnassociatedModels(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "created":
+				return ec.fieldContext_ImportUnassociatedModelsResult_created(ctx, field)
+			case "appended":
+				return ec.fieldContext_ImportUnassociatedModelsResult_appended(ctx, field)
+			case "models":
+				return ec.fieldContext_ImportUnassociatedModelsResult_models(ctx, field)
+			case "warnings":
+				return ec.fieldContext_ImportUnassociatedModelsResult_warnings(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ImportUnassociatedModelsResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_importUnassociatedModels_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -71998,6 +72254,157 @@ func (ec *executionContext) unmarshalInputHeaderEntryInput(ctx context.Context, 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputImportModelMetadata(ctx context.Context, obj any) (biz.ImportModelMetadata, error) {
+	var it biz.ImportModelMetadata
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"modelId", "developer", "type", "name", "icon", "group", "modelCard", "remark"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "modelId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelId"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelID = data
+		case "developer":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("developer"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Developer = data
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalOModelType2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚋmodelᚐType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Type = data
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "icon":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("icon"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Icon = data
+		case "group":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("group"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Group = data
+		case "modelCard":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelCard"))
+			data, err := ec.unmarshalOModelCardInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelCard(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelCard = data
+		case "remark":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("remark"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Remark = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputImportModelSource(ctx context.Context, obj any) (biz.ImportModelSource, error) {
+	var it biz.ImportModelSource
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"channelId", "upstreamModelId"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "channelId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("channelId"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ChannelID = data
+		case "upstreamModelId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("upstreamModelId"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpstreamModelID = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputImportUnassociatedModelItem(ctx context.Context, obj any) (biz.ImportUnassociatedModelItem, error) {
+	var it biz.ImportUnassociatedModelItem
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"targetModelId", "metadata", "sources"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "targetModelId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("targetModelId"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TargetModelID = data
+		case "metadata":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metadata"))
+			data, err := ec.unmarshalOImportModelMetadata2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐImportModelMetadata(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Metadata = data
+		case "sources":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sources"))
+			data, err := ec.unmarshalNImportModelSource2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐImportModelSourceᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Sources = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputInitializeSystemInput(ctx context.Context, obj any) (InitializeSystemInput, error) {
 	var it InitializeSystemInput
 	asMap := map[string]any{}
@@ -95946,6 +96353,60 @@ func (ec *executionContext) _HourlyRequestStats(ctx context.Context, sel ast.Sel
 	return out
 }
 
+var importUnassociatedModelsResultImplementors = []string{"ImportUnassociatedModelsResult"}
+
+func (ec *executionContext) _ImportUnassociatedModelsResult(ctx context.Context, sel ast.SelectionSet, obj *biz.ImportUnassociatedModelsResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, importUnassociatedModelsResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ImportUnassociatedModelsResult")
+		case "created":
+			out.Values[i] = ec._ImportUnassociatedModelsResult_created(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "appended":
+			out.Values[i] = ec._ImportUnassociatedModelsResult_appended(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "models":
+			out.Values[i] = ec._ImportUnassociatedModelsResult_models(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "warnings":
+			out.Values[i] = ec._ImportUnassociatedModelsResult_warnings(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var initializeSystemPayloadImplementors = []string{"InitializeSystemPayload"}
 
 func (ec *executionContext) _InitializeSystemPayload(ctx context.Context, sel ast.SelectionSet, obj *InitializeSystemPayload) graphql.Marshaler {
@@ -97812,6 +98273,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "bulkDeleteModels":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_bulkDeleteModels(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "importUnassociatedModels":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_importUnassociatedModels(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -112587,6 +113055,60 @@ func (ec *executionContext) marshalNID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinte
 	return v
 }
 
+func (ec *executionContext) unmarshalNImportModelSource2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐImportModelSourceᚄ(ctx context.Context, v any) ([]*biz.ImportModelSource, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*biz.ImportModelSource, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNImportModelSource2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐImportModelSource(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNImportModelSource2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐImportModelSource(ctx context.Context, v any) (*biz.ImportModelSource, error) {
+	res, err := ec.unmarshalInputImportModelSource(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNImportUnassociatedModelItem2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐImportUnassociatedModelItemᚄ(ctx context.Context, v any) ([]*biz.ImportUnassociatedModelItem, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*biz.ImportUnassociatedModelItem, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNImportUnassociatedModelItem2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐImportUnassociatedModelItem(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNImportUnassociatedModelItem2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐImportUnassociatedModelItem(ctx context.Context, v any) (*biz.ImportUnassociatedModelItem, error) {
+	res, err := ec.unmarshalInputImportUnassociatedModelItem(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNImportUnassociatedModelsResult2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐImportUnassociatedModelsResult(ctx context.Context, sel ast.SelectionSet, v biz.ImportUnassociatedModelsResult) graphql.Marshaler {
+	return ec._ImportUnassociatedModelsResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNImportUnassociatedModelsResult2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐImportUnassociatedModelsResult(ctx context.Context, sel ast.SelectionSet, v *biz.ImportUnassociatedModelsResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ImportUnassociatedModelsResult(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v any) (int, error) {
 	res, err := graphql.UnmarshalInt(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -118990,6 +119512,14 @@ func (ec *executionContext) marshalOID2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinte
 		return graphql.Null
 	}
 	return v
+}
+
+func (ec *executionContext) unmarshalOImportModelMetadata2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋbizᚐImportModelMetadata(ctx context.Context, v any) (*biz.ImportModelMetadata, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputImportModelMetadata(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOInt2int(ctx context.Context, v any) (int, error) {

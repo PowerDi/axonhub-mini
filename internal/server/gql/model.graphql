@@ -193,6 +193,41 @@ input ChannelTagsRegexAssociationInput {
   pattern: String!
 }
 
+# One upstream (channel, model) pair to wire into a Model. upstreamModelId is the
+# name the channel answers to, so it must be one of the channel's model entries.
+input ImportModelSource {
+  channelId: Int!
+  upstreamModelId: String!
+}
+
+# The Model fields the unassociated-channel list cannot supply. The client fills
+# them from providers.json, falling back to placeholders when there is no match.
+input ImportModelMetadata {
+  modelId: String!
+  developer: String!
+  type: ModelType
+  name: String!
+  icon: String!
+  group: String!
+  modelCard: ModelCardInput
+  remark: String
+}
+
+# Imports one target Model. Set targetModelId to append associations to an
+# existing Model, or metadata to create a new one — exactly one of the two.
+input ImportUnassociatedModelItem {
+  targetModelId: Int
+  metadata: ImportModelMetadata
+  sources: [ImportModelSource!]!
+}
+
+type ImportUnassociatedModelsResult {
+  created: Int!
+  appended: Int!
+  models: [Model!]!
+  warnings: [String!]!
+}
+
 type ModelChannelConnection {
   channel: Channel!
   models: [ChannelModelEntry!]!
@@ -233,4 +268,7 @@ extend type Mutation {
   bulkDisableModels(ids: [ID!]!): Boolean!
   bulkEnableModels(ids: [ID!]!): Boolean!
   bulkDeleteModels(ids: [ID!]!): Boolean!
+  importUnassociatedModels(
+    items: [ImportUnassociatedModelItem!]!
+  ): ImportUnassociatedModelsResult!
 }

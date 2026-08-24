@@ -583,6 +583,18 @@ models:
   UnassociatedChannel:
     model:
       - github.com/looplj/axonhub/internal/server/biz.UnassociatedChannel
+  ImportModelSource:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ImportModelSource
+  ImportModelMetadata:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ImportModelMetadata
+  ImportUnassociatedModelItem:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ImportUnassociatedModelItem
+  ImportUnassociatedModelsResult:
+    model:
+      - github.com/looplj/axonhub/internal/server/biz.ImportUnassociatedModelsResult
   HeaderEntry:
     model:
       - github.com/looplj/axonhub/internal/objects.HeaderEntry

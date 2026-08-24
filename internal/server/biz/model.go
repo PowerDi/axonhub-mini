@@ -824,6 +824,11 @@ func (svc *ModelService) QueryUnassociatedChannels(ctx context.Context) ([]*Unas
 		return []*UnassociatedChannel{}, nil
 	}
 
+	// Archived models are excluded on purpose: they do not serve traffic, so an
+	// upstream model only an archived Model covers really is unassociated and
+	// belongs in this list. The model_id they still hold in the unique index is
+	// handled at import time, where archived Models are offered as append
+	// targets instead of being silently re-created.
 	models, err := svc.entFromContext(ctx).Model.Query().
 		Where(model.StatusIn(model.StatusEnabled, model.StatusDisabled)).
 		All(ctx)
