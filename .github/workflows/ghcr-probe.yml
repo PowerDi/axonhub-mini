@@ -1,0 +1,41 @@
+name: GHCR probe (temporary)
+
+# Throwaway diagnostic: pushes a trivial image to the same GHCR package the real
+# build targets, to separate "fork cannot create GHCR packages" from a problem
+# in docker-ghcr.yml. Delete this file once the answer is known.
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Write trivial Dockerfile
+        run: |
+          mkdir -p probe
+          printf 'FROM alpine:3.20\nRUN echo probe > /probe.txt\n' > probe/Dockerfile
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Show token subject
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "actor=${{ github.actor }} repo=${{ github.repository }}"
+          echo "repo is fork: $(curl -sS -H "Authorization: Bearer $TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}" | grep -o '"fork": *[a-z]*')"
+
+      - name: Push trivial image
+        run: |
+          set -euo pipefail
+          docker build -t ghcr.io/powerdi/axonhub-mini:probe probe
+          docker push ghcr.io/powerdi/axonhub-mini:probe
