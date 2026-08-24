@@ -1,8 +1,5 @@
-name: GHCR probe (temporary)
+name: ghcr-probe
 
-# Throwaway diagnostic: pushes a trivial image to the same GHCR package the real
-# build targets, to separate "fork cannot create GHCR packages" from a problem
-# in docker-ghcr.yml. Delete this file once the answer is known.
 on:
   workflow_dispatch:
 
@@ -13,29 +10,56 @@ jobs:
       contents: read
       packages: write
     steps:
-      - name: Write trivial Dockerfile
-        run: |
-          mkdir -p probe
-          printf 'FROM alpine:3.20\nRUN echo probe > /probe.txt\n' > probe/Dockerfile
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Show token subject
+      - name: Inspect what GHCR actually grants
         env:
-          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ACTOR: ${{ github.actor }}
+          GHTOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
         run: |
-          set -euo pipefail
-          echo "actor=${{ github.actor }} repo=${{ github.repository }}"
-          echo "repo is fork: $(curl -sS -H "Authorization: Bearer $TOKEN" \
-            "https://api.github.com/repos/${{ github.repository }}" | grep -o '"fork": *[a-z]*')"
+          set -uo pipefail
+          decode() { printf '%s' "$1" | cut -d. -f2 | tr '_-' '/+' | base64 -d 2>/dev/null; }
 
-      - name: Push trivial image
+          for SCOPE in \
+            "repository:powerdi/axonhub-mini:pull,push" \
+            "repository:powerdi/ghcr-probe-fresh:pull,push"
+          do
+            echo "=================================================="
+            echo "scope: $SCOPE"
+            RESP=$(curl -sS -u "$ACTOR:$GHTOKEN" \
+              "https://ghcr.io/token?service=ghcr.io&scope=$SCOPE")
+            TOK=$(printf '%s' "$RESP" | jq -r '.token // empty')
+            if [ -z "$TOK" ]; then
+              echo "no token: $RESP"
+              continue
+            fi
+            echo "--- granted access claim ---"
+            decode "$TOK" | jq -c '{access, repository, repository_id, permissions}' 2>/dev/null \
+              || decode "$TOK"
+          done
+
+      - name: Try pushing a fresh package name
+        continue-on-error: true
+        env:
+          ACTOR: ${{ github.actor }}
+          GHTOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          set -euo pipefail
-          docker build -t ghcr.io/powerdi/axonhub-mini:probe probe
-          docker push ghcr.io/powerdi/axonhub-mini:probe
+          set -uo pipefail
+          echo "$GHTOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
+          printf 'FROM alpine:3.20\n' > /tmp/Dockerfile.probe
+          for NAME in axonhub-mini ghcr-probe-fresh; do
+            echo "=== pushing ghcr.io/powerdi/$NAME:probe ==="
+            docker build -q -t "ghcr.io/powerdi/$NAME:probe" -f /tmp/Dockerfile.probe /tmp >/dev/null
+            if docker push "ghcr.io/powerdi/$NAME:probe" 2>&1 | tail -3; then
+              echo "RESULT $NAME = ok"
+            else
+              echo "RESULT $NAME = failed"
+            fi
+          done
+
+      - name: Repository fork status seen by the run
+        env:
+          GHTOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl -sS -H "Authorization: Bearer $GHTOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}" \
+            | jq -c '{fork, visibility, owner: .owner.login, owner_type: .owner.type, parent: .parent.full_name}'
