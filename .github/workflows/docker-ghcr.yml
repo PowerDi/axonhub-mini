@@ -230,12 +230,14 @@ jobs:
           VERSION: ${{ needs.prepare.outputs.version }}
           EXTRA_TAG: ${{ inputs.extra_tag }}
         run: |
+          # Keep the leading dash inside the argument: a format string that
+          # starts with "-" is parsed as an option by bash's printf builtin.
           {
             printf '### Pushed images\n\n'
-            printf '- `%s:%s`\n' "$IMAGE" "$SLUG"
-            printf '- `%s:%s-%s-%s`\n' "$IMAGE" "$SLUG" "$DATE" "$SHA"
+            printf '%s\n' "- \`${IMAGE}:${SLUG}\`"
+            printf '%s\n' "- \`${IMAGE}:${SLUG}-${DATE}-${SHA}\`"
             if [ -n "$EXTRA_TAG" ]; then
-              printf '- `%s:%s`\n' "$IMAGE" "$EXTRA_TAG"
+              printf '%s\n' "- \`${IMAGE}:${EXTRA_TAG}\`"
             fi
             printf '\nBuild version: `%s`\n' "$VERSION"
           } >> "$GITHUB_STEP_SUMMARY"
