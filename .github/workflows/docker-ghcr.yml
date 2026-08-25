@@ -35,7 +35,8 @@ jobs:
       image: ${{ steps.plan.outputs.image }}
       commit_sha: ${{ steps.plan.outputs.commit_sha }}
       short_sha: ${{ steps.plan.outputs.short_sha }}
-      build_date: ${{ steps.plan.outputs.build_date }}
+      base_version: ${{ steps.plan.outputs.base_version }}
+      fork_build: ${{ steps.plan.outputs.fork_build }}
       version: ${{ steps.plan.outputs.version }}
       pinned_tag: ${{ steps.plan.outputs.pinned_tag }}
       moving_tags: ${{ steps.plan.outputs.moving_tags }}
@@ -44,7 +45,9 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref }}
-          fetch-depth: 1
+          # Full history: the fork build number is the commit count, so a
+          # shallow clone would report 1 for every build.
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Plan build
@@ -76,48 +79,86 @@ jobs:
           # GHCR rejects uppercase characters in a package path.
           IMAGE="ghcr.io/$(printf '%s' "$OWNER" | tr '[:upper:]' '[:lower:]')/${PACKAGE}"
 
+          # internal/build/VERSION only moves when upstream cuts a release
+          # (release.yml writes the pushed v* tag into it), so it cannot on its
+          # own distinguish two fork builds. It is the *base* here, never the
+          # whole version.
+          SEMVER_RE='^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$'
+
           BASE_VERSION=$(tr -d '[:space:]' < internal/build/VERSION)
           if [ -z "$BASE_VERSION" ]; then
             BASE_VERSION=v0.0.0
           fi
+          if ! printf '%s\n' "$BASE_VERSION" | grep -Eq "$SEMVER_RE"; then
+            echo "internal/build/VERSION is not semver: $BASE_VERSION" >&2
+            exit 1
+          fi
 
-          BUILD_DATE=$(date -u +%Y%m%d)
+          # The fork's own monotonic counter: total commit count. It advances on
+          # every commit of mine regardless of what upstream's VERSION says, so
+          # two different builds can never share a version.
+          FORK_BUILD=$(git rev-list --count HEAD)
 
-          # Tag scheme mirrors upstream, with the fork's own package name as the
-          # thing that separates these images from looplj/axonhub:
+          # Tag scheme. The fork build number goes in its own dot-separated
+          # prerelease identifier so semver compares it numerically -- glued
+          # into a single identifier ("fork9" vs "fork10") it degrades to a
+          # string compare and 10 sorts below 9.
           #
-          #   ref = v* git tag  -> :v1.2.3                  + :latest
-          #   ref = main        -> :v1.2.3-<date>            + :latest
-          #   ref = anything    -> :v1.2.3-<date>.<slug>     + :<slug>
+          #   ref = v* git tag        -> :v1.2.3                       + :latest
+          #   ref = main, base beta   -> :v1.2.3-beta8.fork.<n>        + :latest
+          #   ref = main, base stable -> :v1.2.4-fork.<n>              + :latest
+          #   ref = other branch      -> :<as above>.<slug>            + :<slug>
           #
           # The version tag doubles as build.Version, so the running server
           # reports exactly the tag it was deployed from.
           case "$REF" in
             v[0-9]*)
+              # Building an explicit tag: honour it verbatim, no fork suffix.
               VERSION="$REF"
               MOVING="latest"
               ;;
-            main)
-              VERSION="${BASE_VERSION}-${BUILD_DATE}"
-              MOVING="latest"
-              ;;
             *)
-              # Restricted to semver prerelease characters: underscores and other
-              # separators are not allowed there, so they collapse to a dash.
-              SLUG=$(printf '%s' "$REF" | tr -c 'A-Za-z0-9-' '-' | sed -E 's/-+/-/g; s/^-+//; s/-+$//' | cut -c1-32)
-              if [ -z "$SLUG" ]; then
-                SLUG=build
+              case "$BASE_VERSION" in
+                *-*)
+                  # Base is a prerelease (v1.0.0-beta8): append to the existing
+                  # prerelease so the build stays above beta8 and below beta9.
+                  VERSION="${BASE_VERSION}.fork.${FORK_BUILD}"
+                  ;;
+                *)
+                  # Base is a finished release (v1.2.3). A prerelease of the
+                  # same version sorts *below* it, which would make my build
+                  # look older than the release it contains, so bump the patch
+                  # and pre-release that instead: v1.2.3 < v1.2.4-fork.N < v1.2.4
+                  STRIPPED="${BASE_VERSION#v}"
+                  MAJOR="${STRIPPED%%.*}"
+                  REST="${STRIPPED#*.}"
+                  MINOR="${REST%%.*}"
+                  PATCH="${REST#*.}"
+                  VERSION="v${MAJOR}.${MINOR}.$((PATCH + 1))-fork.${FORK_BUILD}"
+                  ;;
+              esac
+
+              if [ "$REF" != "main" ]; then
+                # Restricted to semver prerelease characters: underscores and
+                # other separators are not allowed there, so they collapse to a
+                # dash.
+                SLUG=$(printf '%s' "$REF" | tr -c 'A-Za-z0-9-' '-' | sed -E 's/-+/-/g; s/^-+//; s/-+$//' | cut -c1-32)
+                if [ -z "$SLUG" ]; then
+                  SLUG=build
+                fi
+                VERSION="${VERSION}.${SLUG}"
+                # A one-off build from another branch must not move :latest.
+                MOVING="$SLUG"
+              else
+                MOVING="latest"
               fi
-              VERSION="${BASE_VERSION}-${BUILD_DATE}.${SLUG}"
-              # A one-off build from another branch must not move :latest.
-              MOVING="$SLUG"
               ;;
           esac
 
           # Keep the result parseable by Masterminds/semver: internal/ent/migrate
           # /datamigrate/migrator.go parses build.Version and skips the system
           # version update when it is invalid.
-          if ! printf '%s\n' "$VERSION" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$'; then
+          if ! printf '%s\n' "$VERSION" | grep -Eq "$SEMVER_RE"; then
             echo "Refusing to build with non-semver version: $VERSION" >&2
             exit 1
           fi
@@ -129,7 +170,8 @@ jobs:
             printf 'moving_tags=%s\n' "$MOVING"
             printf 'commit_sha=%s\n' "$(git rev-parse HEAD)"
             printf 'short_sha=%s\n' "$(git rev-parse --short=7 HEAD)"
-            printf 'build_date=%s\n' "$BUILD_DATE"
+            printf 'base_version=%s\n' "$BASE_VERSION"
+            printf 'fork_build=%s\n' "$FORK_BUILD"
             printf 'version=%s\n' "$VERSION"
           } >> "$GITHUB_OUTPUT"
 
