@@ -37,7 +37,8 @@ jobs:
       short_sha: ${{ steps.plan.outputs.short_sha }}
       build_date: ${{ steps.plan.outputs.build_date }}
       version: ${{ steps.plan.outputs.version }}
-      ref_slug: ${{ steps.plan.outputs.ref_slug }}
+      pinned_tag: ${{ steps.plan.outputs.pinned_tag }}
+      moving_tags: ${{ steps.plan.outputs.moving_tags }}
     steps:
       - name: Check out requested ref
         uses: actions/checkout@v7
@@ -51,7 +52,7 @@ jobs:
         env:
           ARCH: ${{ inputs.arch }}
           OWNER: ${{ github.repository_owner }}
-          PACKAGE: axonhub
+          PACKAGE: axonhub-mini
           REF: ${{ inputs.ref }}
         run: |
           set -euo pipefail
@@ -72,22 +73,8 @@ jobs:
               ;;
           esac
 
-          # The package name deliberately differs from the repository name.
-          # GHCR auto-links a package whose name matches a repository, and it
-          # refuses to create such a package when that repository is a fork:
-          # pushing ghcr.io/<owner>/axonhub-mini fails with
-          # "denied: permission_denied: write_package" even though the job token
-          # carries Packages: write. Any other name is accepted.
-          # GHCR also rejects uppercase characters, hence the lowercasing.
+          # GHCR rejects uppercase characters in a package path.
           IMAGE="ghcr.io/$(printf '%s' "$OWNER" | tr '[:upper:]' '[:lower:]')/${PACKAGE}"
-
-          # Tags are prefixed with the ref that was built, so a one-off build
-          # from another branch cannot overwrite the main tags. Anything that is
-          # not a valid tag component collapses to a dash.
-          PREFIX=$(printf '%s' "$REF" | tr -c 'A-Za-z0-9._-' '-' | sed -E 's/^-+//; s/-+$//' | cut -c1-40)
-          if [ -z "$PREFIX" ]; then
-            PREFIX=build
-          fi
 
           BASE_VERSION=$(tr -d '[:space:]' < internal/build/VERSION)
           if [ -z "$BASE_VERSION" ]; then
@@ -96,10 +83,40 @@ jobs:
 
           BUILD_DATE=$(date -u +%Y%m%d)
 
+          # Tag scheme mirrors upstream, with the fork's own package name as the
+          # thing that separates these images from looplj/axonhub:
+          #
+          #   ref = v* git tag  -> :v1.2.3                  + :latest
+          #   ref = main        -> :v1.2.3-<date>            + :latest
+          #   ref = anything    -> :v1.2.3-<date>.<slug>     + :<slug>
+          #
+          # The version tag doubles as build.Version, so the running server
+          # reports exactly the tag it was deployed from.
+          case "$REF" in
+            v[0-9]*)
+              VERSION="$REF"
+              MOVING="latest"
+              ;;
+            main)
+              VERSION="${BASE_VERSION}-${BUILD_DATE}"
+              MOVING="latest"
+              ;;
+            *)
+              # Restricted to semver prerelease characters: underscores and other
+              # separators are not allowed there, so they collapse to a dash.
+              SLUG=$(printf '%s' "$REF" | tr -c 'A-Za-z0-9-' '-' | sed -E 's/-+/-/g; s/^-+//; s/-+$//' | cut -c1-32)
+              if [ -z "$SLUG" ]; then
+                SLUG=build
+              fi
+              VERSION="${BASE_VERSION}-${BUILD_DATE}.${SLUG}"
+              # A one-off build from another branch must not move :latest.
+              MOVING="$SLUG"
+              ;;
+          esac
+
           # Keep the result parseable by Masterminds/semver: internal/ent/migrate
           # /datamigrate/migrator.go parses build.Version and skips the system
           # version update when it is invalid.
-          VERSION="${BASE_VERSION}-fork.${BUILD_DATE}"
           if ! printf '%s\n' "$VERSION" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$'; then
             echo "Refusing to build with non-semver version: $VERSION" >&2
             exit 1
@@ -108,7 +125,8 @@ jobs:
           {
             printf 'matrix=%s\n' "$MATRIX"
             printf 'image=%s\n' "$IMAGE"
-            printf 'ref_slug=%s\n' "$PREFIX"
+            printf 'pinned_tag=%s\n' "$VERSION"
+            printf 'moving_tags=%s\n' "$MOVING"
             printf 'commit_sha=%s\n' "$(git rev-parse HEAD)"
             printf 'short_sha=%s\n' "$(git rev-parse --short=7 HEAD)"
             printf 'build_date=%s\n' "$BUILD_DATE"
@@ -162,8 +180,7 @@ jobs:
           platforms: ${{ matrix.platform }}
           push: true
           tags: |
-            ${{ needs.prepare.outputs.image }}:${{ needs.prepare.outputs.ref_slug }}-${{ matrix.arch }}
-            ${{ needs.prepare.outputs.image }}:${{ needs.prepare.outputs.ref_slug }}-${{ needs.prepare.outputs.build_date }}-${{ needs.prepare.outputs.short_sha }}-${{ matrix.arch }}
+            ${{ needs.prepare.outputs.image }}:${{ needs.prepare.outputs.pinned_tag }}-${{ matrix.arch }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
@@ -189,9 +206,8 @@ jobs:
         env:
           IMAGE: ${{ needs.prepare.outputs.image }}
           ARCH_INPUT: ${{ inputs.arch }}
-          DATE: ${{ needs.prepare.outputs.build_date }}
-          SHA: ${{ needs.prepare.outputs.short_sha }}
-          SLUG: ${{ needs.prepare.outputs.ref_slug }}
+          PINNED: ${{ needs.prepare.outputs.pinned_tag }}
+          MOVING: ${{ needs.prepare.outputs.moving_tags }}
           EXTRA_TAG: ${{ inputs.extra_tag }}
         run: |
           set -euo pipefail
@@ -202,15 +218,16 @@ jobs:
             ARCHES="$ARCH_INPUT"
           fi
 
-          IMMUTABLE="${SLUG}-${DATE}-${SHA}"
-
           SOURCES=""
           for arch in $ARCHES; do
-            SOURCES="$SOURCES ${IMAGE}:${IMMUTABLE}-${arch}"
+            SOURCES="$SOURCES ${IMAGE}:${PINNED}-${arch}"
           done
 
+          # Both tags are repointed by a rebuild: PINNED only carries a date, so
+          # a second build on the same day reuses it. Deployments that need a
+          # guaranteed-identical image should pin the digest, not the tag.
           # shellcheck disable=SC2086
-          docker buildx imagetools create -t "${IMAGE}:${IMMUTABLE}" -t "${IMAGE}:${SLUG}" $SOURCES
+          docker buildx imagetools create -t "${IMAGE}:${PINNED}" -t "${IMAGE}:${MOVING}" $SOURCES
 
           if [ -n "$EXTRA_TAG" ]; then
             if ! printf '%s\n' "$EXTRA_TAG" | grep -Eq '^[A-Za-z0-9][A-Za-z0-9._-]{0,126}$'; then
@@ -224,20 +241,20 @@ jobs:
       - name: Summary
         env:
           IMAGE: ${{ needs.prepare.outputs.image }}
-          DATE: ${{ needs.prepare.outputs.build_date }}
+          PINNED: ${{ needs.prepare.outputs.pinned_tag }}
+          MOVING: ${{ needs.prepare.outputs.moving_tags }}
           SHA: ${{ needs.prepare.outputs.short_sha }}
-          SLUG: ${{ needs.prepare.outputs.ref_slug }}
-          VERSION: ${{ needs.prepare.outputs.version }}
           EXTRA_TAG: ${{ inputs.extra_tag }}
         run: |
           # Keep the leading dash inside the argument: a format string that
           # starts with "-" is parsed as an option by bash's printf builtin.
           {
             printf '### Pushed images\n\n'
-            printf '%s\n' "- \`${IMAGE}:${SLUG}\`"
-            printf '%s\n' "- \`${IMAGE}:${SLUG}-${DATE}-${SHA}\`"
+            printf '%s\n' "- \`${IMAGE}:${PINNED}\` (version tag)"
+            printf '%s\n' "- \`${IMAGE}:${MOVING}\` (rolling)"
             if [ -n "$EXTRA_TAG" ]; then
               printf '%s\n' "- \`${IMAGE}:${EXTRA_TAG}\`"
             fi
-            printf '\nBuild version: `%s`\n' "$VERSION"
+            printf '\nBuild version: `%s`\n' "$PINNED"
+            printf 'Commit: `%s`\n' "$SHA"
           } >> "$GITHUB_STEP_SUMMARY"
