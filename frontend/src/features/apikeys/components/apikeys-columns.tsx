@@ -3,6 +3,7 @@ import { ColumnDef, Table, Row } from '@tanstack/react-table';
 import { Copy, Eye, Settings } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { copyTextToClipboard } from '@/lib/clipboard';
 import { cn, extractNumberID, formatUserName } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -20,7 +21,7 @@ function ApiKeyCell({ apiKey, fullApiKey }: { apiKey: string; fullApiKey: ApiKey
   const maskedKey = apiKey.length > 4 ? `${'•'.repeat(8)}${apiKey.slice(-4)}` : '•'.repeat(apiKey.length);
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(apiKey);
+    copyTextToClipboard(apiKey).catch(() => toast.error(t('common.errors.copyFailed')));
     toast.success(t('apikeys.messages.copied'));
   };
 

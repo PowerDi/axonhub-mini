@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { ChevronRight, ChevronDown, Copy, Check, MoreHorizontal, ChevronUp } from 'lucide-react';
+import { copyTextToClipboard } from '@/lib/clipboard';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -92,7 +93,8 @@ function JsonNode({ name, data, parentData, isRoot = false, isArrayItem = false,
 
   const copyToClipboard = (e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(JSON.stringify(data, null, 2));
+    // This vendored component has no toast/i18n in scope, so a failure just reverts the icon.
+    copyTextToClipboard(JSON.stringify(data, null, 2)).catch(() => setIsCopied(false));
     setIsCopied(true);
     setTimeout(() => setIsCopied(false), 2000);
   };

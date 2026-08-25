@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { copyTextToClipboard } from '@/lib/clipboard';
 
 type UseCopyToClipboardProps = {
   text: string;
@@ -13,8 +14,7 @@ export function useCopyToClipboard({ text, copyMessage = 'Copied to clipboard!' 
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleCopy = useCallback(() => {
-    navigator.clipboard
-      .writeText(text)
+    copyTextToClipboard(text)
       .then(() => {
         toast.success(t('common.success.copiedToClipboard'));
         setIsCopied(true);

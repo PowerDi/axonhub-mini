@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Copy, Eye, EyeOff, AlertTriangle, Link, CheckIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { copyTextToClipboard } from '@/lib/clipboard';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -15,10 +16,14 @@ function CopyBaseUrlButton({ baseUrl }: { baseUrl: string }) {
   const [isCopied, setIsCopied] = useState(false);
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(baseUrl);
-    setIsCopied(true);
-    toast.success(t('apikeys.messages.baseUrlCopied'));
-    setTimeout(() => setIsCopied(false), 2000);
+    try {
+      await copyTextToClipboard(baseUrl);
+      setIsCopied(true);
+      toast.success(t('apikeys.messages.baseUrlCopied'));
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch {
+      toast.error(t('common.errors.copyFailed'));
+    }
   };
 
   return (
@@ -247,7 +252,7 @@ print(response.text)`
 
   const copyToClipboard = () => {
     if (selectedApiKey?.key) {
-      navigator.clipboard.writeText(selectedApiKey.key);
+      copyTextToClipboard(selectedApiKey.key).catch(() => toast.error(t('common.errors.copyFailed')));
       toast.success(t('apikeys.messages.copied'));
     }
   };

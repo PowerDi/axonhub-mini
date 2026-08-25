@@ -8,6 +8,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { X, RefreshCw, Search, ChevronLeft, ChevronRight, PanelLeft, Plus, Trash2, Eye, EyeOff, Copy, Play, Info, Ban } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { copyTextToClipboard } from '@/lib/clipboard';
 import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -2366,7 +2367,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                           onClick={() => {
                                             const keys = field.value || [];
                                             if (keys.length > 0) {
-                                              navigator.clipboard.writeText(keys.join('\n'));
+                                              copyTextToClipboard(keys.join('\n')).catch(() => toast.error(t('common.errors.copyFailed')));
                                               toast.success(t('channels.messages.credentialsCopied'));
                                             }
                                           }}

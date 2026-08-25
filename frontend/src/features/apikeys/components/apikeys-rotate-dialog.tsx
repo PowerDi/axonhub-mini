@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Copy, RefreshCw, AlertTriangle, CheckIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { copyTextToClipboard } from '@/lib/clipboard';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -37,10 +38,14 @@ export function ApiKeysRotateDialog() {
 
   const handleCopy = async () => {
     if (newKey) {
-      await navigator.clipboard.writeText(newKey);
-      setIsCopied(true);
-      toast.success(t('apikeys.messages.copied'));
-      setTimeout(() => setIsCopied(false), 2000);
+      try {
+        await copyTextToClipboard(newKey);
+        setIsCopied(true);
+        toast.success(t('apikeys.messages.copied'));
+        setTimeout(() => setIsCopied(false), 2000);
+      } catch {
+        toast.error(t('common.errors.copyFailed'));
+      }
     }
   };
 

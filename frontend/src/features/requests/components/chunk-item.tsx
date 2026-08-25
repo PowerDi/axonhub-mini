@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Copy, Download } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { copyTextToClipboard } from '@/lib/clipboard';
 import { JsonViewer } from '@/components/json-tree-view';
 import { Button } from '@/components/ui/button';
 
@@ -24,7 +25,7 @@ export function ChunkItem({ chunk, index }: ChunkItemProps) {
   };
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(formatJson(chunk));
+    copyTextToClipboard(formatJson(chunk)).catch(() => toast.error(t('common.errors.copyFailed')));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     toast.success(t('requests.actions.copy'));

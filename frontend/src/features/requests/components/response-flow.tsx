@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CopyIcon } from 'lucide-react';
+import { toast } from 'sonner';
+import { copyTextToClipboard } from '@/lib/clipboard';
 import { Reasoning, ReasoningTrigger, ReasoningContent } from '@/components/ai-elements/reasoning';
 import { Response as UIResponse } from '@/components/ai-elements/response';
 import { Message, MessageContent } from '@/components/ai-elements/message';
@@ -94,7 +96,7 @@ export function ResponseFlow({ chunks, body, isLive, reasoningDurationMs }: Resp
                             const text = typeof tc.function?.arguments === 'string'
                               ? tc.function.arguments
                               : JSON.stringify(parseJson(tc.function?.arguments || '{}'), null, 2);
-                            navigator.clipboard.writeText(text);
+                            copyTextToClipboard(text).catch(() => toast.error(t('common.errors.copyFailed')));
                           }}
                         >
                           <CopyIcon className='size-3' />

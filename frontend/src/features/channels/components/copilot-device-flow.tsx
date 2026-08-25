@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { Copy, ExternalLink, Loader2, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { copyTextToClipboard } from '@/lib/clipboard';
 import { Button } from '@/components/ui/button';
 import { FormLabel } from '@/components/ui/form';
 import { useDeviceFlow } from '../hooks/use-device-flow';
@@ -141,7 +142,7 @@ export function CopilotDeviceFlow({ onSuccess, onError, existingCredentials }: C
                 type='button'
                 onClick={() => {
                   if (deviceFlow.userCode) {
-                    navigator.clipboard.writeText(deviceFlow.userCode);
+                    copyTextToClipboard(deviceFlow.userCode).catch(() => toast.error(t('common.errors.copyFailed')));
                     toast.success(t('channels.messages.credentialsCopied'));
                   }
                 }}

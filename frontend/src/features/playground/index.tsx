@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/stores/authStore';
 import { useSelectedProjectId } from '@/stores/projectStore';
+import { copyTextToClipboard } from '@/lib/clipboard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -515,7 +516,10 @@ export default function Playground() {
                                 <Action onClick={() => regenerate()} label={t('playground.chat.retry')}>
                                   <RefreshCcw className='size-3' />
                                 </Action>
-                                <Action onClick={() => navigator.clipboard.writeText(textContent)} label={t('copy')}>
+                                <Action
+                                  onClick={() => copyTextToClipboard(textContent).catch(() => toast.error(t('common.errors.copyFailed')))}
+                                  label={t('copy')}
+                                >
                                   <Copy className='size-3' />
                                 </Action>
                               </Actions>

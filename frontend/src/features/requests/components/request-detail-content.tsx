@@ -5,6 +5,7 @@ import { zhCN, enUS } from 'date-fns/locale';
 import { Copy, Clock, Key, Database, FileText, Layers, Download, Terminal } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { copyTextToClipboard } from '@/lib/clipboard';
 import { extractNumberID } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -120,7 +121,7 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
   }, [request, parsedResponse]);
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
+    copyTextToClipboard(text).catch(() => toast.error(t('common.errors.copyFailed')));
     toast.success(t('requests.actions.copy'));
   };
 
