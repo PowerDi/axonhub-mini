@@ -36,7 +36,7 @@ jobs:
       commit_sha: ${{ steps.plan.outputs.commit_sha }}
       short_sha: ${{ steps.plan.outputs.short_sha }}
       base_version: ${{ steps.plan.outputs.base_version }}
-      fork_build: ${{ steps.plan.outputs.fork_build }}
+      mini_version: ${{ steps.plan.outputs.mini_version }}
       version: ${{ steps.plan.outputs.version }}
       pinned_tag: ${{ steps.plan.outputs.pinned_tag }}
       moving_tags: ${{ steps.plan.outputs.moving_tags }}
@@ -45,9 +45,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           ref: ${{ inputs.ref }}
-          # Full history: the fork build number is the commit count, so a
-          # shallow clone would report 1 for every build.
-          fetch-depth: 0
+          fetch-depth: 1
           persist-credentials: false
 
       - name: Plan build
@@ -81,7 +79,7 @@ jobs:
 
           # internal/build/VERSION only moves when upstream cuts a release
           # (release.yml writes the pushed v* tag into it), so it cannot on its
-          # own distinguish two fork builds. It is the *base* here, never the
+          # own distinguish two of our builds. It is the *base* here, never the
           # whole version.
           SEMVER_RE='^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$'
 
@@ -94,26 +92,35 @@ jobs:
             exit 1
           fi
 
-          # The fork's own monotonic counter: total commit count. It advances on
-          # every commit of mine regardless of what upstream's VERSION says, so
-          # two different builds can never share a version.
-          FORK_BUILD=$(git rev-list --count HEAD)
+          # Our own release counter, bumped by hand in .github/mini-version.txt
+          # when cutting a release -- same discipline as upstream, which bumps
+          # its VERSION by hand too. Independent of upstream's release cadence.
+          MINI_FILE=.github/mini-version.txt
+          if [ ! -f "$MINI_FILE" ]; then
+            echo "missing $MINI_FILE" >&2
+            exit 1
+          fi
+          MINI=$(tr -d '[:space:]' < "$MINI_FILE")
+          if ! printf '%s\n' "$MINI" | grep -Eq '^(0|[1-9][0-9]*)$'; then
+            echo "$MINI_FILE must hold a plain non-negative integer, got: $MINI" >&2
+            exit 1
+          fi
 
-          # Tag scheme. The fork build number goes in its own dot-separated
-          # prerelease identifier so semver compares it numerically -- glued
-          # into a single identifier ("fork9" vs "fork10") it degrades to a
-          # string compare and 10 sorts below 9.
+          # Tag scheme. The counter goes in its own dot-separated prerelease
+          # identifier so semver compares it numerically -- glued into one
+          # identifier ("mini9" vs "mini10") it degrades to a string compare
+          # and 10 sorts below 9.
           #
           #   ref = v* git tag        -> :v1.2.3                       + :latest
-          #   ref = main, base beta   -> :v1.2.3-beta8.fork.<n>        + :latest
-          #   ref = main, base stable -> :v1.2.4-fork.<n>              + :latest
-          #   ref = other branch      -> :<as above>.<slug>            + :<slug>
+          #   ref = main, base beta   -> :v1.2.3-beta8.mini.<n>        + :latest
+          #   ref = main, base stable -> :v1.2.4-mini.<n>              + :latest
+          #   ref = other branch      -> :<as above>.<slug>           + :<slug>
           #
           # The version tag doubles as build.Version, so the running server
           # reports exactly the tag it was deployed from.
           case "$REF" in
             v[0-9]*)
-              # Building an explicit tag: honour it verbatim, no fork suffix.
+              # Building an explicit tag: honour it verbatim, no suffix.
               VERSION="$REF"
               MOVING="latest"
               ;;
@@ -122,19 +129,19 @@ jobs:
                 *-*)
                   # Base is a prerelease (v1.0.0-beta8): append to the existing
                   # prerelease so the build stays above beta8 and below beta9.
-                  VERSION="${BASE_VERSION}.fork.${FORK_BUILD}"
+                  VERSION="${BASE_VERSION}.mini.${MINI}"
                   ;;
                 *)
                   # Base is a finished release (v1.2.3). A prerelease of the
-                  # same version sorts *below* it, which would make my build
+                  # same version sorts *below* it, which would make our build
                   # look older than the release it contains, so bump the patch
-                  # and pre-release that instead: v1.2.3 < v1.2.4-fork.N < v1.2.4
+                  # and pre-release that instead: v1.2.3 < v1.2.4-mini.N < v1.2.4
                   STRIPPED="${BASE_VERSION#v}"
                   MAJOR="${STRIPPED%%.*}"
                   REST="${STRIPPED#*.}"
                   MINOR="${REST%%.*}"
                   PATCH="${REST#*.}"
-                  VERSION="v${MAJOR}.${MINOR}.$((PATCH + 1))-fork.${FORK_BUILD}"
+                  VERSION="v${MAJOR}.${MINOR}.$((PATCH + 1))-mini.${MINI}"
                   ;;
               esac
 
@@ -163,6 +170,9 @@ jobs:
             exit 1
           fi
 
+          printf 'base %s + mini %s -> %s (moving: %s)\n' \
+            "$BASE_VERSION" "$MINI" "$VERSION" "$MOVING"
+
           {
             printf 'matrix=%s\n' "$MATRIX"
             printf 'image=%s\n' "$IMAGE"
@@ -171,7 +181,7 @@ jobs:
             printf 'commit_sha=%s\n' "$(git rev-parse HEAD)"
             printf 'short_sha=%s\n' "$(git rev-parse --short=7 HEAD)"
             printf 'base_version=%s\n' "$BASE_VERSION"
-            printf 'fork_build=%s\n' "$FORK_BUILD"
+            printf 'mini_version=%s\n' "$MINI"
             printf 'version=%s\n' "$VERSION"
           } >> "$GITHUB_OUTPUT"
 
