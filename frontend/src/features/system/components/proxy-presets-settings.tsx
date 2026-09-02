@@ -3,7 +3,7 @@
 import { Loader2, Pencil, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useProxyPresets, useDeleteProxyPreset } from '../data/system';
 import { ProxyPresetEditDialog } from './proxy-preset-edit-dialog';
@@ -25,10 +25,6 @@ export function ProxyPresetsSettings() {
   return (
     <div className='space-y-6'>
       <Card>
-        <CardHeader>
-          <CardTitle>{t('system.proxy.title')}</CardTitle>
-          <CardDescription>{t('system.proxy.description')}</CardDescription>
-        </CardHeader>
         <CardContent>
           {!presets || presets.length === 0 ? (
             <p className='text-muted-foreground text-sm'>{t('system.proxy.empty')}</p>

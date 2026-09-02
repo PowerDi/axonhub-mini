@@ -72,7 +72,7 @@ export function OverviewCards({ overview, isLoading }: OverviewCardsProps) {
   return (
     <div className='grid gap-4 md:grid-cols-3'>
       {cards.map((card) => (
-        <Card key={card.title} className='hover-card'>
+        <Card key={card.title}>
           <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
             <div className='flex items-center gap-2'>
               <div className='bg-primary/10 text-primary dark:bg-primary/20 rounded-lg p-1.5'>

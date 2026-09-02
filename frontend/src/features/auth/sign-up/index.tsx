@@ -16,19 +16,19 @@ export default function SignUp() {
         description={
           <>
             {t('users.invitation.registrationDescription')}{' '}
-            <Link to='/sign-in' className='font-medium text-slate-700 underline underline-offset-4 hover:text-slate-950'>
+            <Link to='/sign-in' className='font-medium text-muted-foreground underline underline-offset-4 hover:text-muted-foreground'>
               {t('users.invitation.signIn')}
             </Link>
           </>
         }
         rightFooter={
-          <p className='text-sm leading-relaxed text-slate-500'>
+          <p className='text-sm leading-relaxed text-muted-foreground'>
             {t('users.invitation.termsPrefix')}{' '}
-            <a href='/terms' className='font-medium text-slate-600 underline underline-offset-4 hover:text-slate-950'>
+            <a href='/terms' className='font-medium text-muted-foreground underline underline-offset-4 hover:text-muted-foreground'>
               {t('users.invitation.terms')}
             </a>{' '}
             {t('users.invitation.termsAnd')}{' '}
-            <a href='/privacy' className='font-medium text-slate-600 underline underline-offset-4 hover:text-slate-950'>
+            <a href='/privacy' className='font-medium text-muted-foreground underline underline-offset-4 hover:text-muted-foreground'>
               {t('users.invitation.privacy')}
             </a>
             .

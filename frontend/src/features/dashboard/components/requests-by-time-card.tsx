@@ -43,14 +43,14 @@ export function RequestsByTimeCard() {
           <CardTitle className='text-sm font-medium'>{t('dashboard.cards.requestsByTime')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className='text-sm text-red-500'>{t('common.loadError')}</div>
+          <div className='text-sm text-(--destructive-soft-fg)'>{t('common.loadError')}</div>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className='hover-card'>
+    <Card>
       <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
         <CardTitle className='text-sm font-medium'>{t('dashboard.cards.requestsByTime')}</CardTitle>
         <div className='bg-primary/10 text-primary dark:bg-primary/20 flex h-9 w-9 items-center justify-center rounded-full'>

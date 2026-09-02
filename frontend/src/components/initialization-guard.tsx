@@ -45,7 +45,7 @@ export function InitializationGuard({ children }: InitializationGuardProps) {
     return (
       <div className='flex h-screen items-center justify-center'>
         <div className='text-center'>
-          <h1 className='text-2xl font-bold text-red-600'>System Error</h1>
+          <h1 className='text-2xl font-bold text-(--destructive-soft-fg)'>System Error</h1>
           <p className='text-muted-foreground'>Failed to check system status</p>
         </div>
       </div>

@@ -5,7 +5,7 @@ import { Loader2, Save, Upload, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useSystemContext } from '../context/system-context';
@@ -101,10 +101,6 @@ export function BrandSettings() {
   return (
     <div className='space-y-6'>
       <Card>
-        <CardHeader>
-          <CardTitle>{t('system.brand.title')}</CardTitle>
-          <CardDescription>{t('system.brand.description')}</CardDescription>
-        </CardHeader>
         <CardContent className='space-y-6'>
           <div className='space-y-2'>
             <Label htmlFor='brand-name'>{t('system.brand.brandName.label')}</Label>

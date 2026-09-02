@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { copyTextToClipboard } from '@/lib/clipboard';
 import { cn, extractNumberID, formatUserName } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DataTableColumnHeader } from '@/components/data-table-column-header';
@@ -32,10 +33,10 @@ function ApiKeyCell({ apiKey, fullApiKey }: { apiKey: string; fullApiKey: ApiKey
   return (
     <div className='flex max-w-48 items-center space-x-2'>
       <code className='bg-muted shrink-0 rounded px-2 py-1 font-mono text-sm'>{maskedKey}</code>
-      <Button variant='ghost' size='sm' onClick={handleViewKey} className='h-6 w-6 flex-shrink-0 p-0' title={t('apikeys.actions.view')}>
+      <Button variant='ghost' size='icon-xs' onClick={handleViewKey} className='flex-shrink-0' title={t('apikeys.actions.view')}>
         <Eye className='h-3 w-3' />
       </Button>
-      <Button variant='ghost' size='sm' onClick={copyToClipboard} className='h-6 w-6 flex-shrink-0 p-0' title={t('apikeys.actions.copy')}>
+      <Button variant='ghost' size='icon-xs' onClick={copyToClipboard} className='flex-shrink-0' title={t('apikeys.actions.copy')}>
         <Copy className='h-3 w-3' />
       </Button>
     </div>
@@ -177,14 +178,7 @@ export const createColumns = (
           noauth: t('apikeys.type.noauth'),
         }[type] || type;
 
-      const typeColor =
-        {
-          user: 'text-blue-600',
-          personal: 'text-emerald-600',
-          service_account: 'text-purple-600',
-        }[type] || 'text-muted-foreground';
-
-      return <div className={`text-sm ${typeColor}`}>{typeText}</div>;
+      return <div className='text-muted-foreground text-sm'>{typeText}</div>;
     },
     filterFn: (row, _id, value) => {
       return value.includes(row.getValue('type'));
@@ -203,14 +197,10 @@ export const createColumns = (
           archived: t('apikeys.status.archived'),
         }[status] || t('apikeys.status.disabled');
 
-      const statusColor =
-        {
-          enabled: 'text-green-600',
-          disabled: 'text-red-600',
-          archived: 'text-orange-600',
-        }[status] || 'text-red-600';
+      const statusVariant: 'success' | 'destructive' | 'warning' =
+        ({ enabled: 'success', disabled: 'destructive', archived: 'warning' } as const)[status as 'enabled' | 'disabled' | 'archived'] ?? 'destructive';
 
-      return <div className={`text-sm ${statusColor}`}>{statusText}</div>;
+      return <Badge variant={statusVariant}>{statusText}</Badge>;
     },
     filterFn: (row, _id, value) => {
       return value.includes(row.getValue('status'));

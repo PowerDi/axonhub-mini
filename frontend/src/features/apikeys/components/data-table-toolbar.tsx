@@ -65,13 +65,12 @@ export function DataTableToolbar<TData>({
   ];
 
   return (
-    <div className='flex items-center justify-between'>
-      <div className='flex flex-1 flex-wrap items-center gap-2'>
+    <div className='flex flex-wrap items-center gap-2 sm:gap-3'>
         <Input
           placeholder={t('apikeys.filters.filterName')}
           value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
           onChange={(event) => table.getColumn('name')?.setFilterValue(event.target.value)}
-          className='h-8 w-[150px] lg:w-[250px]'
+          className='w-[200px] lg:w-[240px]'
         />
         {table.getColumn('status') && (
           <DataTableFacetedFilter column={table.getColumn('status')} title={t('apikeys.filters.status')} options={statusOptions} />
@@ -88,13 +87,12 @@ export function DataTableToolbar<TData>({
               onDateRangeChange?.(undefined);
               onResetFilters?.();
             }}
-            className='h-8 px-2 lg:px-3'
+            className='px-2 lg:px-2.5'
           >
             {t('common.filters.reset')}
-            <Cross2Icon className='ml-2 h-4 w-4' />
+            <Cross2Icon className='size-3.5' />
           </Button>
         )}
-      </div>
     </div>
   );
 }

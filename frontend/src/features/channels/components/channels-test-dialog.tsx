@@ -134,7 +134,7 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
         return <Badge variant='secondary'>{t('channels.dialogs.test.testingModel')}</Badge>;
       case 'success':
         return (
-          <Badge variant='default' className='border-green-200 bg-green-100 text-green-800'>
+          <Badge variant='default' className='border-success/40 bg-success/10 text-(--success-soft-fg)'>
             {t('channels.dialogs.test.testSuccess')}
           </Badge>
         );
@@ -231,7 +231,7 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
                           <div>{model}</div>
                           {result?.error && (
                             <div className='mt-2 max-w-full sm:max-w-[320px]'>
-                              <ErrorDisplay error={result.error} messageClassName='text-xs font-medium text-red-600' />
+                              <ErrorDisplay error={result.error} messageClassName='text-xs font-medium text-(--destructive-soft-fg)' />
                             </div>
                           )}
                         </TableCell>

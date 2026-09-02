@@ -233,7 +233,7 @@ export function ChannelsAvailabilityDialog({ open, onOpenChange, currentRow }: P
                             setModeFlag(setCustomCronModes, field.id, false);
                           }}
                         >
-                          <IconTrash className='h-4 w-4 text-red-500' />
+                          <IconTrash className='h-4 w-4 text-(--destructive-soft-fg)' />
                         </Button>
                       </div>
 

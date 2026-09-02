@@ -119,16 +119,16 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
 
   return (
     <div className='flex items-center justify-center gap-1'>
-      <Button size='sm' variant='outline' className='h-8 w-8 p-0' onClick={handleEdit}>
-        <IconEdit className='h-3 w-3' />
+      <Button variant='ghost' size='icon-xs' onClick={handleEdit}>
+        <IconEdit className='size-3.5' />
       </Button>
-      <Button size='sm' variant='outline' className='h-8 px-3' onClick={handleDefaultTest} disabled={testChannel.isPending}>
-        <IconPlayerPlay className='mr-1 h-3 w-3' />
+      <Button variant='ghost' size='icon-xs' onClick={handleDefaultTest} disabled={testChannel.isPending}>
+        <IconPlayerPlay className='size-3.5' />
       </Button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button size='sm' variant='outline' className='h-8 w-8 p-0' data-testid='row-actions'>
-            <DotsHorizontalIcon className='h-3 w-3' />
+          <Button variant='ghost' size='icon-xs' data-testid='row-actions'>
+            <DotsHorizontalIcon className='size-3.5' />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align='end' className='w-[160px]'>
@@ -250,7 +250,7 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
                 setCurrentRow(channel);
                 setOpen('disabledAPIKeys');
               }}
-              className='text-orange-500!'
+              className='text-(--warning-soft-fg)! hover:bg-warning/10!'
             >
               <IconKeyOff size={16} className='mr-2' />
               {t('channels.actions.disabledAPIKeys', { count: channel.disabledAPIKeys?.length ?? 0 })}
@@ -262,7 +262,7 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
                 setCurrentRow(channel);
                 setOpen('errorResolved');
               }}
-              className='text-green-600!'
+              className='text-(--success-soft-fg)! hover:bg-success/10!'
             >
               <IconCheck size={16} className='mr-2' />
               {t('channels.actions.markErrorResolved')}
@@ -274,7 +274,7 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
               setCurrentRow(channel);
               setOpen('archive');
             }}
-            className={isArchived ? 'text-green-600!' : 'text-orange-500!'}
+            className={isArchived ? 'text-(--success-soft-fg)! hover:bg-success/10!' : 'text-(--warning-soft-fg)! hover:bg-warning/10!'}
           >
             {isArchived ? <IconCheck size={16} className='mr-2' /> : <IconArchive size={16} className='mr-2' />}
             {t(isArchived ? 'common.buttons.restore' : 'common.buttons.archive')}
@@ -284,7 +284,7 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
               setCurrentRow(channel);
               setOpen('delete');
             }}
-            className='text-red-500!'
+            className='text-(--destructive-soft-fg)! hover:bg-destructive/10!'
           >
             <IconTrash size={16} className='mr-2' />
             {t('common.buttons.delete')}
@@ -301,8 +301,7 @@ const ExpandCell = ({ row }: { row: any }) => (
   <div className='flex justify-center'>
     <Button
       variant='ghost'
-      size='sm'
-      className='h-6 w-6 p-0'
+      size='icon-xs'
       onClick={(e) => {
         e.stopPropagation();
         row.toggleExpanded();
@@ -367,7 +366,7 @@ const NameCell = memo(({ row }: { row: Row<Channel> }) => {
     <div className='flex justify-center'>
       <div className='flex max-w-56 items-center gap-2'>
         {hasError && <IconAlertTriangle className='text-destructive h-4 w-4 shrink-0' />}
-        {hasDisabledKeys && <IconKeyOff className='h-4 w-4 shrink-0 text-amber-500' />}
+        {hasDisabledKeys && <IconKeyOff className='h-4 w-4 shrink-0 text-(--warning-soft-fg)' />}
         {nameElement}
       </div>
     </div>
@@ -390,7 +389,7 @@ const NameCell = memo(({ row }: { row: Row<Channel> }) => {
             </p>
           )}
           {hasDisabledKeys && (
-            <p className='text-sm text-amber-500'>{t('channels.actions.disabledAPIKeys', { count: disabledKeysCount })}</p>
+            <p className='text-sm text-(--warning-soft-fg)'>{t('channels.actions.disabledAPIKeys', { count: disabledKeysCount })}</p>
           )}
         </div>
       </TooltipContent>
@@ -408,7 +407,7 @@ const ProviderCell = memo(({ row }: { row: Row<Channel> }) => {
   const IconComponent = config.icon;
   return (
     <div className='flex justify-center'>
-      <Badge variant='outline' className={cn('capitalize', config.color)}>
+      <Badge variant='outline' className='capitalize'>
         <div className='flex items-center gap-2'>
           <IconComponent size={16} className='shrink-0' />
           <span>{t(`channels.providers.${provider}`)}</span>

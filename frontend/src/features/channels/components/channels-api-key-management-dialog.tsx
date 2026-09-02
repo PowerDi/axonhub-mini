@@ -480,7 +480,7 @@ export function ChannelsAPIKeyManagementDialog({ open, onOpenChange }: ChannelsA
                               <Badge variant='secondary'>{t('channels.dialogs.keyManagement.disabled')}</Badge>
                             ) : result ? (
                               result.success ? (
-                                <Badge variant='default' className='border-green-200 bg-green-100 text-green-800'>
+                                <Badge variant='default' className='border-success/40 bg-success/10 text-(--success-soft-fg)'>
                                   {t('channels.dialogs.keyManagement.success')}
                                 </Badge>
                               ) : (

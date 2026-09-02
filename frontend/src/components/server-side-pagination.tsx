@@ -38,15 +38,15 @@ export function ServerSidePagination({
   });
 
   return (
-    <div className='flex items-center justify-between overflow-clip px-2' style={{ overflowClipMargin: 1 }}>
-      <div className='text-muted-foreground hidden flex-1 text-sm sm:block'>
+    <div className='text-muted-foreground flex flex-wrap items-center justify-end gap-x-3 gap-y-2 px-1 text-xs sm:text-sm'>
+      <span className='hidden sm:inline'>
         {totalCount !== undefined
           ? t('pagination.selectedInfoWithTotal', { selectedRows, dataLength, totalCount })
           : t('pagination.selectedInfo', { selectedRows, dataLength })}
-      </div>
-      <div className='flex flex-wrap items-center gap-0 sm:gap-6 lg:gap-8'>
-        <div className='flex items-center space-x-2'>
-          <p className='hidden text-sm font-medium sm:block'>{t('pagination.rowsPerPage')}</p>
+      </span>
+      <div className='flex flex-wrap items-center gap-3'>
+        <div className='flex items-center gap-1'>
+          <p className='hidden text-sm sm:block'>{t('pagination.rowsPerPage')}</p>
           <Select
             value={`${pageSize}`}
             onValueChange={(value) => {
@@ -65,8 +65,8 @@ export function ServerSidePagination({
             </SelectContent>
           </Select>
         </div>
-        <div className='flex items-center justify-center text-sm font-medium'>
-          <div className='flex items-center space-x-1'>
+        <div className='flex items-center justify-center'>
+          <div className='flex items-center gap-1'>
             <span className='text-muted-foreground'>
               {pageInfo?.hasPreviousPage ? t('pagination.hasPrevious') : t('pagination.firstPage')}
             </span>
@@ -74,28 +74,29 @@ export function ServerSidePagination({
             <span className='text-muted-foreground'>{pageInfo?.hasNextPage ? t('pagination.hasNext') : t('pagination.lastPage')}</span>
           </div>
         </div>
-        <div className='flex items-center space-x-2'>
+        <div className='flex items-center gap-1'>
           <Button
             variant='outline'
-            className='hidden h-8 w-8 p-0 lg:flex'
+            size='icon'
+            className='hidden lg:inline-flex'
             onClick={onFirstPage || onResetCursor || resetCursor}
             disabled={!pageInfo?.hasPreviousPage}
           >
             <span className='sr-only'>{t('pagination.firstPage')}</span>
-            <DoubleArrowLeftIcon className='h-4 w-4' />
+            <DoubleArrowLeftIcon className='size-4' />
           </Button>
-          <Button variant='outline' className='h-8 w-8 p-0' onClick={onPreviousPage} disabled={!pageInfo?.hasPreviousPage}>
+          <Button variant='outline' size='icon' onClick={onPreviousPage} disabled={!pageInfo?.hasPreviousPage}>
             <span className='sr-only'>{t('pagination.previousPage')}</span>
-            <ChevronLeftIcon className='h-4 w-4' />
+            <ChevronLeftIcon className='size-4' />
           </Button>
-          <Button variant='outline' className='h-8 w-8 p-0' onClick={onNextPage} disabled={!pageInfo?.hasNextPage}>
+          <Button variant='outline' size='icon' onClick={onNextPage} disabled={!pageInfo?.hasNextPage}>
             <span className='sr-only'>{t('pagination.nextPage')}</span>
-            <ChevronRightIcon className='h-4 w-4' />
+            <ChevronRightIcon className='size-4' />
           </Button>
           {/* NOT SUPPORTED */}
           {/* <Button
             variant='outline'
-            className='hidden h-8 w-8 p-0 lg:flex'
+            className='hidden lg:inline-flex'
             onClick={onNextPage}
             disabled={!pageInfo?.hasNextPage}
           >

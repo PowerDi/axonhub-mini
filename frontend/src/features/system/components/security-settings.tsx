@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Loader2, Save } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { TagsInput } from '@/components/ui/tags-input';
@@ -65,10 +65,6 @@ export function SecuritySettings() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{t('system.security.title')}</CardTitle>
-        <CardDescription>{t('system.security.description')}</CardDescription>
-      </CardHeader>
       <CardContent className='space-y-6'>
         <div className='space-y-2'>
           <Label htmlFor='blocked-ips'>{t('system.security.blockedIPs.label')}</Label>

@@ -62,7 +62,7 @@ export function CurlPreviewDialog({ open, onOpenChange, curlCommand, title }: Cu
                     className='h-8 w-8'
                     onClick={handleCopy}
                   >
-                    {copied ? <Check className='h-4 w-4 text-green-500' /> : <Copy className='h-4 w-4' />}
+                    {copied ? <Check className='text-(--success-soft-fg) h-4 w-4' /> : <Copy className='h-4 w-4' />}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -79,7 +79,7 @@ export function CurlPreviewDialog({ open, onOpenChange, curlCommand, title }: Cu
                     onClick={handleCopyNonStream}
                   >
                     {nonStreamCopied ? (
-                      <Check className='h-4 w-4 text-green-500' />
+                      <Check className='text-(--success-soft-fg) h-4 w-4' />
                     ) : (
                       <CopyX className='h-4 w-4' />
                     )}

@@ -12,7 +12,7 @@ import { CodeBlock } from './code-block';
 export type ToolProps = ComponentProps<typeof Collapsible>;
 
 export const Tool = ({ className, ...props }: ToolProps) => (
-  <Collapsible className={cn('not-prose mb-4 w-full rounded-md border', className)} {...props} />
+  <Collapsible className={cn('not-prose mb-4 w-full rounded-lg border', className)} {...props} />
 );
 
 export type ToolHeaderProps = {
@@ -36,11 +36,11 @@ const getStatusBadge = (status: ToolUIPart['state']) => {
   const icons: Record<ToolUIPart['state'], ReactNode> = {
     'input-streaming': <CircleIcon className='size-4' />,
     'input-available': <ClockIcon className='size-4 animate-pulse' />,
-    'approval-requested': <ClockIcon className='size-4 text-yellow-600' />,
-    'approval-responded': <CheckCircleIcon className='size-4 text-blue-600' />,
-    'output-available': <CheckCircleIcon className='size-4 text-green-600' />,
-    'output-error': <XCircleIcon className='size-4 text-red-600' />,
-    'output-denied': <XCircleIcon className='size-4 text-orange-600' />,
+    'approval-requested': <ClockIcon className='text-(--warning-soft-fg) size-4' />,
+    'approval-responded': <CheckCircleIcon className='text-(--info-soft-fg) size-4' />,
+    'output-available': <CheckCircleIcon className='text-(--success-soft-fg) size-4' />,
+    'output-error': <XCircleIcon className='text-(--destructive-soft-fg) size-4' />,
+    'output-denied': <XCircleIcon className='text-(--destructive-soft-fg) size-4' />,
   };
 
   return (
@@ -81,9 +81,7 @@ export type ToolInputProps = ComponentProps<'div'> & {
 export const ToolInput = ({ className, input, ...props }: ToolInputProps) => (
   <div className={cn('space-y-2 overflow-hidden p-4', className)} {...props}>
     <h4 className='text-muted-foreground text-xs font-medium tracking-wide uppercase'>Parameters</h4>
-    <div className='bg-muted/50 rounded-md'>
-      <CodeBlock code={JSON.stringify(input, null, 2)} language='json' />
-    </div>
+    <CodeBlock code={JSON.stringify(input, null, 2)} language='json' />
   </div>
 );
 
@@ -111,7 +109,7 @@ export const ToolOutput = ({ className, output, errorText, ...props }: ToolOutpu
       <div
         className={cn(
           'overflow-x-auto rounded-md text-xs [&_table]:w-full',
-          errorText ? 'bg-destructive/10 text-destructive' : 'bg-muted/50 text-foreground'
+          errorText ? 'bg-destructive/10 text-(--destructive-soft-fg)' : 'text-foreground'
         )}
       >
         {errorText && <div>{errorText}</div>}

@@ -12,7 +12,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useClearCache, useExportCacheDiagnostics } from '../data/system';
@@ -25,10 +25,6 @@ export function DiagnosticsSettings() {
   return (
     <div className='space-y-6'>
       <Card>
-        <CardHeader>
-          <CardTitle>{t('system.diagnostics.title')}</CardTitle>
-          <CardDescription>{t('system.diagnostics.description')}</CardDescription>
-        </CardHeader>
         <CardContent className='space-y-6'>
           <div className='rounded-lg border p-3 sm:p-4'>
             <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>

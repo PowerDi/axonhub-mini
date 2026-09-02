@@ -162,7 +162,7 @@ export default function PermissionDemo() {
             <CardTitle>权限控制面板</CardTitle>
             <CardDescription>
               切换不同的权限来查看路由访问控制的效果
-              {!isDemoMode && <span className='mt-1 block text-orange-600'>点击"进入演示"开始测试权限控制</span>}
+              {!isDemoMode && <span className='mt-1 block text-(--warning-soft-fg)'>点击"进入演示"开始测试权限控制</span>}
             </CardDescription>
           </CardHeader>
           <CardContent className='space-y-4'>
@@ -249,7 +249,7 @@ export default function PermissionDemo() {
                           <div className='flex items-center gap-2'>
                             {access.hasAccess ? (
                               <>
-                                <IconLockOpen className='h-4 w-4 text-green-500' />
+                                <IconLockOpen className='h-4 w-4 text-(--success-soft-fg)' />
                                 <Badge variant='default' className='text-xs'>
                                   可访问
                                 </Badge>
@@ -257,9 +257,9 @@ export default function PermissionDemo() {
                             ) : (
                               <>
                                 {access.mode === 'hidden' ? (
-                                  <IconEyeOff className='h-4 w-4 text-red-500' />
+                                  <IconEyeOff className='h-4 w-4 text-(--destructive-soft-fg)' />
                                 ) : (
-                                  <IconLock className='h-4 w-4 text-orange-500' />
+                                  <IconLock className='h-4 w-4 text-(--warning-soft-fg)' />
                                 )}
                                 <Badge variant={access.mode === 'hidden' ? 'destructive' : 'secondary'} className='text-xs'>
                                   {access.mode === 'hidden' ? '隐藏' : '禁用'}

@@ -74,7 +74,7 @@ export default function UsageStatisticsPage() {
   if (error) {
     return (
       <div className='flex-1 space-y-4 p-8 pt-6'>
-        <div className='text-red-500'>{t('common.loadError')} {error.message}</div>
+        <div className='text-(--destructive-soft-fg)'>{t('common.loadError')} {error.message}</div>
       </div>
     );
   }
@@ -84,7 +84,7 @@ export default function UsageStatisticsPage() {
       <Header fixed>
         <div className='flex flex-1 items-center justify-between'>
           <div>
-            <h2 className='text-xl font-bold tracking-tight'>{t('sidebar.items.usageStats')}</h2>
+            <h2 className='text-lg font-normal tracking-tight'>{t('sidebar.items.usageStats')}</h2>
             <p className='text-sm text-muted-foreground'>{t('usageStats.description')}</p>
           </div>
         </div>
@@ -117,7 +117,7 @@ export default function UsageStatisticsPage() {
           </div>
         </div>
 
-        <div className='shadow-soft relative flex-1 overflow-auto overflow-x-hidden rounded-2xl border border-[var(--table-border)]'>
+        <div className='relative flex-1 overflow-auto overflow-x-hidden rounded-2xl border border-[var(--table-border)]'>
           {filteredData.length === 0 ? (
             <div className='flex h-[200px] items-center justify-center bg-[var(--table-background)] rounded-2xl'>
               <div className='text-muted-foreground text-sm'>
@@ -139,7 +139,7 @@ export default function UsageStatisticsPage() {
                 {filteredData.map((item, index) => (
                   <TableRow
                     key={item.userId}
-                    className='group/row table-row-hover rounded-xl border-0 !bg-[var(--table-background)] transition-all duration-200 ease-in-out'
+                    className='group/row'
                   >
                     <TableCell className='text-muted-foreground text-center text-xs border-0 bg-inherit px-4 py-3'>{index + 1}</TableCell>
                     <TableCell className='font-medium border-0 bg-inherit px-4 py-3'>{item.userName}</TableCell>

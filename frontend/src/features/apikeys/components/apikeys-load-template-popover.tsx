@@ -200,7 +200,7 @@ export function ApiKeyLoadTemplatePopover({
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={deleteTemplate.isPending}
-              className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
+              className='bg-destructive/10 text-(--destructive-soft-fg) hover:bg-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30'
             >
               {deleteTemplate.isPending ? t('common.buttons.saving') : t('apikeys.templates.deleteButton')}
             </AlertDialogAction>

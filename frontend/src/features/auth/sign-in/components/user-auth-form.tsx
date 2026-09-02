@@ -53,17 +53,17 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
             name='email'
             render={({ field }) => (
               <FormItem>
-                <FormLabel className='text-sm font-medium text-slate-700'>{t('auth.signIn.form.email.label')}</FormLabel>
+                <FormLabel className='text-sm font-medium text-muted-foreground'>{t('auth.signIn.form.email.label')}</FormLabel>
                 <FormControl>
                   <Input
                     type='email'
                     placeholder={t('auth.signIn.form.email.placeholder')}
-                    className='border-slate-300 !bg-white text-slate-800 transition-all duration-300 placeholder:text-slate-400 focus:border-slate-500 focus:!bg-white'
+                    className='border-border !bg-white text-muted-foreground transition-all duration-300 placeholder:text-muted-foreground focus:border-border focus:!bg-white'
                     data-testid='sign-in-email'
                     {...field}
                   />
                 </FormControl>
-                <FormMessage className='text-red-600' />
+                <FormMessage className='text-(--destructive-soft-fg)' />
               </FormItem>
             )}
           />
@@ -74,10 +74,10 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
             render={({ field }) => (
               <FormItem className='relative'>
                 <div className='flex items-center justify-between'>
-                  <FormLabel className='text-sm font-medium text-slate-700'>{t('auth.signIn.form.password.label')}</FormLabel>
+                  <FormLabel className='text-sm font-medium text-muted-foreground'>{t('auth.signIn.form.password.label')}</FormLabel>
                   <Link
                     to='/forgot-password'
-                    className='text-sm font-medium text-slate-500 transition-colors hover:text-slate-700 hover:underline'
+                    className='text-sm font-medium text-muted-foreground transition-colors hover:text-muted-foreground hover:underline'
                   >
                     {t('auth.signIn.links.forgotPassword')}
                   </Link>
@@ -85,12 +85,12 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                 <FormControl>
                   <PasswordInput
                     placeholder={t('auth.signIn.form.password.placeholder')}
-                    className='border-slate-300 bg-white text-slate-800 backdrop-blur-sm transition-all duration-300 placeholder:text-slate-400 focus:border-slate-500 focus:bg-white'
+                    className='border-border bg-white text-muted-foreground backdrop-blur-sm transition-all duration-300 placeholder:text-muted-foreground focus:border-border focus:bg-white'
                     data-testid='sign-in-password'
                     {...field}
                   />
                 </FormControl>
-                <FormMessage className='text-red-600' />
+                <FormMessage className='text-(--destructive-soft-fg)' />
               </FormItem>
             )}
           />
@@ -101,21 +101,21 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
               <div className='relative'>
                 <input type='checkbox' checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} className='sr-only' />
                 <div
-                  className={`h-6 w-12 rounded-full border-2 transition-all duration-300 ${rememberMe ? 'border-slate-600 bg-slate-600' : 'border-slate-300 bg-slate-100'}`}
+                  className={`h-6 w-12 rounded-full border-2 transition-all duration-300 ${rememberMe ? 'border-primary bg-primary' : 'border-border bg-muted'}`}
                 >
                   <div
                     className={`mt-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-300 ${rememberMe ? 'ml-0.5 translate-x-6' : 'translate-x-0.5'}`}
                   ></div>
                 </div>
               </div>
-              <span className='text-sm text-slate-700'>{t('auth.signIn.form.rememberMe')}</span>
+              <span className='text-sm text-muted-foreground'>{t('auth.signIn.form.rememberMe')}</span>
             </label>
           </div>
 
           {/* Submit Button */}
           <Button
             type='submit'
-            className='mt-6 w-full rounded-lg bg-slate-800 px-6 py-3 font-medium text-white shadow-lg transition-all duration-300 hover:bg-slate-700 hover:shadow-xl focus:ring-2 focus:ring-slate-500 focus:ring-offset-2 disabled:opacity-50'
+            className='bg-primary mt-6 w-full rounded-lg px-6 py-3 font-medium text-primary-foreground transition-all duration-300 hover:shadow-xl focus:ring-(--focus-ring) focus:ring-2 focus:ring-offset-2 disabled:opacity-50'
             disabled={signInMutation.isPending}
             data-testid='sign-in-submit'
           >
@@ -136,10 +136,10 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
             {!isPasswordLoginDisabled && (
               <div className='relative'>
                 <div className='absolute inset-0 flex items-center'>
-                  <span className='w-full border-t border-slate-300' />
+                  <span className='w-full border-t border-border' />
                 </div>
                 <div className='relative flex justify-center text-xs uppercase'>
-                  <span className='bg-white px-2 text-slate-500'>Or continue with</span>
+                  <span className='bg-white px-2 text-muted-foreground'>Or continue with</span>
                 </div>
               </div>
             )}
@@ -156,7 +156,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                     type='button'
                     variant='outline'
                     className={cn(
-                      'h-auto w-full border-slate-300 py-3 disabled:opacity-50',
+                      'h-auto w-full border-border py-3 disabled:opacity-50',
                       isInactive && 'border-2 border-destructive'
                     )}
                     style={

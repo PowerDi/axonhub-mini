@@ -1,6 +1,7 @@
 import { ActivityIcon, CheckCircle2Icon, XCircleIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatNumber } from '@/utils/format-number';
+import { IconBadge } from '@/components/ui/icon-badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useChannelSuccessRates } from '../data/dashboard';
 
@@ -32,7 +33,7 @@ export function ChannelSuccessRate() {
 
   if (error) {
     return (
-      <div className='text-sm text-red-500'>
+      <div className='text-sm text-(--destructive-soft-fg)'>
         {t('dashboard.charts.errorLoadingChannelSuccessRate')} {error.message}
       </div>
     );
@@ -50,23 +51,23 @@ export function ChannelSuccessRate() {
       >
         {channels.map((channel) => (
           <div key={channel.channelId} className='flex items-center'>
-            <div className='bg-primary/10 flex h-9 w-9 shrink-0 items-center justify-center rounded-md'>
-              <ActivityIcon className='text-primary h-5 w-5' />
-            </div>
-            <div className='ml-4 min-w-0 space-y-1'>
+            <IconBadge tone='primary' size='md' className='mr-4'>
+              <ActivityIcon />
+            </IconBadge>
+            <div className='min-w-0 space-y-1'>
               <p className='truncate text-sm leading-none font-medium'>{channel.channelName || '-'}</p>
-              <div className='text-muted-foreground flex gap-3 text-sm'>
+              <div className='text-muted-foreground flex gap-3 text-sm tabular-nums'>
                 <span className='flex items-center gap-1'>
-                  <CheckCircle2Icon className='h-3 w-3 text-green-500' />
+                  <CheckCircle2Icon className='text-(--success-soft-fg) h-3 w-3' />
                   {formatNumber(channel.successCount)}
                 </span>
                 <span className='flex items-center gap-1'>
-                  <XCircleIcon className='h-3 w-3 text-red-500' />
+                  <XCircleIcon className='text-(--destructive-soft-fg) h-3 w-3' />
                   {formatNumber(channel.failedCount)}
                 </span>
               </div>
             </div>
-            <div className='ml-auto pl-2 font-medium'>{channel.successRate.toFixed(1)}%</div>
+            <div className='ml-auto pl-2 font-medium tabular-nums'>{channel.successRate.toFixed(1)}%</div>
           </div>
         ))}
       </div>

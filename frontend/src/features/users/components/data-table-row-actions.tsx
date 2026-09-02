@@ -39,7 +39,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
     <>
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
-          <Button variant='ghost' className='data-[state=open]:bg-muted flex h-8 w-8 p-0'>
+          <Button variant='ghost' size='icon-xs' className='data-[state=open]:bg-muted'>
             <DotsHorizontalIcon className='h-4 w-4' />
             <span className='sr-only'>{t('common.actions.openMenu')}</span>
           </Button>
@@ -94,7 +94,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
                 setCurrentRow(row.original);
                 setOpen('status');
               }}
-              className={row.original.status === 'activated' ? 'text-red-500!' : 'text-green-500!'}
+              className={row.original.status === 'activated' ? 'text-(--destructive-soft-fg)! hover:bg-destructive/10!' : 'text-(--success-soft-fg)! hover:bg-success/10!'}
             >
               {row.original.status === 'activated' ? (
                 <IconUserOff size={16} className='mr-2' />
@@ -114,7 +114,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
                   setCurrentRow(row.original);
                   setOpen('delete');
                 }}
-                className='text-red-600!'
+                className='text-(--destructive-soft-fg)!'
               >
                 <IconTrash size={16} className='mr-2' />
                 {t('users.actions.delete')}

@@ -35,10 +35,10 @@ import { useGeneralSettings, useQuotaEnforcementSettings, type QuotaEnforcementM
 const syntheticWeeklyRegenTickPct = 0.02;
 
 const BADGE_COLOR_CLASSES: Record<string, string> = {
-  green: 'bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20',
-  red: 'bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/20',
-  amber: 'bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500/20',
-  blue: 'bg-blue-500/10 text-blue-500 border-blue-500/20 hover:bg-blue-500/20',
+  green: 'bg-success/10 text-(--success-soft-fg) border-success/40 hover:bg-success/20',
+  red: 'bg-destructive/10 text-(--destructive-soft-fg) border-destructive/40 hover:bg-destructive/20',
+  amber: 'bg-warning/10 text-(--warning-soft-fg) border-warning/40 hover:bg-warning/20',
+  blue: 'bg-info/10 text-(--info-soft-fg) border-info/40 hover:bg-info/20',
 };
 
 const STATUS_LABELS = {
@@ -510,7 +510,7 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
       <div className='flex items-center justify-between'>
         <div className='flex items-center gap-2'>
           <BatteryIcon
-            className={`h-4 w-4 ${status === 'exhausted' ? 'text-red-500' : status === 'warning' ? 'text-yellow-500' : 'text-muted-foreground'}`}
+            className={`h-4 w-4 ${status === 'exhausted' ? 'text-(--destructive-soft-fg)' : status === 'warning' ? 'text-(--warning-soft-fg)' : 'text-muted-foreground'}`}
           />
           <span className='text-foreground font-medium'>{channel.name}</span>
         </div>
@@ -537,7 +537,7 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
       </div>
 
       {quotaData.error && (
-        <div className='ml-6 rounded bg-red-500/10 p-2 text-xs break-words text-red-500'>
+        <div className='ml-6 rounded bg-destructive/10 p-2 text-xs break-words text-(--destructive-soft-fg)'>
           <span className='font-medium'>{t('quota.label.error')}:</span> {quotaData.error}
         </div>
       )}
@@ -1083,7 +1083,7 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                 <div key='state' className='flex items-center gap-1.5 pt-1'>
                   <Badge
                     variant='outline'
-                    className='h-4 border-yellow-500/30 px-1.5 py-0 text-[10px] font-semibold tracking-wider text-yellow-500 uppercase'
+                    className='h-4 border-warning/40 px-1.5 py-0 text-[10px] font-semibold tracking-wider text-(--warning-soft-fg) uppercase'
                   >
                     {t(stateKey)}
                   </Badge>
@@ -1446,7 +1446,7 @@ function QuotaRow({ channel, enforcementMode, allowedChannelIDs }: { channel: Pr
                   {qd.rollingFiveHourLimit.limited && (
                     <Badge
                       variant='outline'
-                      className='h-4 border-yellow-500/30 px-1.5 py-0 text-[10px] font-semibold tracking-wider text-yellow-500 uppercase'
+                      className='h-4 border-warning/40 px-1.5 py-0 text-[10px] font-semibold tracking-wider text-(--warning-soft-fg) uppercase'
                     >
                       {t('quota.status.limited')}
                     </Badge>
@@ -1722,7 +1722,7 @@ function QuotaBadgeTrigger({ channels, isLoading, isError }: { channels: Provide
   }
 
   if (isError) {
-    return <BatteryWarning className='h-5 w-5 text-red-500 transition-colors' />;
+    return <BatteryWarning className='h-5 w-5 text-(--destructive-soft-fg) transition-colors' />;
   }
 
   const highestUsed = Math.max(...channels.map(getChannelPercentage));
@@ -1737,7 +1737,7 @@ function QuotaBadgeTrigger({ channels, isLoading, isError }: { channels: Provide
 
   const BatteryIcon = getBatteryIcon(level);
   const isWarning = level === 'warning';
-  const textColor = isWarning ? 'text-red-500' : level === 'low' ? 'text-yellow-500' : 'text-muted-foreground';
+  const textColor = isWarning ? 'text-(--destructive-soft-fg)' : level === 'low' ? 'text-(--warning-soft-fg)' : 'text-muted-foreground';
 
   return <BatteryIcon className={`h-5 w-5 ${textColor} transition-colors`} />;
 }
@@ -1780,7 +1780,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
 
     if (isError) {
       return (
-        <div className='rounded bg-red-500/10 p-2 text-xs break-words text-red-500'>
+        <div className='rounded bg-destructive/10 p-2 text-xs break-words text-(--destructive-soft-fg)'>
           <span className='font-medium'>{t('system.providerQuota.error')}:</span> {error instanceof Error ? error.message : t('quota.label.unavailable')}
         </div>
       );

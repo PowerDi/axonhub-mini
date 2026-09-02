@@ -90,7 +90,7 @@ export function UsersInviteDialog({ open, onOpenChange }: Props) {
               control={form.control}
               name='desc'
               render={({ field }) => (
-                <FormItem className=''>
+                <FormItem>
                   <FormLabel>Description (optional)</FormLabel>
                   <FormControl>
                     <Textarea className='resize-none' placeholder='Add a personal note to your invitation (optional)' {...field} />

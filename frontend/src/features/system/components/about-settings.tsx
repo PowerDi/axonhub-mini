@@ -5,7 +5,7 @@ import { ExternalLink, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
@@ -38,10 +38,6 @@ export function AboutSettings() {
   return (
     <div className='space-y-6'>
       <Card>
-        <CardHeader>
-          <CardTitle>{t('system.about.title')}</CardTitle>
-          <CardDescription>{t('system.about.description')}</CardDescription>
-        </CardHeader>
         <CardContent className='space-y-6'>
           {/* Version Info */}
           <div className='space-y-4'>
@@ -105,7 +101,7 @@ export function AboutSettings() {
               <div className='mt-4 rounded-lg border p-4'>
                 {updateCheck.hasUpdate ? (
                   <div className='flex items-start gap-3'>
-                    <AlertCircle className='mt-0.5 h-5 w-5 text-amber-500' />
+                    <AlertCircle className='mt-0.5 h-5 w-5 text-(--warning-soft-fg)' />
                     <div className='flex-1 space-y-2'>
                       <p className='text-sm font-medium'>{t('system.about.updateCheck.newVersionAvailable')}</p>
                       <p className='text-muted-foreground text-sm'>
@@ -122,7 +118,7 @@ export function AboutSettings() {
                   </div>
                 ) : (
                   <div className='flex items-center gap-3'>
-                    <CheckCircle className='h-5 w-5 text-green-500' />
+                    <CheckCircle className='h-5 w-5 text-(--success-soft-fg)' />
                     <p className='text-sm'>{t('system.about.updateCheck.upToDate')}</p>
                   </div>
                 )}

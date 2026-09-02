@@ -371,7 +371,7 @@ export default function TraceDetailPage() {
                     <Button
                       variant='ghost'
                       size='sm'
-                      className={cn('h-7 gap-1.5 rounded-sm px-2.5 text-xs', viewMode === 'flat' && 'bg-background shadow-sm')}
+                      className={cn('h-7 gap-1.5 rounded-md px-2.5 text-xs', viewMode === 'flat' && 'bg-background shadow-sm')}
                       onClick={() => setViewMode('flat')}
                     >
                       <List className='h-3.5 w-3.5' />
@@ -380,7 +380,7 @@ export default function TraceDetailPage() {
                     <Button
                       variant='ghost'
                       size='sm'
-                      className={cn('h-7 gap-1.5 rounded-sm px-2.5 text-xs', viewMode === 'flow' && 'bg-background shadow-sm')}
+                      className={cn('h-7 gap-1.5 rounded-md px-2.5 text-xs', viewMode === 'flow' && 'bg-background shadow-sm')}
                       onClick={() => setViewMode('flow')}
                     >
                       <GitBranch className='h-3.5 w-3.5' />
@@ -389,7 +389,7 @@ export default function TraceDetailPage() {
                     <Button
                       variant='ghost'
                       size='sm'
-                      className={cn('h-7 gap-1.5 rounded-sm px-2.5 text-xs', viewMode === 'tree' && 'bg-background shadow-sm')}
+                      className={cn('h-7 gap-1.5 rounded-md px-2.5 text-xs', viewMode === 'tree' && 'bg-background shadow-sm')}
                       onClick={() => setViewMode('tree')}
                     >
                       <Waypoints className='h-3.5 w-3.5' />
@@ -416,7 +416,7 @@ export default function TraceDetailPage() {
                   <Button
                     variant='ghost'
                     size='sm'
-                    className={cn('h-7 gap-1.5 rounded-sm px-2.5 text-xs', viewMode === 'flat' && 'bg-background shadow-sm')}
+                    className={cn('h-7 gap-1.5 rounded-md px-2.5 text-xs', viewMode === 'flat' && 'bg-background shadow-sm')}
                     onClick={() => setViewMode('flat')}
                   >
                     <List className='h-3.5 w-3.5' />
@@ -425,7 +425,7 @@ export default function TraceDetailPage() {
                   <Button
                     variant='ghost'
                     size='sm'
-                    className={cn('h-7 gap-1.5 rounded-sm px-2.5 text-xs', viewMode === 'flow' && 'bg-background shadow-sm')}
+                    className={cn('h-7 gap-1.5 rounded-md px-2.5 text-xs', viewMode === 'flow' && 'bg-background shadow-sm')}
                     onClick={() => setViewMode('flow')}
                   >
                     <GitBranch className='h-3.5 w-3.5' />
@@ -434,7 +434,7 @@ export default function TraceDetailPage() {
                   <Button
                     variant='ghost'
                     size='sm'
-                    className={cn('h-7 gap-1.5 rounded-sm px-2.5 text-xs', viewMode === 'tree' && 'bg-background shadow-sm')}
+                    className={cn('h-7 gap-1.5 rounded-md px-2.5 text-xs', viewMode === 'tree' && 'bg-background shadow-sm')}
                     onClick={() => setViewMode('tree')}
                   >
                     <Waypoints className='h-3.5 w-3.5' />
@@ -512,7 +512,7 @@ export default function TraceDetailPage() {
           </>
         ) : (
           <div className='flex h-full items-center justify-center p-6'>
-            <Card className='border-0 shadow-sm'>
+            <Card>
               <CardContent className='py-16'>
                 <div className='flex h-full items-center justify-center'>
                   <div className='space-y-4 text-center'>

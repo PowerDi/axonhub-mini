@@ -252,7 +252,7 @@ export function BackupSettings() {
             />
             {selectedFile && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <CheckCircle2 className="h-4 w-4 text-(--success-soft-fg)" />
                 {selectedFile.name}
               </div>
             )}
@@ -418,7 +418,7 @@ export function BackupSettings() {
               </>
             )}
           </Button>
-          <div className="flex items-start gap-2 rounded-md bg-yellow-50 p-3 text-sm text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-200">
+          <div className="flex items-start gap-2 rounded-md bg-warning/10 p-3 text-sm text-(--warning-soft-fg) dark:bg-warning/20 dark:text-(--warning-soft-fg)">
             <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
             <p>{t('system.restore.warning')}</p>
           </div>
@@ -567,7 +567,7 @@ export function BackupSettings() {
             return (
             <div className="rounded-md bg-muted p-3 text-sm">
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-green-500" />
+                <CheckCircle2 className="h-4 w-4 text-(--success-soft-fg)" />
                 <span>
                   {t('system.autoBackup.lastBackup.time')}: {lastBackupDate.toLocaleString()} ({timezoneName}, {offsetStr})
                 </span>
@@ -577,7 +577,7 @@ export function BackupSettings() {
           })()}
 
           {autoBackupSettings.data?.lastBackupError && (
-            <div className="flex items-start gap-2 rounded-md bg-red-50 p-3 text-sm text-red-800 dark:bg-red-900/20 dark:text-red-200">
+            <div className="flex items-start gap-2 rounded-md bg-destructive/10 p-3 text-sm text-(--destructive-soft-fg) dark:bg-destructive/20 dark:text-(--destructive-soft-fg)">
               <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
               <p>{autoBackupSettings.data.lastBackupError}</p>
             </div>

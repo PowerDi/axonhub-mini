@@ -304,7 +304,7 @@ export default function ChannelsManagement() {
       <Header fixed>
         <div className='flex w-full flex-1 flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-0'>
           <div className='min-w-0'>
-            <h2 className='text-xl font-bold tracking-tight'>{t('channels.title')}</h2>
+            <h2 className='text-lg font-normal tracking-tight'>{t('channels.title')}</h2>
             <p className='text-sm text-muted-foreground'>{t('channels.description')}</p>
           </div>
           <ChannelsPrimaryButtons />

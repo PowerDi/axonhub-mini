@@ -16,11 +16,11 @@ export const ChannelExpandedRow = memo(({ channel, columnsLength, getApiFormatLa
   const config = CHANNEL_CONFIGS[channel.type];
 
   return (
-    <div className='bg-muted/30 p-6 hover:bg-muted/50'>
+    <div className='bg-muted/30 p-4'>
       <div className='space-y-6'>
         <div className='grid grid-cols-1 gap-6 md:grid-cols-2'>
           <div className='space-y-3'>
-            <h4 className='text-sm font-semibold'>{t('channels.expandedRow.basic')}</h4>
+            <h4 className='text-sm font-medium'>{t('channels.expandedRow.basic')}</h4>
             <div className='space-y-2 text-sm'>
               <div className='flex items-start gap-2'>
                 <span className='text-muted-foreground shrink-0'>{t('channels.columns.baseURL')}:</span>
@@ -28,7 +28,7 @@ export const ChannelExpandedRow = memo(({ channel, columnsLength, getApiFormatLa
               </div>
               <div className='flex items-center justify-between'>
                 <span className='text-muted-foreground'>{t('channels.columns.type')}:</span>
-                <Badge variant='outline' className={config?.color}>
+                <Badge variant='outline'>
                   {t(`channels.types.${channel.type}`)}
                 </Badge>
               </div>
@@ -49,7 +49,7 @@ export const ChannelExpandedRow = memo(({ channel, columnsLength, getApiFormatLa
 
           <div className='space-y-6'>
             <div className='space-y-3'>
-              <h4 className='text-sm font-semibold'>{t('channels.expandedRow.additional')}</h4>
+              <h4 className='text-sm font-medium'>{t('channels.expandedRow.additional')}</h4>
               <div className='space-y-2 text-sm'>
                 <div className='flex items-center justify-between'>
                   <span className='text-muted-foreground'>{t('channels.columns.orderingWeight')}:</span>
@@ -83,7 +83,7 @@ export const ChannelExpandedRow = memo(({ channel, columnsLength, getApiFormatLa
 
         {channel.supportedModels && channel.supportedModels.length > 0 && (
           <div className='space-y-3'>
-            <h4 className='text-sm font-semibold'>{t('channels.expandedRow.supportedModels')}</h4>
+            <h4 className='text-sm font-medium'>{t('channels.expandedRow.supportedModels')}</h4>
             <div className='flex flex-wrap gap-2'>
               {channel.supportedModels.slice(0, 5).map((model) => (
                 <Badge key={model} variant='secondary' className='font-mono text-xs'>

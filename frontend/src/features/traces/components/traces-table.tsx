@@ -129,8 +129,8 @@ export function TracesTable({
         autoRefreshInterval={autoRefreshInterval}
         onAutoRefreshIntervalChange={onAutoRefreshIntervalChange}
       />
-      <div className='shadow-soft relative mt-4 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
-        <Table data-testid='traces-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
+      <div className='relative mt-4 flex-1 overflow-auto rounded-lg border border-[var(--table-border)]'>
+        <Table data-testid='traces-table' className='border-separate border-spacing-0 rounded-lg bg-[var(--table-background)]'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className='group/row border-0'>

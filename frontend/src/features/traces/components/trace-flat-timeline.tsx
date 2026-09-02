@@ -683,7 +683,7 @@ export function TraceFlatTimeline({ trace, onSelectSpan, selectedSpanId }: Trace
       <div className='border-border/60 mb-4 border-b pb-4'>
         <div className='flex items-center justify-between'>
           <div className='flex items-center gap-3'>
-            <h2 className='text-lg font-semibold'>{t('traces.timeline.title')}</h2>
+            <h2 className='text-base font-medium'>{t('traces.timeline.title')}</h2>
             {/* <span className='text-muted-foreground text-sm'>{formatDuration(totalDuration)}</span> */}
             <span className='text-muted-foreground text-sm'>
               {t('traces.timeline.summary.duration', {

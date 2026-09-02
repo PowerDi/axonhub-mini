@@ -127,8 +127,8 @@ export function ChunksDialog({ open, onOpenChange, chunks, title, isLive }: Chun
             <Layers className='h-5 w-5' />
             {title || t('requests.dialogs.jsonViewer.responseChunks')}
             {isLive && (
-              <Badge variant='secondary' className='ml-2 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'>
-                <span className='mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-green-500' />
+              <Badge variant='success' className='ml-2'>
+                <span className='bg-success mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full' />
                 Live
               </Badge>
             )}
@@ -141,7 +141,7 @@ export function ChunksDialog({ open, onOpenChange, chunks, title, isLive }: Chun
               className='h-8 w-8'
               onClick={handleCopyAll}
             >
-              {copied ? <Check className='h-4 w-4 text-green-500' /> : <Copy className='h-4 w-4' />}
+              {copied ? <Check className='text-(--success-soft-fg) h-4 w-4' /> : <Copy className='h-4 w-4' />}
             </Button>
             <Button
               variant='ghost'

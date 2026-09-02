@@ -172,7 +172,7 @@ export default function ModelsManagement() {
       <Header fixed>
         <div className='flex w-full flex-1 flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-0'>
           <div className='min-w-0'>
-            <h2 className='text-xl font-bold tracking-tight'>{t('models.title')}</h2>
+            <h2 className='text-lg font-normal tracking-tight'>{t('models.title')}</h2>
             <p className='text-muted-foreground text-sm'>{t('models.description')}</p>
             <div className='mt-1'>
               <ModelsCatalogStatus />

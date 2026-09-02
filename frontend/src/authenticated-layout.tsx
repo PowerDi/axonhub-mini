@@ -33,12 +33,19 @@ export function AuthenticatedLayout({ children }: Props) {
             'peer-data-[state=collapsed]:w-[calc(100%-var(--sidebar-width-icon)-1rem)]',
             'peer-data-[state=expanded]:w-[calc(100%-var(--sidebar-width))]',
             'sm:transition-[width] sm:duration-200 sm:ease-linear',
-            'flex min-h-0 min-w-0 flex-1 flex-col overflow-auto pt-14 has-[main.fixed-main]:overflow-hidden',
+            'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pt-14',
             'group-data-[scroll-locked=1]/body:h-full',
             'has-[main.fixed-main]:group-data-[scroll-locked=1]/body:h-svh'
           )}
         >
-          <OnboardingProvider>{children ? children : <Outlet />}</OnboardingProvider>
+          {/* Inset content panel (spec §3.7): hairline ring instead of shadow at rest.
+              Left margin is kept (no ml-0): flush against the sidebar, the ring line
+              sits under the sidebar rail strip and its hover bar and reads as covered. */}
+          <div className='ring-foreground/10 m-2 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl bg-background ring-1 dark:ring-border'>
+            <div className='flex min-h-0 flex-1 flex-col overflow-auto has-[main.fixed-main]:overflow-hidden'>
+              <OnboardingProvider>{children ? children : <Outlet />}</OnboardingProvider>
+            </div>
+          </div>
         </div>
       </div>
     </SidebarProvider>

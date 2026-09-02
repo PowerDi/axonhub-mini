@@ -31,12 +31,12 @@ export function TimeField({
 }: TimeFieldProps) {
   const inputClass = cn(
     'w-full border-none bg-transparent p-0 text-sm transition-colors focus:outline-none focus:ring-0',
-    active ? 'font-semibold text-gray-900 dark:text-gray-100' : 'font-medium text-gray-500 dark:text-gray-600'
+    active ? 'font-semibold text-muted-foreground dark:text-muted-foreground' : 'font-medium text-muted-foreground dark:text-muted-foreground'
   )
 
   const iconClass = cn(
     'ml-2 h-5 w-5 transition-colors',
-    active ? 'text-gray-600 dark:text-gray-300' : 'text-gray-400 dark:text-gray-600'
+    active ? 'text-muted-foreground dark:text-muted-foreground' : 'text-muted-foreground dark:text-muted-foreground'
   )
 
   const [inputValue, setInputValue] = React.useState(() => timeToString(value))
@@ -96,14 +96,13 @@ export function TimeField({
 
   return (
     <div className='flex-1 space-y-3'>
-      <label className='block text-sm font-semibold tracking-wide text-gray-900 dark:text-gray-100'>{label}</label>
+      <label className='text-muted-foreground block text-sm font-medium'>{label}</label>
 
       <div className='relative' ref={wrapperRef}>
         <div
           className={cn(
-            'flex w-full items-center rounded-md border border-gray-200 bg-white px-4 py-3.5 transition-all hover:border-white/20',
-            'dark:border-white/10 dark:bg-[#121214]/60',
-            open && 'active-glow'
+            'border-input bg-background dark:bg-input/30 flex w-full items-center rounded-lg border px-4 py-3.5 transition-[color,box-shadow]',
+            open && 'border-ring ring-(--focus-ring) ring-3 ring-inset'
           )}
           role='button'
           tabIndex={0}

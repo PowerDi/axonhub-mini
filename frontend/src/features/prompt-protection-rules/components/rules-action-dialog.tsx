@@ -309,7 +309,7 @@ export function RulesActionDialog() {
                         <span>{previewMutation.error instanceof Error ? previewMutation.error.message : t('promptProtectionRules.test.invalidPattern')}</span>
                       </div>
                     ) : previewMutation.data?.hasMatch ? (
-                      <div className='flex items-start gap-2 text-green-600 dark:text-green-400'>
+                      <div className='flex items-start gap-2 text-(--success-soft-fg) dark:text-(--success-soft-fg)'>
                         <CheckCircle2 className='h-4 w-4 mt-0.5 flex-shrink-0' />
                         <pre className='whitespace-pre-wrap font-mono text-xs'>{previewMutation.data.result}</pre>
                       </div>

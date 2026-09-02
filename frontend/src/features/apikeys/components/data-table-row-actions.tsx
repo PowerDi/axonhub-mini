@@ -66,7 +66,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
     <>
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger asChild>
-          <Button variant='ghost' className='data-[state=open]:bg-muted flex h-8 w-8 p-0'>
+          <Button variant='ghost' size='icon-xs' className='data-[state=open]:bg-muted'>
             <DotsHorizontalIcon className='h-4 w-4' />
             <span className='sr-only'>Open menu</span>
           </Button>
@@ -92,7 +92,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               {apiKey.status !== 'archived' && (
                 <DropdownMenuItem
                   onClick={() => handleStatusChange(apiKey)}
-                  className={apiKey.status === 'enabled' ? 'text-orange-600' : 'text-green-600'}
+                  className={apiKey.status === 'enabled' ? 'text-(--warning-soft-fg)' : 'text-(--success-soft-fg)'}
                 >
                   {apiKey.status === 'enabled' ? (
                     <>
@@ -107,7 +107,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
                   )}
                 </DropdownMenuItem>
               )}
-              <DropdownMenuItem onClick={() => handleArchive(apiKey)} className={apiKey.status === 'archived' ? 'text-green-600' : 'text-orange-600'}>
+              <DropdownMenuItem onClick={() => handleArchive(apiKey)} className={apiKey.status === 'archived' ? 'text-(--success-soft-fg)' : 'text-(--warning-soft-fg)'}>
                 {apiKey.status === 'archived' ? <IconCheck className='mr-2 h-4 w-4' /> : <IconArchive className='mr-2 h-4 w-4' />}
                 {apiKey.status === 'archived' ? t('common.buttons.restore') : t('common.buttons.archive')}
               </DropdownMenuItem>

@@ -41,7 +41,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
     <div className='flex items-center gap-1'>
       <Button
         variant='ghost'
-        className='h-8 w-8 p-0'
+        size='icon'
         onClick={() => {
           setCurrentRow(row.original);
           setOpen('edit');
@@ -53,7 +53,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
       </Button>
       <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
         <DropdownMenuTrigger asChild>
-          <Button variant='ghost' className='data-[state=open]:bg-muted flex h-8 w-8 p-0' data-testid='row-actions'>
+          <Button variant='ghost' size='icon' className='data-[state=open]:bg-muted' data-testid='row-actions'>
             <DotsHorizontalIcon className='h-4 w-4' />
             <span className='sr-only'>{t('common.actions.openMenu')}</span>
           </Button>
@@ -74,12 +74,12 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               {channelPermissions.canRead && <DropdownMenuSeparator />}
 
               {model.status !== 'archived' ? (
-                <DropdownMenuItem onClick={() => openRowDialog('archive')} className='text-orange-500!'>
+                <DropdownMenuItem onClick={() => openRowDialog('archive')} className='text-(--warning-soft-fg)! hover:bg-warning/10!'>
                   <IconArchive size={16} className='mr-2' />
                   {t('common.buttons.archive')}
                 </DropdownMenuItem>
               ) : (
-                <DropdownMenuItem onClick={() => openRowDialog('archive')} className='text-green-500!'>
+                <DropdownMenuItem onClick={() => openRowDialog('archive')} className='text-(--success-soft-fg)! hover:bg-success/10!'>
                   <IconArchiveOff size={16} className='mr-2' />
                   {t('common.buttons.restore')}
                 </DropdownMenuItem>
@@ -87,7 +87,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
 
               <DropdownMenuItem
                 onClick={() => openRowDialog('delete')}
-                className='text-red-500!'
+                className='text-(--destructive-soft-fg)! hover:bg-destructive/10!'
               >
                 <IconTrash size={16} className='mr-2' />
                 {t('common.buttons.delete')}

@@ -61,7 +61,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
                 setCurrentRow(row.original);
                 setOpen('remove');
               }}
-              className='text-red-500!'
+              className='text-(--destructive-soft-fg)!'
             >
               <IconUserMinus size={16} className='mr-2' />
               {t('users.actions.removeFromProject')}

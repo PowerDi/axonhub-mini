@@ -66,9 +66,9 @@ export function ApiKeysRotateDialog() {
           </DialogDescription>
         </DialogHeader>
 
-        <Alert className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
-          <AlertTriangle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-          <AlertDescription className="text-orange-800 dark:text-orange-200">
+        <Alert className="border-warning/40 bg-warning/10 dark:border-warning/40">
+          <AlertTriangle className="h-4 w-4 text-(--warning-soft-fg) dark:text-(--warning-soft-fg)" />
+          <AlertDescription className="text-(--warning-soft-fg) dark:text-(--warning-soft-fg)">
             {t('apikeys.dialogs.rotate.warning')}
           </AlertDescription>
         </Alert>
@@ -80,12 +80,12 @@ export function ApiKeysRotateDialog() {
               <div className="mt-1 flex items-center space-x-2">
                 <code className="bg-muted flex-1 rounded-md p-3 font-mono text-sm break-all">{maskedNewKey}</code>
                 <Button variant="outline" size="sm" onClick={handleCopy} className="flex-shrink-0">
-                  {isCopied ? <CheckIcon className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                  {isCopied ? <CheckIcon className="h-4 w-4 text-(--success-soft-fg)" /> : <Copy className="h-4 w-4" />}
                 </Button>
               </div>
             </div>
-            <Alert className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
-              <AlertDescription className="text-green-800 dark:text-green-200">
+            <Alert className="border-success/40 bg-success/10 dark:border-success/40">
+              <AlertDescription className="text-(--success-soft-fg) dark:text-(--success-soft-fg)">
                 {t('apikeys.dialogs.rotate.successMessage')}
               </AlertDescription>
             </Alert>

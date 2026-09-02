@@ -105,7 +105,7 @@ export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
     >
       <TabsList
         ref={setTabListRef}
-        className='shadow-soft border-border bg-background flex w-full justify-start overflow-x-auto rounded-2xl border sm:overflow-x-visible [&_[data-slot=tabs-trigger]]:flex-none [&_[data-slot=tabs-trigger]]:shrink-0 sm:[&_[data-slot=tabs-trigger]]:flex-1 sm:[&_[data-slot=tabs-trigger]]:shrink'
+        className='border-border bg-background flex w-full justify-start overflow-x-auto rounded-2xl border sm:overflow-x-visible [&_[data-slot=tabs-trigger]]:flex-none [&_[data-slot=tabs-trigger]]:shrink-0 sm:[&_[data-slot=tabs-trigger]]:flex-1 sm:[&_[data-slot=tabs-trigger]]:shrink'
       >
         <TabsTrigger value='general' data-value='general'>
           {t('system.tabs.general')}
@@ -145,7 +145,7 @@ export function SystemSettingsTabs({ initialTab }: SystemSettingsTabsProps) {
           {t('system.tabs.about')}
         </TabsTrigger>
       </TabsList>
-      <div className='shadow-soft border-border bg-card mt-6 rounded-2xl border p-4 sm:p-6'>
+      <div className='border-border bg-card mt-6 rounded-2xl border p-4 sm:p-6'>
         <TabsContent value='general' className='mt-0 p-0'>
           <GeneralSettings />
         </TabsContent>

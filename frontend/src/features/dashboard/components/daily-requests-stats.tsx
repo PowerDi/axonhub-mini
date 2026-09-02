@@ -52,7 +52,7 @@ export function DailyRequestStats() {
 
   if (error) {
     return (
-      <div className='flex h-[350px] items-center justify-center text-red-500'>
+      <div className='flex h-[350px] items-center justify-center text-(--destructive-soft-fg)'>
         {t('dashboard.charts.errorLoadingChart')} {error.message}
       </div>
     );
@@ -101,7 +101,7 @@ export function DailyRequestStats() {
             <stop offset='95%' stopColor='var(--chart-3)' stopOpacity={0} />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' vertical={false} />
+        <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' strokeOpacity={0.6} vertical={false} />
         <XAxis
           dataKey='name'
           stroke='var(--muted-foreground)'

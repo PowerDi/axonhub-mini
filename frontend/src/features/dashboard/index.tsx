@@ -4,8 +4,8 @@ import { Link } from '@tanstack/react-router';
 import { BarChart3, Brain, Key, Users, Zap, ChevronDown, ChevronRight, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { IconBadge } from '@/components/ui/icon-badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Header } from '@/components/layout/header';
 import { formatNumber } from '@/utils/format-number';
 import { TimePeriodSelector, type TimePeriod } from '@/components/time-period-selector';
 import { ChannelSuccessRate } from './components/channel-success-rate';
@@ -59,19 +59,19 @@ function CollapsibleSection({ title, icon, children, storageKey, defaultOpen = f
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className='flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-accent/50'
+        className='flex w-full items-center justify-between rounded-xl border bg-card p-3 text-left transition-colors hover:bg-muted'
       >
         <div className='flex items-center gap-3'>
-          <div className='flex h-8 w-8 items-center justify-center rounded-md bg-primary/10'>
+          <IconBadge tone='primary' size='md'>
             {icon}
-          </div>
-          <span className='text-lg font-semibold'>{title}</span>
+          </IconBadge>
+          <span className='text-base font-medium'>{title}</span>
         </div>
         <motion.div
           animate={{ rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.2, ease: 'easeInOut' }}
         >
-          <ChevronDown className='h-5 w-5 text-muted-foreground' />
+          <ChevronDown className='text-muted-foreground size-4' />
         </motion.div>
       </button>
       <AnimatePresence initial={false}>
@@ -115,7 +115,7 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className='flex-1 space-y-4 p-8 pt-6'>
+      <div className='flex-1 space-y-4 p-6'>
         <div className='flex items-center justify-between space-y-2'>
           <Skeleton className='h-8 w-[200px]' />
         </div>
@@ -137,8 +137,8 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <div className='flex-1 space-y-4 p-8 pt-6'>
-        <div className='text-red-500'>
+      <div className='flex-1 space-y-4 p-6'>
+        <div className='text-(--destructive-soft-fg)'>
           {t('common.loadError')} {error.message}
         </div>
       </div>
@@ -146,12 +146,15 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className='flex-1 space-y-6 p-8 pt-6'>
-      <Header />
+    <div className='flex flex-1 flex-col gap-6 p-6'>
+      {/* Hub 页头（spec §4）：平静大标题 */}
+      <div className='space-y-0.5'>
+        <h1 className='text-2xl font-normal tracking-tight'>{t('sidebar.items.dashboard')}</h1>
+      </div>
 
       {/* 概览部分 - 始终展示 */}
       <section className='space-y-4'>
-        {/* <h2 className='text-2xl font-bold tracking-tight'>{t('dashboard.sections.overview')}</h2> */}
+        {/* <h2 className='text-2xl font-normal tracking-tight'>{t('dashboard.sections.overview')}</h2> */}
         <div className='grid gap-6 md:grid-cols-2 lg:grid-cols-4'>
           <TotalRequestsCard />
           <SuccessRateCard />
@@ -159,7 +162,7 @@ export default function DashboardPage() {
           <TodayRequestsCard />
         </div>
         <div className='grid gap-4 md:grid-cols-2 lg:grid-cols-7'>
-          <Card className='hover-card col-span-1 lg:col-span-4'>
+          <Card className='col-span-1 lg:col-span-4'>
             <CardHeader>
               <CardTitle>{t('dashboard.charts.dailyRequestOverview')}</CardTitle>
             </CardHeader>
@@ -167,7 +170,7 @@ export default function DashboardPage() {
               <DailyRequestStats />
             </CardContent>
           </Card>
-          <Card className='hover-card col-span-1 lg:col-span-3'>
+          <Card className='col-span-1 lg:col-span-3'>
             <CardHeader>
               <CardTitle>{t('dashboard.charts.channelSuccessRate')}</CardTitle>
               <CardDescription>{t('dashboard.charts.channelSuccessRateDescription')}</CardDescription>
@@ -187,18 +190,18 @@ export default function DashboardPage() {
       {/* 使用详情分析 - 导航卡片 */}
       <Link
         to='/analytics'
-        className='flex w-full items-center justify-between rounded-lg border bg-card p-4 text-left transition-colors hover:bg-accent/50'
+        className='flex w-full items-center justify-between rounded-xl border bg-card p-3 text-left transition-colors hover:bg-muted'
       >
         <div className='flex items-center gap-3'>
-          <div className='flex h-8 w-8 items-center justify-center rounded-md bg-primary/10'>
-            <TrendingUp className='h-4 w-4 text-primary' />
-          </div>
+          <IconBadge tone='primary' size='md'>
+            <TrendingUp />
+          </IconBadge>
           <div>
-            <span className='text-lg font-semibold'>{t('dashboard.sections.analytics')}</span>
-            <p className='text-sm text-muted-foreground'>{t('dashboard.sections.analyticsDescription')}</p>
+            <span className='text-base font-medium'>{t('dashboard.sections.analytics')}</span>
+            <p className='text-muted-foreground text-sm'>{t('dashboard.sections.analyticsDescription')}</p>
           </div>
         </div>
-        <ChevronRight className='h-5 w-5 text-muted-foreground' />
+        <ChevronRight className='text-muted-foreground size-4' />
       </Link>
 
       {/* 渠道分析 - 可折叠 */}
@@ -208,7 +211,7 @@ export default function DashboardPage() {
         storageKey='channels'
       >
         <div className='grid gap-4 md:grid-cols-2'>
-          <Card className='hover-card'>
+          <Card>
             <CardHeader>
               <CardTitle>{t('dashboard.charts.requestsCostByChannel')}</CardTitle>
               <CardDescription>{t('dashboard.charts.requestsCostByChannelDescription')}</CardDescription>
@@ -220,7 +223,7 @@ export default function DashboardPage() {
               <RequestsByChannelChart timePeriod={channelTimePeriod} />
             </CardContent>
           </Card>
-          <Card className='hover-card'>
+          <Card>
             <CardHeader>
               <CardTitle>{t('dashboard.charts.tokensByChannel')}</CardTitle>
               <CardDescription>{t('dashboard.charts.tokensByChannelDescription')}</CardDescription>
@@ -242,7 +245,7 @@ export default function DashboardPage() {
         storageKey='models'
       >
         <div className='grid gap-4 md:grid-cols-2'>
-          <Card className='hover-card'>
+          <Card>
             <CardHeader>
               <CardTitle>{t('dashboard.charts.requestsCostByModel')}</CardTitle>
               <CardDescription>{t('dashboard.charts.requestsCostByModelDescription')}</CardDescription>
@@ -254,7 +257,7 @@ export default function DashboardPage() {
               <RequestsByModelChart timePeriod={modelTimePeriod} />
             </CardContent>
           </Card>
-          <Card className='hover-card'>
+          <Card>
             <CardHeader>
               <CardTitle>{t('dashboard.charts.tokensByModel')}</CardTitle>
               <CardDescription>{t('dashboard.charts.tokensByModelDescription')}</CardDescription>
@@ -276,7 +279,7 @@ export default function DashboardPage() {
         storageKey='apiKeys'
       >
         <div className='grid gap-4 md:grid-cols-2'>
-          <Card className='hover-card'>
+          <Card>
             <CardHeader>
               <CardTitle>{t('dashboard.charts.requestsCostByAPIKey')}</CardTitle>
               <CardDescription>{t('dashboard.charts.requestsCostByAPIKeyDescription')}</CardDescription>
@@ -288,7 +291,7 @@ export default function DashboardPage() {
               <RequestsByAPIKeyChart timePeriod={apiKeyTimePeriod} />
             </CardContent>
           </Card>
-          <Card className='hover-card'>
+          <Card>
             <CardHeader>
               <CardTitle>{t('dashboard.charts.tokensByAPIKey')}</CardTitle>
               <CardDescription>{t('dashboard.charts.tokensByAPIKeyDescription')}</CardDescription>
@@ -311,7 +314,7 @@ export default function DashboardPage() {
           storageKey='users'
         >
           <div className='grid gap-4 md:grid-cols-1 lg:grid-cols-7'>
-            <Card className='hover-card col-span-1 lg:col-span-4'>
+            <Card className='col-span-1 lg:col-span-4'>
               <CardHeader>
                 <CardTitle>{t('dashboard.charts.tokensByUser')}</CardTitle>
                 <CardDescription>{t('dashboard.charts.tokensByUserDescription')}</CardDescription>
@@ -334,7 +337,7 @@ export default function DashboardPage() {
         storageKey='performance'
       >
         <div className='grid gap-4 md:grid-cols-1 lg:grid-cols-7'>
-          <Card className='hover-card col-span-1 lg:col-span-4'>
+          <Card className='col-span-1 lg:col-span-4'>
             <CardHeader>
               <CardTitle>{t('dashboard.charts.modelPerformance')}</CardTitle>
               <CardDescription>{modelPerformanceDescription}</CardDescription>
@@ -348,7 +351,7 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className='grid gap-4 md:grid-cols-1 lg:grid-cols-7'>
-          <Card className='hover-card col-span-1 lg:col-span-4'>
+          <Card className='col-span-1 lg:col-span-4'>
             <CardHeader>
               <CardTitle>{t('dashboard.charts.channelPerformance')}</CardTitle>
               <CardDescription>{channelPerformanceDescription}</CardDescription>

@@ -41,10 +41,10 @@ export const ChannelHealthCell = memo(({ points }: ChannelHealthCellProps) => {
               <div
                 className={cn(
                   'h-8 w-1.5 cursor-help rounded-sm',
-                  isHealthy && 'bg-green-500',
-                  isWarning && 'bg-yellow-500',
-                  isError && 'bg-red-500',
-                  isIdle && 'bg-gray-200'
+                  isHealthy && 'bg-success',
+                  isWarning && 'bg-warning',
+                  isError && 'bg-destructive',
+                  isIdle && 'bg-muted'
                 )}
               />
             </TooltipTrigger>

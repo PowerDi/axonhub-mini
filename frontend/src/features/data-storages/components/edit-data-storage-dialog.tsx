@@ -190,7 +190,7 @@ export function EditDataStorageDialog() {
                   required: t('dataStorages.validation.nameRequired'),
                 })}
               />
-              {errors.name && <span className='text-sm text-red-500'>{errors.name.message}</span>}
+              {errors.name && <span className='text-sm text-(--destructive-soft-fg)'>{errors.name.message}</span>}
             </div>
 
             <div className='grid gap-2'>
@@ -214,7 +214,7 @@ export function EditDataStorageDialog() {
                   placeholder='/var/axonhub/data'
                 />
                 {errors.directory && (
-                  <span className='text-sm text-red-500'>{errors.directory.message}</span>
+                  <span className='text-sm text-(--destructive-soft-fg)'>{errors.directory.message}</span>
                 )}
               </div>
             )}
@@ -236,7 +236,7 @@ export function EditDataStorageDialog() {
                     placeholder='my-bucket'
                   />
                   {errors.s3BucketName && (
-                    <span className='text-sm text-red-500'>{errors.s3BucketName.message}</span>
+                    <span className='text-sm text-(--destructive-soft-fg)'>{errors.s3BucketName.message}</span>
                   )}
                 </div>
                 <div className='grid gap-2'>
@@ -266,7 +266,7 @@ export function EditDataStorageDialog() {
                     placeholder={t('dataStorages.dialogs.fields.s3AccessKey.editPlaceholder')}
                   />
                   {errors.s3AccessKey && (
-                    <span className='text-sm text-red-500'>{errors.s3AccessKey.message}</span>
+                    <span className='text-sm text-(--destructive-soft-fg)'>{errors.s3AccessKey.message}</span>
                   )}
                 </div>
                 <div className='grid gap-2'>
@@ -285,7 +285,7 @@ export function EditDataStorageDialog() {
                     placeholder={t('dataStorages.dialogs.fields.s3SecretKey.editPlaceholder')}
                   />
                   {errors.s3SecretKey && (
-                    <span className='text-sm text-red-500'>{errors.s3SecretKey.message}</span>
+                    <span className='text-sm text-(--destructive-soft-fg)'>{errors.s3SecretKey.message}</span>
                   )}
                 </div>
                 <div className='flex items-center space-x-2'>
@@ -293,7 +293,7 @@ export function EditDataStorageDialog() {
                     type='checkbox'
                     id='edit-s3-path-style'
                     {...register('s3PathStyle')}
-                    className='h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600'
+                    className='h-4 w-4 rounded border-border text-(--info-soft-fg) focus:ring-info/40'
                   />
                   <Label htmlFor='edit-s3-path-style'>
                     {t('dataStorages.fields.s3PathStyle')}
@@ -319,7 +319,7 @@ export function EditDataStorageDialog() {
                     placeholder='my-bucket'
                   />
                   {errors.gcsBucketName && (
-                    <span className='text-sm text-red-500'>{errors.gcsBucketName.message}</span>
+                    <span className='text-sm text-(--destructive-soft-fg)'>{errors.gcsBucketName.message}</span>
                   )}
                 </div>
                 <div className='grid gap-2'>
@@ -352,7 +352,7 @@ export function EditDataStorageDialog() {
                     placeholder={t('dataStorages.dialogs.fields.gcsCredential.editPlaceholder')}
                   />
                   {errors.gcsCredential && (
-                    <span className='text-sm text-red-500'>{errors.gcsCredential.message}</span>
+                    <span className='text-sm text-(--destructive-soft-fg)'>{errors.gcsCredential.message}</span>
                   )}
                 </div>
               </>
@@ -375,7 +375,7 @@ export function EditDataStorageDialog() {
                     placeholder='https://webdav.example.com'
                   />
                   {errors.webdavURL && (
-                    <span className='text-sm text-red-500'>{errors.webdavURL.message}</span>
+                    <span className='text-sm text-(--destructive-soft-fg)'>{errors.webdavURL.message}</span>
                   )}
                 </div>
                 <div className='grid gap-2'>
@@ -406,7 +406,7 @@ export function EditDataStorageDialog() {
                     placeholder={t('dataStorages.dialogs.fields.webdavPassword.editPlaceholder')}
                   />
                   {errors.webdavPassword && (
-                    <span className='text-sm text-red-500'>{errors.webdavPassword.message}</span>
+                    <span className='text-sm text-(--destructive-soft-fg)'>{errors.webdavPassword.message}</span>
                   )}
                 </div>
                 <div className='grid gap-2'>
@@ -422,7 +422,7 @@ export function EditDataStorageDialog() {
                     type='checkbox'
                     id='edit-webdav-insecure'
                     {...register('webdavInsecureSkipTLS')}
-                    className='h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-600'
+                    className='h-4 w-4 rounded border-border text-(--info-soft-fg) focus:ring-info/40'
                   />
                   <Label htmlFor='edit-webdav-insecure'>
                     {t('dataStorages.fields.webdavInsecureSkipTLS')}

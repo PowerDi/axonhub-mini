@@ -76,7 +76,7 @@ export default function Chats() {
               </div>
 
               <label className='border-input focus-within:border-ring focus-within:outline-foreground flex h-12 w-full items-center space-x-0 rounded-md border pl-2 focus-within:outline-2 focus-within:outline-offset-1'>
-                <IconSearch size={15} className='mr-2 stroke-slate-500' />
+                <IconSearch size={15} className='mr-2 stroke-muted-foreground' />
                 <span className='sr-only'>Search</span>
                 <input
                   type='text'
@@ -249,7 +249,7 @@ export default function Chats() {
                   <h1 className='text-xl font-semibold'>Your messages</h1>
                   <p className='text-muted-foreground text-sm'>Send a message to start a chat.</p>
                 </div>
-                <Button className='bg-blue-500 px-6 text-white hover:bg-blue-600' onClick={() => setCreateConversationDialog(true)}>
+                <Button className='bg-info px-6 text-white hover:bg-info' onClick={() => setCreateConversationDialog(true)}>
                   Send message
                 </Button>
               </div>

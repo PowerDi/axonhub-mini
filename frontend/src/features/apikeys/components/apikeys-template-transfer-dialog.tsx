@@ -273,13 +273,13 @@ export function ApiKeyTemplateTransferDialog({ open, onOpenChange, mode, templat
                 </div>
 
                 {removedChannelCount > 0 && (
-                  <div className='rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300'>
+                  <div className='rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-(--warning-soft-fg) dark:text-(--warning-soft-fg)'>
                     {t('apikeys.templateTransfer.channelIDsRemoved', { count: removedChannelCount })}
                   </div>
                 )}
 
                 {matchingTemplate && (
-                  <div className='rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300'>
+                  <div className='rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-(--warning-soft-fg) dark:text-(--warning-soft-fg)'>
                     {t('apikeys.templateTransfer.nameConflict', { name: matchingTemplate.name })}
                   </div>
                 )}
@@ -320,7 +320,7 @@ export function ApiKeyTemplateTransferDialog({ open, onOpenChange, mode, templat
                 void saveToTarget(true);
               }}
               disabled={isPending}
-              className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
+              className='bg-destructive/10 text-(--destructive-soft-fg) hover:bg-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30'
             >
               {isPending ? t('common.buttons.saving') : t('apikeys.templates.overwriteButton')}
             </AlertDialogAction>

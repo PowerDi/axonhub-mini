@@ -56,8 +56,8 @@ export function ChannelsBulkArchiveDialog() {
       }
       desc={t('channels.dialogs.bulkArchive.description', { count: selectedCount })}
     >
-      <div className='flex items-start gap-3 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm dark:border-blue-900 dark:bg-blue-900/20'>
-        <IconArchive className='mt-0.5 h-4 w-4 text-blue-600 dark:text-blue-400' />
+      <div className='flex items-start gap-3 rounded-md border border-info/40 bg-info/10 p-3 text-sm dark:border-info/40 dark:bg-info/20'>
+        <IconArchive className='mt-0.5 h-4 w-4 text-(--info-soft-fg) dark:text-(--info-soft-fg)' />
         <div className='space-y-1 text-left'>
           <p>{t('channels.dialogs.bulkArchive.warning')}</p>
         </div>

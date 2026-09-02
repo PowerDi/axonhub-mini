@@ -1,14 +1,14 @@
 export const getStatusColor = (status: string) => {
   switch (status) {
     case 'completed':
-      return 'bg-green-100 text-green-800';
+      return 'border-success/40 bg-success/10 text-(--success-soft-fg)';
     case 'failed':
-      return 'bg-red-100 text-red-800';
+      return 'border-destructive/40 bg-destructive/10 text-(--destructive-soft-fg)';
     case 'pending':
-      return 'bg-yellow-100 text-yellow-800';
+      return 'border-warning/40 bg-warning/10 text-(--warning-soft-fg)';
     case 'processing':
-      return 'bg-blue-100 text-blue-800';
+      return 'border-info/40 bg-info/10 text-(--info-soft-fg)';
     default:
-      return 'bg-gray-100 text-gray-800';
+      return 'border-border bg-muted text-muted-foreground';
   }
 };

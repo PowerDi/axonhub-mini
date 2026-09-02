@@ -312,7 +312,7 @@ export default function ThreadDetailPage() {
             </div>
           ) : (
             <div className='flex h-full items-center justify-center p-6'>
-              <Card className='border-0 shadow-sm'>
+              <Card>
                 <CardContent className='py-16'>
                   <div className='flex h-full items-center justify-center'>
                     <div className='space-y-4 text-center'>

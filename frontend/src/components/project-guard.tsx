@@ -54,7 +54,7 @@ function NoProjectPage({ hasAnyProjects, onGoToProjects }: { hasAnyProjects: boo
     <div className='flex h-screen items-center justify-center'>
       <div className='max-w-md text-center'>
         <div className='mb-6'>
-          <IconFolderOff className='mx-auto h-16 w-16 text-orange-500' />
+          <IconFolderOff className='mx-auto h-16 w-16 text-(--warning-soft-fg)' />
         </div>
 
         <Alert className='mb-6'>

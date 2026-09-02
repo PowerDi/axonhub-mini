@@ -41,7 +41,7 @@ export function UsersStatusDialog({ open, onOpenChange, currentRow }: Props) {
       handleConfirm={handleStatusChange}
       disabled={updateUserStatus.isPending}
       title={
-        <span className={isActivated ? 'text-destructive' : 'text-green-600'}>
+        <span className={isActivated ? 'text-destructive' : 'text-(--success-soft-fg)'}>
           {isActivated ? (
             <IconUserOff className='mr-1 inline-block' size={18} />
           ) : (

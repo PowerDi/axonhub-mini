@@ -37,7 +37,7 @@ export function PromptsDeleteDialog() {
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>{t('common.buttons.cancel')}</AlertDialogCancel>
-          <AlertDialogAction onClick={handleConfirm} disabled={deletePromptMutation.isPending} className='bg-destructive text-destructive-foreground hover:bg-destructive/90'>
+          <AlertDialogAction onClick={handleConfirm} disabled={deletePromptMutation.isPending} className='bg-destructive/10 text-(--destructive-soft-fg) hover:bg-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30'>
             {t('common.buttons.delete')}
           </AlertDialogAction>
         </AlertDialogFooter>

@@ -4,6 +4,7 @@ import { IconInfoCircle } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { formatNumber } from '@/utils/format-number';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { IconBadge } from '@/components/ui/icon-badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -79,26 +80,16 @@ export function TokenStatsCard() {
       <Card className='min-w-0'>
         <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
           <Skeleton className='h-4 w-[120px]' />
-          <Skeleton className='h-4 w-4' />
+          <Skeleton className='h-6 w-[180px]' />
         </CardHeader>
         <CardContent>
-          <div className='flex items-end justify-between gap-2 sm:flex-col sm:gap-2 xl:flex-row xl:items-end xl:justify-between'>
-            <div className='text-center w-full sm:min-w-0 sm:flex sm:items-center sm:justify-between xl:block xl:flex-1 xl:text-center'>
-              <Skeleton className='h-4 w-[40px] sm:mb-0 xl:mb-1' />
-              <Skeleton className='h-6 w-[60px]' />
-            </div>
-            <div className='bg-border h-8 w-px shrink-0 sm:hidden xl:block'></div>
-            <div className='bg-border h-px w-full shrink-0 hidden sm:block xl:hidden'></div>
-            <div className='text-center w-full sm:min-w-0 sm:flex sm:items-center sm:justify-between xl:block xl:flex-1 xl:text-center'>
-              <Skeleton className='h-4 w-[40px] sm:mb-0 xl:mb-1' />
-              <Skeleton className='h-6 w-[60px]' />
-            </div>
-            <div className='bg-border h-8 w-px shrink-0 sm:hidden xl:block'></div>
-            <div className='bg-border h-px w-full shrink-0 hidden sm:block xl:hidden'></div>
-            <div className='text-center w-full sm:min-w-0 sm:flex sm:items-center sm:justify-between xl:block xl:flex-1 xl:text-center'>
-              <Skeleton className='h-4 w-[40px] sm:mb-0 xl:mb-1' />
-              <Skeleton className='h-6 w-[60px]' />
-            </div>
+          <div className='grid grid-cols-3 gap-2'>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className='space-y-2'>
+                <Skeleton className='h-3 w-[40px]' />
+                <Skeleton className='h-4 w-[60px]' />
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
@@ -107,20 +98,22 @@ export function TokenStatsCard() {
 
   if (error) {
     return (
-      <Card className='hover-card min-w-0'>
+      <Card className='min-w-0'>
         <CardHeader className='flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0 pb-2'>
           <div className='flex items-center gap-2 min-w-0'>
-            <div className='bg-primary/10 text-primary dark:bg-primary/20 rounded-lg p-1.5 shrink-0'>
-              <BarChart4 className='h-4 w-4' />
-            </div>
-            <CardTitle className='text-sm font-medium truncate'>{t('dashboard.cards.tokenStats')}</CardTitle>
+            <IconBadge tone='primary' size='sm'>
+              <BarChart4 />
+            </IconBadge>
+            <CardTitle className='text-muted-foreground truncate text-xs font-medium tracking-wide uppercase'>
+              {t('dashboard.cards.tokenStats')}
+            </CardTitle>
           </div>
           <div className='flex items-center gap-1 shrink-0'>
-            <span className='bg-primary/10 text-primary dark:bg-primary/20 rounded-md px-2 py-1 text-xs'>{t('dashboard.stats.month')}</span>
+            <span className='text-muted-foreground rounded-md px-2 py-1 text-xs'>{t('dashboard.stats.month')}</span>
           </div>
         </CardHeader>
         <CardContent>
-          <div className='text-sm text-red-500'>{t('common.loadError')}</div>
+          <div className='text-sm text-(--destructive-soft-fg)'>{t('common.loadError')}</div>
         </CardContent>
       </Card>
     );
@@ -158,13 +151,15 @@ export function TokenStatsCard() {
   const tokens = getTokens(timeRange);
 
   return (
-    <Card className='hover-card min-w-0'>
+    <Card className='min-w-0'>
       <CardHeader className='flex flex-row items-start justify-between gap-2 pb-2 sm:items-center'>
         <div className='flex min-w-0 items-center gap-2'>
-          <div className='bg-primary/10 text-primary dark:bg-primary/20 rounded-lg p-1.5 shrink-0'>
-            <BarChart4 className='h-4 w-4' />
-          </div>
-          <CardTitle className='truncate text-sm leading-tight font-medium'>{t('dashboard.cards.tokenStats')}</CardTitle>
+          <IconBadge tone='primary' size='sm'>
+            <BarChart4 />
+          </IconBadge>
+          <CardTitle className='text-muted-foreground truncate text-xs font-medium tracking-wide uppercase'>
+            {t('dashboard.cards.tokenStats')}
+          </CardTitle>
         </div>
         <div className='flex shrink-0 items-center gap-1 whitespace-nowrap'>
           {/* <span className='text-xs text-muted-foreground'>{t('dashboard.stats.this')}</span> */}
@@ -176,17 +171,17 @@ export function TokenStatsCard() {
             />
           )}
           <Tabs value={timeRange} onValueChange={(v) => setTimeRange(v as TimeRange)}>
-            <TabsList className='h-6 p-0.5'>
-              <TabsTrigger value='allTime' className='h-5 px-1.5 text-[10px]'>
+            <TabsList className='h-7 p-0.5'>
+              <TabsTrigger value='allTime' className='h-6 px-2 text-[11px]'>
                 {t('dashboard.stats.all')}
               </TabsTrigger>
-              <TabsTrigger value='thisMonth' className='h-5 px-1.5 text-[10px]'>
+              <TabsTrigger value='thisMonth' className='h-6 px-2 text-[11px]'>
                 {t('dashboard.stats.month')}
               </TabsTrigger>
-              <TabsTrigger value='thisWeek' className='h-5 px-1.5 text-[10px]'>
+              <TabsTrigger value='thisWeek' className='h-6 px-2 text-[11px]'>
                 {t('dashboard.stats.week')}
               </TabsTrigger>
-              <TabsTrigger value='thisDay' className='h-5 px-1.5 text-[10px]'>
+              <TabsTrigger value='thisDay' className='h-6 px-2 text-[11px]'>
                 {t('dashboard.stats.day')}
               </TabsTrigger>
             </TabsList>
@@ -194,22 +189,20 @@ export function TokenStatsCard() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className='flex items-end justify-between gap-2 sm:flex-col sm:gap-2 xl:flex-row xl:items-end xl:justify-between'>
-          <div className='text-center min-w-0 sm:flex sm:items-center sm:justify-between sm:w-full xl:block xl:text-center xl:flex-1'>
-            <div className='text-muted-foreground text-xs sm:mb-0 xl:mb-1'>{t('dashboard.stats.input')}</div>
-            <div className='font-mono text-lg font-bold'>{formatNumber(tokens.input)}</div>
+        <div className='grid grid-cols-3 gap-2'>
+          <div className='bg-muted/40 rounded-lg border px-2.5 py-2'>
+            <div className='text-muted-foreground truncate text-[11px] leading-none font-medium'>{t('dashboard.stats.input')}</div>
+            <div className='mt-1.5 truncate text-xs font-semibold tabular-nums'>{formatNumber(tokens.input)}</div>
           </div>
-          <div className='bg-border h-8 w-px shrink-0 sm:hidden xl:block'></div>
-          <div className='bg-border h-px w-full shrink-0 hidden sm:block xl:hidden'></div>
-          <div className='text-center min-w-0 sm:flex sm:items-center sm:justify-between sm:w-full xl:block xl:text-center xl:flex-1'>
-            <div className='text-muted-foreground text-xs sm:mb-0 xl:mb-1'>{t('dashboard.stats.output')}</div>
-            <div className='font-mono text-lg font-bold'>{formatNumber(tokens.output)}</div>
+          <div className='bg-muted/40 rounded-lg border px-2.5 py-2'>
+            <div className='text-muted-foreground truncate text-[11px] leading-none font-medium'>{t('dashboard.stats.output')}</div>
+            <div className='mt-1.5 truncate text-xs font-semibold tabular-nums'>{formatNumber(tokens.output)}</div>
           </div>
-          <div className='bg-border h-8 w-px shrink-0 sm:hidden xl:block'></div>
-          <div className='bg-border h-px w-full shrink-0 hidden sm:block xl:hidden'></div>
-          <div className='text-center min-w-0 sm:flex sm:items-center sm:justify-between sm:w-full xl:block xl:text-center xl:flex-1'>
-            <div className='text-muted-foreground text-xs sm:mb-0 xl:mb-1'>{t('dashboard.stats.cached')}</div>
-            <div className='text-muted-foreground font-mono text-lg font-bold'>{formatNumber(tokens.cached)}</div>
+          <div className='bg-muted/40 rounded-lg border px-2.5 py-2'>
+            <div className='text-muted-foreground truncate text-[11px] leading-none font-medium'>{t('dashboard.stats.cached')}</div>
+            <div className='text-muted-foreground mt-1.5 truncate text-xs font-semibold tabular-nums'>
+              {formatNumber(tokens.cached)}
+            </div>
           </div>
         </div>
       </CardContent>

@@ -26,25 +26,25 @@ export function ChannelModelsList({ channels, emptyMessage }: ChannelModelsListP
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'enabled':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800';
+        return 'bg-success/10 text-(--success-soft-fg) border-success/40 dark:text-(--success-soft-fg) dark:border-success/40';
       case 'disabled':
-        return 'bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-900 dark:text-gray-400 dark:border-gray-700';
+        return 'bg-muted text-muted-foreground border-border dark:bg-muted dark:text-muted-foreground dark:border-border';
       case 'archived':
-        return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-800';
+        return 'bg-warning/10 text-(--warning-soft-fg) border-warning/40 dark:text-(--warning-soft-fg) dark:border-warning/40';
       default:
-        return 'bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-900 dark:text-gray-400 dark:border-gray-700';
+        return 'bg-muted text-muted-foreground border-border dark:bg-muted dark:text-muted-foreground dark:border-border';
     }
   };
 
   const getTypeColor = (type: string) => {
     const colors = {
-      openai: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400',
-      anthropic: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-400',
-      deepseek: 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950 dark:text-indigo-400',
-      doubao: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-400',
-      kimi: 'bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-950 dark:text-pink-400',
+      openai: 'bg-info/10 text-(--info-soft-fg) border-info/40 dark:text-(--info-soft-fg)',
+      anthropic: 'bg-primary/10 text-primary border-primary/40 dark:text-primary',
+      deepseek: 'bg-info/10 text-(--info-soft-fg) border-info/40 dark:text-(--info-soft-fg)',
+      doubao: 'bg-warning/10 text-(--warning-soft-fg) border-warning/40 dark:text-(--warning-soft-fg)',
+      kimi: 'bg-primary/10 text-primary border-primary/40 dark:text-primary',
     };
-    return colors[type as keyof typeof colors] || 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-900 dark:text-gray-400';
+    return colors[type as keyof typeof colors] || 'bg-muted text-muted-foreground border-border dark:bg-muted dark:text-muted-foreground';
   };
 
   if (channels.length === 0) {

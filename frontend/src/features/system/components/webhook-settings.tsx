@@ -5,7 +5,7 @@ import { Loader2, Plus, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -339,10 +339,6 @@ export function WebhookSettings() {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>{t('system.webhook.title')}</CardTitle>
-        <CardDescription>{t('system.webhook.description')}</CardDescription>
-      </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className='space-y-6'>
           <div className='bg-muted/50 space-y-2 rounded-md border p-4'>

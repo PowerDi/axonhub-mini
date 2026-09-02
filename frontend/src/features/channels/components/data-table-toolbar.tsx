@@ -97,8 +97,8 @@ export function DataTableToolbar<TData>({
   );
 
   return (
-    <div ref={scrollRef} className='flex items-center gap-4 overflow-x-auto pb-2 md:overflow-x-visible md:pb-0'>
-      <div className='relative w-[150px] shrink-0 lg:flex-1 lg:w-auto'>
+    <div ref={scrollRef} className='flex flex-wrap items-center gap-2 sm:gap-3'>
+      <div className='relative w-[200px] shrink-0 lg:w-[240px]'>
         <IconSearch className='text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2' />
         <Input
           placeholder={t('channels.filters.filterByName')}
@@ -107,12 +107,8 @@ export function DataTableToolbar<TData>({
           className='h-8 pl-8'
         />
       </div>
-      <Button variant='outline' size='sm' className='h-8' onClick={() => setShowTypeTabs(!showTypeTabs)}>
-        {showTypeTabs ? (
-          <IconChevronsDown className='mr-1 h-4 w-4' />
-        ) : (
-          <IconChevronsUp className='mr-1 h-4 w-4' />
-        )}
+      <Button variant='outline' onClick={() => setShowTypeTabs(!showTypeTabs)}>
+        {showTypeTabs ? <IconChevronsDown className='size-4' /> : <IconChevronsUp className='size-4' />}
         {t('channels.filters.providerToggle')}
       </Button>
       {table.getColumn('status') && (
@@ -128,7 +124,7 @@ export function DataTableToolbar<TData>({
         <Button
           variant='ghost'
           onClick={() => table.resetColumnFilters()}
-          className='h-8 px-2 lg:px-3'
+          className='px-2 lg:px-2.5'
         >
           {t('common.filters.reset')}
           <Cross2Icon className='ml-2 h-4 w-4' />
@@ -138,7 +134,7 @@ export function DataTableToolbar<TData>({
         <Button
           variant='outline'
           onClick={onExitErrorOnlyMode}
-          className='h-8 border-orange-600 text-orange-600 hover:bg-orange-600 hover:text-white'
+          className='border-(--warning-soft-fg)/40 text-(--warning-soft-fg) hover:bg-warning/10'
         >
           {t('channels.errorBanner.exitErrorOnlyButton')}
         </Button>

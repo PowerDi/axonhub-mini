@@ -336,7 +336,7 @@ export function RequestsTable({
         enableColumnOrdering
         getColumnLabel={(id) => t(`requests.columns.${id}`, { defaultValue: id })}
       />
-      <div className='shadow-soft relative mt-2 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)] sm:mt-4'>
+      <div className='relative mt-2 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)] sm:mt-4'>
         <div className='min-w-max'>
           <Table data-testid='requests-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
             <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>

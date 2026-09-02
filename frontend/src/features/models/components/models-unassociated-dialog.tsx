@@ -345,9 +345,9 @@ export function ModelsUnassociatedDialog() {
           </div>
         ) : data && data.length > 0 ? (
           <>
-            <div className='flex flex-shrink-0 items-center gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-900 dark:bg-yellow-950'>
-              <IconAlertCircle className='h-5 w-5 shrink-0 text-yellow-600 dark:text-yellow-500' />
-              <div className='text-sm text-yellow-800 dark:text-yellow-200'>
+            <div className='flex flex-shrink-0 items-center gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 dark:border-warning/40'>
+              <IconAlertCircle className='h-5 w-5 shrink-0 text-(--warning-soft-fg) dark:text-(--warning-soft-fg)' />
+              <div className='text-sm text-(--warning-soft-fg) dark:text-(--warning-soft-fg)'>
                 {t('models.unassociated.summary', {
                   channelCount: data.length,
                   modelCount: totalUnassociated,
@@ -466,12 +466,12 @@ export function ModelsUnassociatedDialog() {
                                 </Badge>
                               )}
                               {metadata && !metadata.matched && (
-                                <Badge variant='outline' className='text-xs text-amber-600 dark:text-amber-400'>
+                                <Badge variant='outline' className='text-xs text-(--warning-soft-fg) dark:text-(--warning-soft-fg)'>
                                   {t('models.unassociated.needsReview')}
                                 </Badge>
                               )}
                               {target?.status === 'archived' && (
-                                <Badge variant='outline' className='text-xs text-amber-600 dark:text-amber-400'>
+                                <Badge variant='outline' className='text-xs text-(--warning-soft-fg) dark:text-(--warning-soft-fg)'>
                                   {t('models.unassociated.archived')}
                                 </Badge>
                               )}
@@ -724,7 +724,7 @@ function TargetSelect({
                         </Badge>
                       )}
                       {model.status === 'archived' && (
-                        <Badge variant='outline' className='shrink-0 text-[10px] text-amber-600 dark:text-amber-400'>
+                        <Badge variant='outline' className='shrink-0 text-[10px] text-(--warning-soft-fg) dark:text-(--warning-soft-fg)'>
                           {t('models.unassociated.archived')}
                         </Badge>
                       )}

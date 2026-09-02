@@ -137,7 +137,7 @@ function JsonNode({ name, data, parentData, isRoot = false, isArrayItem = false,
         )}
 
         {/* Key label */}
-        {showName && <span className='text-primary mt-px shrink-0'>{name}</span>}
+        {showName && <span className='text-(--info-soft-fg) mt-px shrink-0'>{name}</span>}
 
         {/* Colon / bracket */}
         {isExpandable ? (
@@ -168,7 +168,7 @@ function JsonNode({ name, data, parentData, isRoot = false, isArrayItem = false,
           title='Copy to clipboard'
         >
           {isCopied ? (
-            <Check className='h-3 w-3 text-green-500' />
+            <Check className='text-(--success-soft-fg) h-3 w-3' />
           ) : (
             <Copy className='text-muted-foreground h-3 w-3' />
           )}
@@ -327,9 +327,9 @@ function JsonValue({ name, data, parentData }: { name: string; data: any; parent
     setShowRawString(false);
   }, [globalStringExpanded]);
 
-  if (data === null) return <span className='text-rose-500'>null</span>;
+  if (data === null) return <span className='text-(--destructive-soft-fg)'>null</span>;
   if (data === undefined) return <span className='text-muted-foreground'>undefined</span>;
-  if (data instanceof Date) return <span className='text-purple-500'>{data.toISOString()}</span>;
+  if (data instanceof Date) return <span className='text-(--info-soft-fg)'>{data.toISOString()}</span>;
 
   switch (dataType) {
     case 'string': {
@@ -390,7 +390,7 @@ function JsonValue({ name, data, parentData }: { name: string; data: any; parent
 
       return (
         <div
-          className='group/str flex w-full min-w-0 max-w-full cursor-pointer items-start text-emerald-500'
+          className='group/str flex w-full min-w-0 max-w-full cursor-pointer items-start text-(--success-soft-fg)'
           onClick={(e) => {
             e.stopPropagation();
             setLocalExpanded(!isExpanded);
@@ -447,9 +447,9 @@ function JsonValue({ name, data, parentData }: { name: string; data: any; parent
       );
     }
     case 'number':
-      return <span className='text-amber-500'>{data}</span>;
+      return <span className='text-(--warning-soft-fg)'>{data}</span>;
     case 'boolean':
-      return <span className='text-blue-500'>{data.toString()}</span>;
+      return <span className='text-primary'>{data.toString()}</span>;
     default:
       return <span>{String(data)}</span>;
   }

@@ -246,7 +246,7 @@ export function PerformanceChart({
 
   if (error) {
     return (
-      <div className='flex h-[350px] items-center justify-center text-red-500'>
+      <div className='flex h-[350px] items-center justify-center text-(--destructive-soft-fg)'>
         {errorMessage} {error.message}
       </div>
     );
@@ -349,7 +349,7 @@ export function PerformanceChart({
               </linearGradient>
             ))}
           </defs>
-          <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' vertical={false} />
+          <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' strokeOpacity={0.6} vertical={false} />
           <XAxis
             dataKey='name'
             stroke='var(--muted-foreground)'

@@ -30,7 +30,7 @@ function CopyBaseUrlButton({ baseUrl }: { baseUrl: string }) {
     <Tooltip>
       <TooltipTrigger asChild>
         <Button size='icon' variant='ghost' className='shrink-0' onClick={handleCopy}>
-          {isCopied ? <CheckIcon className='h-3.5 w-3.5 text-green-500' /> : <Link className='h-3.5 w-3.5' />}
+          {isCopied ? <CheckIcon className='h-3.5 w-3.5 text-(--success-soft-fg)' /> : <Link className='h-3.5 w-3.5' />}
         </Button>
       </TooltipTrigger>
       <TooltipContent>{baseUrl}</TooltipContent>
@@ -267,9 +267,9 @@ print(response.text)`
           <DialogDescription>{t('apikeys.dialogs.view.description')}</DialogDescription>
         </DialogHeader>
 
-        <Alert className='border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950 shrink-0'>
-          <AlertTriangle className='h-4 w-4 text-orange-600 dark:text-orange-400' />
-          <AlertDescription className='text-orange-800 dark:text-orange-200'>{t('apikeys.dialogs.view.warning')}</AlertDescription>
+        <Alert className='border-warning/40 bg-warning/10 dark:border-warning/40 shrink-0'>
+          <AlertTriangle className='h-4 w-4 text-(--warning-soft-fg) dark:text-(--warning-soft-fg)' />
+          <AlertDescription className='text-(--warning-soft-fg) dark:text-(--warning-soft-fg)'>{t('apikeys.dialogs.view.warning')}</AlertDescription>
         </Alert>
 
         <div className='space-y-4 shrink-0'>

@@ -68,12 +68,12 @@ export function TraceDrawer({ open, onOpenChange, traceId }: TraceDrawerProps) {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side='right' className={cn('w-full p-0 transition-all duration-300', isFullscreen ? 'sm:max-w-none' : 'sm:max-w-[900px] lg:max-w-[1100px]')}>
         <SheetHeader className={cn(
-          'border-b border-border/50 bg-gradient-to-r from-background via-background to-muted/20 px-6 py-4',
+          'border-b border-border/50 px-6 py-4',
           isFullscreen && 'fixed top-0 left-0 right-0 z-50'
         )}>
           <div className='flex items-center justify-between'>
-            <SheetTitle className='flex items-center gap-2 text-lg font-semibold'>
-              <span className='h-5 w-1 rounded-full bg-gradient-to-b from-primary/60 via-primary to-primary/60' />
+            <SheetTitle className='flex items-center gap-2'>
+              <span className='bg-primary/70 h-5 w-1 rounded-full' />
               {t('traces.detail.title')}
             </SheetTitle>
             
@@ -83,7 +83,7 @@ export function TraceDrawer({ open, onOpenChange, traceId }: TraceDrawerProps) {
                 <Button
                   variant='ghost'
                   size='sm'
-                  className={cn('h-7 gap-1.5 rounded-sm px-2.5 text-xs', viewMode === 'flat' && 'bg-background shadow-sm')}
+                  className={cn('h-7 gap-1.5 rounded-md px-2.5 text-xs', viewMode === 'flat' && 'bg-background shadow-sm')}
                   onClick={() => setViewMode('flat')}
                 >
                   <List className='h-3.5 w-3.5' />
@@ -92,7 +92,7 @@ export function TraceDrawer({ open, onOpenChange, traceId }: TraceDrawerProps) {
                 <Button
                   variant='ghost'
                   size='sm'
-                  className={cn('h-7 gap-1.5 rounded-sm px-2.5 text-xs', viewMode === 'flow' && 'bg-background shadow-sm')}
+                  className={cn('h-7 gap-1.5 rounded-md px-2.5 text-xs', viewMode === 'flow' && 'bg-background shadow-sm')}
                   onClick={() => setViewMode('flow')}
                 >
                   <GitBranch className='h-3.5 w-3.5' />
@@ -101,7 +101,7 @@ export function TraceDrawer({ open, onOpenChange, traceId }: TraceDrawerProps) {
                 <Button
                   variant='ghost'
                   size='sm'
-                  className={cn('h-7 gap-1.5 rounded-sm px-2.5 text-xs', viewMode === 'tree' && 'bg-background shadow-sm')}
+                  className={cn('h-7 gap-1.5 rounded-md px-2.5 text-xs', viewMode === 'tree' && 'bg-background shadow-sm')}
                   onClick={() => setViewMode('tree')}
                 >
                   <Waypoints className='h-3.5 w-3.5' />
@@ -138,7 +138,7 @@ export function TraceDrawer({ open, onOpenChange, traceId }: TraceDrawerProps) {
         </SheetHeader>
 
         {isLoading ? (
-          <div className='flex h-[calc(100vh-80px)] items-center justify-center bg-gradient-to-b from-background to-muted/20'>
+          <div className='flex h-[calc(100vh-80px)] items-center justify-center'>
             <div className='space-y-4 text-center'>
               <div className='relative mx-auto h-12 w-12'>
                 <div className='absolute inset-0 rounded-full border-2 border-primary/10' />
@@ -150,7 +150,7 @@ export function TraceDrawer({ open, onOpenChange, traceId }: TraceDrawerProps) {
           </div>
         ) : effectiveRootSegment ? (
           <div className={cn(
-            'flex bg-gradient-to-br from-background via-background to-muted/10',
+            'bg-background flex',
             isFullscreen ? 'fixed inset-0 z-40 pt-16' : 'h-[calc(100vh-80px)]'
           )}>
             {/* Left: Timeline */}
@@ -190,7 +190,7 @@ export function TraceDrawer({ open, onOpenChange, traceId }: TraceDrawerProps) {
           </div>
         ) : (
           <div className={cn(
-            'flex items-center justify-center bg-gradient-to-b from-background to-muted/20',
+            'flex items-center justify-center',
             isFullscreen ? 'fixed inset-0 z-40 pt-16' : 'h-[calc(100vh-80px)]'
           )}>
             <div className='space-y-4 text-center'>

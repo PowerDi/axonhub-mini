@@ -41,7 +41,7 @@ export function DataStorageActions({ dataStorage, defaultDataStorageID }: DataSt
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant='ghost' className='h-8 w-8 p-0'>
+        <Button variant='ghost' size='icon-xs'>
           <span className='sr-only'>{t('common.buttons.openMenu')}</span>
           <MoreHorizontal className='h-4 w-4' />
         </Button>

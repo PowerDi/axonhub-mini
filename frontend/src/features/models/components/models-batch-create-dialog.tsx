@@ -369,7 +369,7 @@ export function ModelsBatchCreateDialog() {
                       portalContainer={dialogContent}
                     />
                     {validationErrors[row.id]?.developer && (
-                      <p className='text-xs text-red-600'>{t('models.dialogs.batchCreate.required')}</p>
+                      <p className='text-xs text-(--destructive-soft-fg)'>{t('models.dialogs.batchCreate.required')}</p>
                     )}
                   </div>
                   <div className='min-w-40 flex-[3] space-y-1'>
@@ -389,7 +389,7 @@ export function ModelsBatchCreateDialog() {
                       portalContainer={dialogContent}
                     />
                     {validationErrors[row.id]?.modelId && (
-                      <p className='text-xs text-red-600'>{t('models.dialogs.batchCreate.required')}</p>
+                      <p className='text-xs text-(--destructive-soft-fg)'>{t('models.dialogs.batchCreate.required')}</p>
                     )}
                   </div>
                   <div className='min-w-24 flex-[2] space-y-1'>
@@ -401,7 +401,7 @@ export function ModelsBatchCreateDialog() {
                       }}
                       placeholder={t('models.fields.name')}
                     />
-                    {validationErrors[row.id]?.name && <p className='text-xs text-red-600'>{t('models.dialogs.batchCreate.required')}</p>}
+                    {validationErrors[row.id]?.name && <p className='text-xs text-(--destructive-soft-fg)'>{t('models.dialogs.batchCreate.required')}</p>}
                   </div>
                   <div className='min-w-32 flex-[3] space-y-1'>
                     <AutoCompleteSelect
@@ -415,7 +415,7 @@ export function ModelsBatchCreateDialog() {
                       emptyMessage={t('models.fields.noIcons')}
                       portalContainer={dialogContent}
                     />
-                    {validationErrors[row.id]?.icon && <p className='text-xs text-red-600'>{t('models.dialogs.batchCreate.required')}</p>}
+                    {validationErrors[row.id]?.icon && <p className='text-xs text-(--destructive-soft-fg)'>{t('models.dialogs.batchCreate.required')}</p>}
                   </div>
                   <Button
                     type='button'

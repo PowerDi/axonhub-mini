@@ -570,15 +570,15 @@ const HHMMTimePicker = memo(function HHMMTimePicker({
       {open && (
         <div
           className={cn(
-            'absolute left-0 top-[calc(100%+8px)] z-50 flex h-[220px] w-full overflow-hidden rounded-md',
-            'border border-gray-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[#121214]'
+            'bg-popover text-popover-foreground absolute top-[calc(100%+8px)] left-0 z-50 flex h-[220px] w-full overflow-hidden rounded-lg',
+            'shadow-md ring-1 ring-foreground/10'
           )}
           role='dialog'
         >
           <div className='no-scrollbar flex-1 overflow-y-auto p-1 text-center'>
             <TimeColInner label='HH' items={HOURS} active={hh || '00'} onPick={(h) => handlePick(h, mm || '00')} />
           </div>
-          <div className='no-scrollbar flex-1 overflow-y-auto border-x border-gray-100 p-1 text-center dark:border-white/5'>
+          <div className='no-scrollbar border-border flex-1 overflow-y-auto border-x p-1 text-center'>
             <TimeColInner label='MM' items={MINUTES} active={mm || '00'} onPick={(m) => handlePick(hh || '00', m)} />
           </div>
         </div>
@@ -612,8 +612,8 @@ function TimeColInner({
             className={cn(
               'w-full rounded-md py-2 text-sm transition-colors',
               isActive
-                ? 'glass-highlight border border-primary/20 font-semibold text-primary'
-                : 'text-gray-400 hover:bg-gray-100 dark:text-gray-500 dark:hover:bg-white/5'
+                ? 'border-primary/20 bg-primary/10 font-semibold text-primary'
+                : 'text-muted-foreground hover:bg-muted'
             )}
             onClick={() => onPick(txt)}
           >

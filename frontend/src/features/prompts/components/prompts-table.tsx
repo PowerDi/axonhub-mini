@@ -154,7 +154,7 @@ export function PromptsTable({
         </div>
       </div>
 
-      <div className='shadow-soft relative mt-4 flex-1 overflow-auto overflow-x-hidden rounded-2xl border border-[var(--table-border)]'>
+      <div className='relative mt-4 flex-1 overflow-auto overflow-x-hidden rounded-2xl border border-[var(--table-border)]'>
         <Table data-testid='prompts-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -181,7 +181,7 @@ export function PromptsTable({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && 'selected'}
-                  className='group/row table-row-hover rounded-xl border-0 !bg-[var(--table-background)] transition-all duration-200 ease-in-out'
+                  className='group/row'
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} className={`${cell.column.columnDef.meta?.className ?? ''} border-0 bg-inherit px-4 py-3`}>
@@ -233,7 +233,7 @@ export function PromptsTable({
                 <Button
                   variant='ghost'
                   size='icon'
-                  className='h-8 w-8 text-green-600 hover:bg-green-100 hover:text-green-700'
+                  className='h-8 w-8 text-(--success-soft-fg) hover:bg-success/10 hover:text-(--success-soft-fg)'
                   onClick={() => setOpen('bulkEnable')}
                   title={t('common.buttons.enable')}
                 >
@@ -242,7 +242,7 @@ export function PromptsTable({
                 <Button
                   variant='ghost'
                   size='icon'
-                  className='h-8 w-8 text-amber-600 hover:bg-amber-100 hover:text-amber-700'
+                  className='h-8 w-8 text-(--warning-soft-fg) hover:bg-warning/10 hover:text-(--warning-soft-fg)'
                   onClick={() => setOpen('bulkDisable')}
                   title={t('common.buttons.disable')}
                 >
@@ -251,7 +251,7 @@ export function PromptsTable({
                 <Button
                   variant='ghost'
                   size='icon'
-                  className='text-destructive h-8 w-8 hover:bg-red-100 hover:text-red-700'
+                  className='text-destructive h-8 w-8 hover:bg-destructive/10 hover:text-(--destructive-soft-fg)'
                   onClick={() => setOpen('bulkDelete')}
                   title={t('common.buttons.delete')}
                 >

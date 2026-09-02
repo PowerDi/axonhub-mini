@@ -56,11 +56,11 @@ export function ChannelsBulkDeleteDialog() {
       }
       desc={t('channels.dialogs.bulkDelete.description', { count: selectedCount })}
     >
-      <div className='flex items-start gap-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm dark:border-red-900 dark:bg-red-900/20'>
-        <IconTrash className='mt-0.5 h-4 w-4 text-red-600 dark:text-red-400' />
+      <div className='flex items-start gap-3 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm dark:border-destructive/40 dark:bg-destructive/20'>
+        <IconTrash className='mt-0.5 h-4 w-4 text-(--destructive-soft-fg) dark:text-(--destructive-soft-fg)' />
         <div className='space-y-1 text-left'>
-          <p className='font-semibold text-red-900 dark:text-red-100'>{t('channels.dialogs.bulkDelete.warning')}</p>
-          <p className='text-red-800 dark:text-red-200'>{t('channels.dialogs.bulkDelete.warningDetail')}</p>
+          <p className='font-semibold text-(--destructive-soft-fg) dark:text-(--destructive-soft-fg)'>{t('channels.dialogs.bulkDelete.warning')}</p>
+          <p className='text-(--destructive-soft-fg) dark:text-(--destructive-soft-fg)'>{t('channels.dialogs.bulkDelete.warningDetail')}</p>
         </div>
       </div>
     </ConfirmDialog>

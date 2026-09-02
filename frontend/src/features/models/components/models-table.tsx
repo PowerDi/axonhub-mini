@@ -28,6 +28,7 @@ import { PermissionGuard } from '@/components/permission-guard';
 import { useModelSettings } from '@/features/system/data/system';
 import { useModels } from '../context/models-context';
 import { Model } from '../data/schema';
+import { DeveloperLogo } from './model-icons';
 
 const MotionTableRow = motion.create(TableRow);
 
@@ -197,28 +198,24 @@ export function ModelsTable({
   }, [data, rowSelection]);
 
   return (
-    <div className='flex flex-1 flex-col overflow-hidden'>
-      <div className='mb-4 flex items-center justify-between'>
-        <div className='flex flex-1 items-center space-x-2'>
-          <Input
-            placeholder={t('models.filters.filterByName')}
-            value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
-            onChange={(event) => table.getColumn('name')?.setFilterValue(event.target.value)}
-            className='h-8 w-[150px] lg:w-[250px]'
-          />
-        </div>
-        <div className='flex items-center gap-2'>
+    <div className='flex flex-1 flex-col gap-3 overflow-hidden'>
+      {/* Toolbar: plate-less flex-wrap row (spec §3.5) — hierarchy comes from
+          whitespace and the table frame, not from a card container. */}
+      <div className='flex flex-wrap items-center gap-2 sm:gap-3'>
+        <Input
+          placeholder={t('models.filters.filterByName')}
+          value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
+          onChange={(event) => table.getColumn('name')?.setFilterValue(event.target.value)}
+          className='w-[200px] lg:w-[240px]'
+        />
+        <div className='ms-auto flex items-center gap-2 sm:gap-3'>
           {!loading && data.length > 0 && (
             <>
               <span className='text-muted-foreground text-sm'>
                 {t('models.groupedView.summary', { groups: groupedRows.size, models: totalCount ?? data.length })}
               </span>
-              <Button variant='outline' size='sm' className='h-8' onClick={toggleAllGroups}>
-                {allGroupsCollapsed ? (
-                  <IconChevronsDown className='mr-1 h-4 w-4' />
-                ) : (
-                  <IconChevronsUp className='mr-1 h-4 w-4' />
-                )}
+              <Button variant='outline' onClick={toggleAllGroups}>
+                {allGroupsCollapsed ? <IconChevronsDown className='size-4' /> : <IconChevronsUp className='size-4' />}
                 {allGroupsCollapsed ? t('models.groupedView.expandAll') : t('models.groupedView.collapseAll')}
               </Button>
             </>
@@ -226,18 +223,18 @@ export function ModelsTable({
         </div>
       </div>
 
-      <div className='shadow-soft relative mt-4 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
+      <div className='relative flex-1 overflow-auto rounded-lg border'>
         <div className='min-w-max'>
-        <Table data-testid='models-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
-          <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
+        <Table data-testid='models-table'>
+          <TableHeader className='sticky top-0 z-20'>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className='group/row border-0'>
+              <TableRow key={headerGroup.id} className='group/row'>
                 {headerGroup.headers.map((header) => {
                   return (
                     <TableHead
                       key={header.id}
                       colSpan={header.colSpan}
-                      className={`${header.column.columnDef.meta?.className ?? ''} text-muted-foreground border-0 text-xs font-semibold tracking-wider uppercase`}
+                      className={header.column.columnDef.meta?.className ?? ''}
                     >
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
@@ -246,7 +243,7 @@ export function ModelsTable({
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody className='space-y-1 !bg-[var(--table-background)] p-2'>
+          <TableBody>
             {loading ? (
               <TableSkeleton rows={15} columns={columns.length} />
             ) : groupedRows.size > 0 ? (
@@ -256,33 +253,31 @@ export function ModelsTable({
                 return (
                   <React.Fragment key={developer}>
                     {/* Developer group header */}
-                    <TableRow
-                      className='bg-muted/40 hover:bg-muted/60 cursor-pointer border-0 transition-colors'
-                      onClick={() => toggleGroup(developer)}
-                    >
-                      <TableCell colSpan={columns.length} className='border-0 px-4 py-2.5'>
+                    <TableRow className='bg-(--table-header) cursor-pointer' onClick={() => toggleGroup(developer)}>
+                      <TableCell colSpan={columns.length} className='px-2'>
                         <div className='flex items-center gap-2'>
                           {isCollapsed ? (
-                            <IconChevronRight className='h-4 w-4 shrink-0' />
+                            <IconChevronRight className='size-4 shrink-0' />
                           ) : (
-                            <IconChevronDown className='h-4 w-4 shrink-0' />
+                            <IconChevronDown className='size-4 shrink-0' />
                           )}
-                          <span className='text-sm font-semibold'>{getDeveloperLabel(developer)}</span>
-                          <Badge variant='secondary' className='text-xs'>
-                            {rows.length}
-                          </Badge>
+                          <DeveloperLogo developer={developer} />
+                          <span className='text-sm font-medium'>{getDeveloperLabel(developer)}</span>
+                          <span className='text-muted-foreground text-xs'>
+                            {t('models.groupedView.groupCount', { count: rows.length })}
+                          </span>
                           {canWrite ? (
                             <Button
                               variant='ghost'
                               size='sm'
-                              className='ml-auto h-7 px-2 text-xs'
+                              className='ms-auto h-7 px-2 text-xs'
                               onClick={(event) => {
                                 event.stopPropagation();
                                 setCurrentDeveloper(developer);
                                 setOpen('developerAssociation');
                               }}
                             >
-                              <IconLink className='mr-1 h-3.5 w-3.5' />
+                              <IconLink className='size-3.5' />
                               {t('models.actions.manageDeveloperAssociation')}
                               <Badge variant='secondary' className='ml-1 h-5 min-w-5 justify-center px-1 text-[10px]'>
                                 {developerRuleCount}
@@ -290,7 +285,7 @@ export function ModelsTable({
                             </Button>
                           ) : (
                             <div className='text-muted-foreground ml-auto flex items-center gap-1.5 text-xs'>
-                              <IconLink className='h-3.5 w-3.5' />
+                              <IconLink className='size-3.5' />
                               {t('models.actions.manageDeveloperAssociation')}
                               <Badge variant='secondary' className='h-5 min-w-5 justify-center px-1 text-[10px]'>
                                 {developerRuleCount}
@@ -310,10 +305,10 @@ export function ModelsTable({
                             <MotionTableRow
                               key={row.id}
                               data-state={row.getIsSelected() && 'selected'}
-                              className='group/row table-row-hover rounded-xl border-0 !bg-[var(--table-background)] transition-all duration-200 ease-in-out'
+                              className='group/row'
                             >
                               {row.getVisibleCells().map((cell) => (
-                                <TableCell key={cell.id} className={`${cell.column.columnDef.meta?.className ?? ''} border-0 bg-inherit px-4 py-3`}>
+                                <TableCell key={cell.id} className={cell.column.columnDef.meta?.className ?? ''}>
                                   {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                 </TableCell>
                               ))}
@@ -327,7 +322,7 @@ export function ModelsTable({
                                       animate={{ height: 'auto', opacity: 1 }}
                                       exit={{ height: 0, opacity: 0 }}
                                       transition={{ duration: 0.2, ease: 'easeInOut' }}
-                                      className='bg-muted/30 p-6 hover:bg-muted/50'
+                                      className='bg-muted/30 p-4'
                                     >
                                       <div className='space-y-6'>
                                     {/* Top Section: Basic Info (left) + Capabilities (right) */}
@@ -373,15 +368,15 @@ export function ModelsTable({
                                         <div className='space-y-2 text-sm'>
                                           <div className='flex items-center justify-between'>
                                             <span className='text-muted-foreground'>{t('models.modelCard.toolCall')}:</span>
-                                            <span>{modelCard?.toolCall ? <IconCheck className='h-4 w-4 text-green-600' /> : '-'}</span>
+                                            <span>{modelCard?.toolCall ? <IconCheck className='h-4 w-4 text-(--success-soft-fg)' /> : '-'}</span>
                                           </div>
                                           <div className='flex items-center justify-between'>
                                             <span className='text-muted-foreground'>{t('models.modelCard.vision')}:</span>
-                                            <span>{modelCard?.vision ? <IconCheck className='h-4 w-4 text-green-600' /> : '-'}</span>
+                                            <span>{modelCard?.vision ? <IconCheck className='h-4 w-4 text-(--success-soft-fg)' /> : '-'}</span>
                                           </div>
                                           <div className='flex items-center justify-between'>
                                             <span className='text-muted-foreground'>{t('models.modelCard.temperature')}:</span>
-                                            <span>{modelCard?.temperature ? <IconCheck className='h-4 w-4 text-green-600' /> : '-'}</span>
+                                            <span>{modelCard?.temperature ? <IconCheck className='h-4 w-4 text-(--success-soft-fg)' /> : '-'}</span>
                                           </div>
                                           {/* Reasoning grouped */}
                                           <div className='space-y-1'>
@@ -390,13 +385,13 @@ export function ModelsTable({
                                               <div className='flex items-center justify-between'>
                                                 <span className='text-muted-foreground text-xs'>{t('models.modelCard.reasoningSupported')}:</span>
                                                 <span>
-                                                  {modelCard?.reasoning?.supported ? <IconCheck className='h-4 w-4 text-green-600' /> : '-'}
+                                                  {modelCard?.reasoning?.supported ? <IconCheck className='h-4 w-4 text-(--success-soft-fg)' /> : '-'}
                                                 </span>
                                               </div>
                                               <div className='flex items-center justify-between'>
                                                 <span className='text-muted-foreground text-xs'>{t('models.modelCard.reasoningDefault')}:</span>
                                                 <span>
-                                                  {modelCard?.reasoning?.default ? <IconCheck className='h-4 w-4 text-green-600' /> : '-'}
+                                                  {modelCard?.reasoning?.default ? <IconCheck className='h-4 w-4 text-(--success-soft-fg)' /> : '-'}
                                                 </span>
                                               </div>
                                             </div>
@@ -515,8 +510,8 @@ export function ModelsTable({
                 );
               })
             ) : (
-              <TableRow className='!bg-[var(--table-background)]'>
-                <TableCell colSpan={columns.length} className='h-24 !bg-[var(--table-background)] text-center'>
+              <TableRow className='hover:bg-transparent'>
+                <TableCell colSpan={columns.length} className='h-24 text-center'>
                   {t('common.noData')}
                 </TableCell>
               </TableRow>
@@ -528,49 +523,49 @@ export function ModelsTable({
 
       {selectedCount > 0 && canWrite && (
         <div className='fixed bottom-6 left-1/2 z-50 -translate-x-1/2'>
-          <div className='flex items-center gap-2 rounded-lg border bg-[var(--table-background)] px-4 py-2 shadow-lg'>
-            <div className='bg-border mx-2 h-6 w-px' />
-            <Button variant='ghost' size='icon' className='h-8 w-8' onClick={() => setRowSelection({})}>
-              <IconX className='h-4 w-4' />
-            </Button>
-            <div className='flex items-center gap-1.5 px-2'>
-              <span className='bg-primary text-primary-foreground flex h-6 min-w-6 items-center justify-center rounded px-1.5 text-xs font-medium'>
+          <div className='bg-popover flex items-center gap-2 rounded-lg px-2 py-1.5 shadow-lg ring-1 ring-foreground/10'>
+            <div className='flex items-center gap-1.5 px-1'>
+              <Badge variant='secondary' className='tabular-nums'>
                 {selectedCount}
-              </span>
+              </Badge>
               <span className='text-muted-foreground text-sm'>{t('common.selected')}</span>
             </div>
-            <div className='bg-border mx-2 h-6 w-px' />
+            <div className='bg-border mx-1 h-6 w-px' />
             <PermissionGuard requiredScope='write_channels'>
               <>
                 <Button
                   variant='ghost'
-                  size='icon'
-                  className='h-8 w-8 text-green-600 hover:bg-green-100 hover:text-green-700'
+                  size='icon-sm'
+                  className='text-(--success-soft-fg) hover:bg-success/10'
                   onClick={() => setOpen('bulkEnable')}
                   title={t('common.buttons.enable')}
                 >
-                  <IconCheck className='h-4 w-4' />
+                  <IconCheck className='size-4' />
                 </Button>
                 <Button
                   variant='ghost'
-                  size='icon'
-                  className='h-8 w-8 text-amber-600 hover:bg-amber-100 hover:text-amber-700'
+                  size='icon-sm'
+                  className='text-(--warning-soft-fg) hover:bg-warning/10'
                   onClick={() => setOpen('bulkDisable')}
                   title={t('common.buttons.disable')}
                 >
-                  <IconBan className='h-4 w-4' />
+                  <IconBan className='size-4' />
                 </Button>
                 <Button
                   variant='ghost'
-                  size='icon'
-                  className='text-destructive h-8 w-8 hover:bg-red-100 hover:text-red-700'
+                  size='icon-sm'
+                  className='text-(--destructive-soft-fg) hover:bg-destructive/10'
                   onClick={() => setOpen('delete')}
                   title={t('common.buttons.delete')}
                 >
-                  <IconTrash className='h-4 w-4' />
+                  <IconTrash className='size-4' />
                 </Button>
               </>
             </PermissionGuard>
+            <div className='bg-border mx-1 h-6 w-px' />
+            <Button variant='ghost' size='icon-sm' onClick={() => setRowSelection({})}>
+              <IconX className='size-4' />
+            </Button>
           </div>
         </div>
       )}

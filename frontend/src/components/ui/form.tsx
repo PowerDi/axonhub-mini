@@ -117,10 +117,35 @@ function FormMessage({ className, ...props }: React.ComponentProps<'p'>) {
   }
 
   return (
-    <p data-slot='form-message' id={formMessageId} {...props} className={cn('text-destructive text-sm', className)}>
+    <p data-slot='form-message' id={formMessageId} role='alert' {...props} className={cn('text-destructive text-sm', className)}>
       {body}
     </p>
   );
 }
 
-export { useFormField, Form, FormItem, FormLabel, FormControl, FormDescription, FormMessage, FormField };
+/**
+ * Bordered switch row (spec §3.3): label + description on the left, Switch on
+ * the right — the standard pattern for settings-style form fields.
+ */
+function FormSwitchRow({
+  className,
+  label,
+  description,
+  children,
+  ...props
+}: React.ComponentProps<'div'> & {
+  label: React.ReactNode;
+  description?: React.ReactNode;
+}) {
+  return (
+    <FormItem data-slot='form-switch-row' className={cn('flex flex-row items-center justify-between gap-4 rounded-lg border p-3', className)} {...props}>
+      <div className='flex min-w-0 flex-col gap-0.5'>
+        <FormLabel>{label}</FormLabel>
+        {description ? <FormDescription>{description}</FormDescription> : null}
+      </div>
+      {children}
+    </FormItem>
+  );
+}
+
+export { useFormField, Form, FormItem, FormLabel, FormControl, FormDescription, FormMessage, FormField, FormSwitchRow };

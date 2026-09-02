@@ -2,40 +2,21 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 
 interface HeaderProps extends React.HTMLAttributes<HTMLElement> {
+  /** Kept for API compatibility — page heads are now in-flow (spec §4),
+   *  only the 56px app topbar stays fixed. */
   fixed?: boolean;
   ref?: React.Ref<HTMLElement>;
 }
 
-export const Header = ({ className, fixed, children, ...props }: HeaderProps) => {
-  const [offset, setOffset] = React.useState(0);
-
-  React.useEffect(() => {
-    const onScroll = () => {
-      setOffset(document.body.scrollTop || document.documentElement.scrollTop);
-    };
-
-    // Add scroll listener to the body
-    document.addEventListener('scroll', onScroll, { passive: true });
-
-    // Clean up the event listener on unmount
-    return () => document.removeEventListener('scroll', onScroll);
-  }, []);
-
+/** In-flow page head: calm title row, scrolls with content (spec §4). */
+export const Header = ({ className, fixed: _fixed, children, ...props }: HeaderProps) => {
   // Don't render if there's no children
   if (!children) {
     return null;
   }
 
   return (
-    <header
-      className={cn(
-        'bg-background flex h-16 items-center gap-3 p-4 sm:gap-4',
-        fixed && 'header-fixed peer/header fixed z-50 w-[inherit] rounded-md',
-        offset > 10 && fixed ? 'shadow-sm' : 'shadow-none',
-        className
-      )}
-      {...props}
-    >
+    <header className={cn('flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 pt-4', className)} {...props}>
       {children}
     </header>
   );

@@ -24,17 +24,17 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const ROLE_PILL_CLASSES: Record<string, string> = {
-  system: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
-  user: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
-  assistant: 'bg-green-500/10 text-green-600 dark:text-green-400',
-  tool: 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
+  system: 'bg-muted text-muted-foreground',
+  user: 'bg-info/10 text-(--info-soft-fg)',
+  assistant: 'bg-success/10 text-(--success-soft-fg)',
+  tool: 'bg-warning/10 text-(--warning-soft-fg)',
 };
 
-const ROLE_BORDER_CLASSES: Record<string, string> = {
-  system: 'border-purple-500/40',
-  user: 'border-blue-500/40',
-  assistant: 'border-green-500/40',
-  tool: 'border-orange-500/40',
+const ROLE_BUBBLE_CLASSES: Record<string, string> = {
+  system: 'border-border bg-muted/40 border-dashed',
+  user: 'bg-accent border-transparent',
+  assistant: 'bg-muted border-transparent',
+  tool: 'border-warning/40 bg-muted/30 border-l-4',
 };
 
 const ROLE_ICON: Record<string, string> = {
@@ -155,9 +155,9 @@ function ToolCallCard({ call, resultIndex, showArgs, jumpTo }: ToolCallCardProps
   const { t } = useTranslation();
   const [argsOpen, setArgsOpen] = useState(false);
   return (
-    <div className='border-purple-500/40 bg-muted/30 border-l-4 rounded-md border p-2.5 pl-3'>
+    <div className='border-info/40 bg-muted/30 border-l-4 rounded-md border p-2.5 pl-3'>
       <div className='flex flex-wrap items-center gap-2'>
-        <span className='font-mono text-[12.5px] font-semibold text-purple-600 dark:text-purple-400'>{call.name}</span>
+        <span className='text-(--info-soft-fg) font-mono text-[12.5px] font-semibold'>{call.name}</span>
         {call.id && <span className='text-muted-foreground font-mono text-[11px]'>{call.id}</span>}
         {resultIndex !== undefined && (
           <button
@@ -198,9 +198,9 @@ interface ToolResultCardProps {
 function ToolResultCard({ callIndex, content, jumpTo }: ToolResultCardProps) {
   const { t } = useTranslation();
   return (
-    <div className='border-orange-500/40 bg-muted/30 border-l-4 rounded-md border p-2.5 pl-3'>
+    <div className='border-warning/40 bg-muted/30 border-l-4 rounded-md border p-2.5 pl-3'>
       <div className='mb-1 flex flex-wrap items-center gap-2'>
-        <span className='text-[11px] font-semibold text-orange-600 dark:text-orange-400'>TOOL RESULT</span>
+        <span className='text-(--warning-soft-fg) text-[11px] font-semibold'>TOOL RESULT</span>
         {callIndex !== undefined && (
           <button
             type='button'
@@ -245,7 +245,7 @@ function MessageCard({
   const { t } = useTranslation();
   const role = message.role || 'tool';
   const pillClass = ROLE_PILL_CLASSES[role] || ROLE_PILL_CLASSES.tool;
-  const borderClass = ROLE_BORDER_CLASSES[role] || ROLE_BORDER_CLASSES.tool;
+  const bubbleClass = ROLE_BUBBLE_CLASSES[role] || ROLE_BUBBLE_CLASSES.tool;
 
   const headMeta: string[] = [];
   if (message.content && message.content.length) headMeta.push(`${fmtNum(message.content.length)} chars`);
@@ -266,8 +266,8 @@ function MessageCard({
   if (message.reasoning && showReasoning) {
     body = (
       <div className='space-y-2.5'>
-        <div className='border-amber-500/40 bg-amber-500/5 rounded-md border border-dashed p-2.5'>
-          <div className='mb-1 text-[11px] font-semibold tracking-wider text-amber-600 dark:text-amber-400'>◆ REASONING</div>
+        <div className='border-warning/40 bg-warning/5 rounded-md border border-dashed p-2.5'>
+          <div className='text-(--warning-soft-fg) mb-1 text-[11px] font-semibold tracking-wider'>◆ REASONING</div>
           <details className='group'>
             <summary className='text-muted-foreground cursor-pointer text-[11.5px] underline decoration-dotted underline-offset-2'>{t('requests.conversation.expandReasoning')}</summary>
             <CollapseBlock text={message.reasoning} expandAll={expandAll} className='mt-1.5' />
@@ -310,8 +310,9 @@ function MessageCard({
   if (!body) body = <span className='text-muted-foreground italic'>(empty)</span>;
 
   return (
-    <div id={`conv-msg-${message.index}`} className={cn('border-border bg-muted/20 overflow-hidden rounded-lg border', borderClass)}>
-      <div className='border-border flex flex-wrap items-center gap-2 border-b px-3 py-2'>
+    <div id={`conv-msg-${message.index}`} className={cn('overflow-hidden rounded-lg border', bubbleClass)}>
+      {/* foreground/15: one notch above border-border — solid bubble tints (accent/muted) halve the hairline contrast */}
+      <div className='border-foreground/15 flex flex-wrap items-center gap-2 border-b px-3 py-2'>
         <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 font-mono text-[11px]', pillClass)}>{ROLE_LABELS[role] || role}</span>
         <span className='text-muted-foreground font-mono text-[11px]'>#{message.index}</span>
         <div className='ml-auto flex flex-wrap items-center gap-1.5'>
@@ -326,7 +327,7 @@ function MessageCard({
         </div>
       </div>
       {rawOpen && (
-        <div className='border-border bg-muted/40 border-b px-3 py-2.5'>
+        <div className='border-foreground/15 bg-muted/40 border-b px-3 py-2.5'>
           <div className='text-muted-foreground mb-1 font-mono text-[10.5px]'>Raw JSON — message #{message.index}</div>
           <pre className='text-muted-foreground max-h-72 overflow-auto whitespace-pre-wrap break-words font-mono text-[11.5px] leading-relaxed'>
             {prettyJsonBlock(message.raw)}
@@ -355,8 +356,8 @@ function ToolCard({ tool }: ToolCardProps) {
         onClick={() => setOpen((v) => !v)}
         className='flex w-full cursor-pointer items-center gap-3 px-3.5 py-2.5 text-left'
       >
-        <Wrench className='text-cyan-600 dark:text-cyan-400 h-4 w-4 shrink-0' />
-        <span className='font-mono text-[13px] font-semibold text-cyan-700 dark:text-cyan-300'>{tool.name}</span>
+        <Wrench className='text-(--info-soft-fg) h-4 w-4 shrink-0' />
+        <span className='text-(--info-soft-fg) font-mono text-[13px] font-semibold'>{tool.name}</span>
         {tool.description && (
           <span className='text-muted-foreground min-w-0 flex-1 truncate text-xs'>
             {tool.description.replace(/\s+/g, ' ').slice(0, 140)}
@@ -370,7 +371,7 @@ function ToolCard({ tool }: ToolCardProps) {
         <div className='border-border border-t p-3.5'>
           {tool.description && <div className='text-muted-foreground mb-2.5 text-xs whitespace-pre-wrap'>{tool.description}</div>}
           <div className='text-muted-foreground mb-1 font-mono text-[10.5px]'>
-            Parameters (JSON Schema) · required: <span className='text-orange-600 dark:text-orange-400'>{required || '—'}</span>
+            Parameters (JSON Schema) · required: <span className='text-(--warning-soft-fg)'>{required || '—'}</span>
           </div>
           <pre className='bg-muted/40 border-border overflow-x-auto rounded-md border p-2.5 font-mono text-[11.5px] text-muted-foreground'>
             {prettyJsonBlock(tool.parameters)}
@@ -518,11 +519,11 @@ export function RequestConversationViewer({ body, format, className }: RequestCo
       <div className='border-border bg-muted/20 sticky top-0 z-10 rounded-lg border p-3 backdrop-blur'>
         <div className='flex flex-wrap items-center gap-2.5'>
           <div className='flex items-center gap-2'>
-            <span className='h-2.5 w-2.5 rounded-full bg-blue-500' />
+            <span className='bg-primary h-2.5 w-2.5 rounded-full' />
             <span className='text-sm font-semibold'>{t('requests.conversation.title')}</span>
           </div>
           {data.model && (
-            <span className='border-blue-500/40 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-full border px-2.5 py-0.5 font-mono text-[11.5px]'>
+            <span className='border-info/40 bg-info/10 text-(--info-soft-fg) rounded-full border px-2.5 py-0.5 font-mono text-[11.5px]'>
               {data.model}
             </span>
           )}
@@ -549,19 +550,19 @@ export function RequestConversationViewer({ body, format, className }: RequestCo
               ))}
             </select>
             <label className='text-muted-foreground flex cursor-pointer items-center gap-1.5 text-xs whitespace-nowrap'>
-              <input type='checkbox' className='accent-blue-500' checked={showReasoning} onChange={(e) => setShowReasoning(e.target.checked)} />
+              <input type='checkbox' className='accent-primary' checked={showReasoning} onChange={(e) => setShowReasoning(e.target.checked)} />
               {t('requests.conversation.toggleReasoning')}
             </label>
             <label className='text-muted-foreground flex cursor-pointer items-center gap-1.5 text-xs whitespace-nowrap'>
-              <input type='checkbox' className='accent-blue-500' checked={showToolArgs} onChange={(e) => setShowToolArgs(e.target.checked)} />
+              <input type='checkbox' className='accent-primary' checked={showToolArgs} onChange={(e) => setShowToolArgs(e.target.checked)} />
               {t('requests.conversation.toggleToolArgs')}
             </label>
             <label className='text-muted-foreground flex cursor-pointer items-center gap-1.5 text-xs whitespace-nowrap'>
-              <input type='checkbox' className='accent-blue-500' checked={showToolResult} onChange={(e) => setShowToolResult(e.target.checked)} />
+              <input type='checkbox' className='accent-primary' checked={showToolResult} onChange={(e) => setShowToolResult(e.target.checked)} />
               {t('requests.conversation.toggleToolResult')}
             </label>
             <label className='text-muted-foreground flex cursor-pointer items-center gap-1.5 text-xs whitespace-nowrap'>
-              <input type='checkbox' className='accent-blue-500' checked={showSystem} onChange={(e) => setShowSystem(e.target.checked)} />
+              <input type='checkbox' className='accent-primary' checked={showSystem} onChange={(e) => setShowSystem(e.target.checked)} />
               system
             </label>
             <Button variant='outline' size='sm' className='h-8 px-2.5 text-xs' onClick={() => setExpandAllContent((v) => !v)}>

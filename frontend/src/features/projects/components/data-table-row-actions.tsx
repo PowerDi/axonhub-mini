@@ -59,7 +59,7 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant='ghost' className='data-[state=open]:bg-muted flex h-8 w-8 p-0'>
+        <Button variant='ghost' size='icon-xs' className='data-[state=open]:bg-muted'>
           <DotsHorizontalIcon className='h-4 w-4' />
           <span className='sr-only'>{t('common.actions.openMenu')}</span>
         </Button>

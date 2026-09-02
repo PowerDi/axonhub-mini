@@ -28,7 +28,7 @@ export default function AnalyticsPage() {
   const { data: userStats, isLoading: isUserLoading } = useAnalyticsDimensionStats(filter, 'user');
 
   return (
-    <div className='flex-1 space-y-6 p-8 pt-6'>
+    <div className='flex flex-1 flex-col gap-6 p-6'>
       <Header />
       <Button onClick={() => navigate({ to: '/' })} variant='outline' className='self-start'>
         {t('dashboard.channelSuccessRates.backToDashboard')}

@@ -141,7 +141,7 @@ export default function ThreadsManagement() {
       <Header fixed>
         <div className='flex flex-1 items-center justify-between'>
           <div>
-            <h2 className='text-xl font-bold tracking-tight'>{t('threads.title')}</h2>
+            <h2 className='text-lg font-normal tracking-tight'>{t('threads.title')}</h2>
             <p className='text-muted-foreground text-sm'>{t('threads.description')}</p>
           </div>
         </div>

@@ -241,7 +241,7 @@ export function ChannelsBulkTestDialog() {
         case 'testing':
           return <Badge variant='secondary'>{t('channels.dialogs.bulkTest.testing')}</Badge>;
         case 'success':
-          return <Badge className='border-green-200 bg-green-100 text-green-800'>{t('channels.dialogs.bulkTest.success')}</Badge>;
+          return <Badge className='border-success/40 bg-success/10 text-(--success-soft-fg)'>{t('channels.dialogs.bulkTest.success')}</Badge>;
         case 'failed':
           return <Badge variant='destructive'>{t('channels.dialogs.bulkTest.failed')}</Badge>;
         case 'skipped':
@@ -267,23 +267,23 @@ export function ChannelsBulkTestDialog() {
 
         <div className='flex min-h-0 flex-1 flex-col'>
           <div className='grid shrink-0 gap-3 border-b pb-4 md:grid-cols-4'>
-            <div className='rounded-lg border bg-slate-50 p-3'>
+            <div className='rounded-lg border bg-muted p-3'>
               <div className='text-muted-foreground text-xs'>{t('channels.dialogs.bulkTest.progress', { completed: completedCount, total: selectedChannels.length })}</div>
               <div className='mt-1 text-lg font-semibold'>
                 {completedCount}/{selectedChannels.length}
               </div>
             </div>
-            <div className='rounded-lg border bg-green-50 p-3'>
-              <div className='text-xs text-green-700'>{t('channels.dialogs.bulkTest.summary.success', { count: successCount })}</div>
-              <div className='mt-1 text-lg font-semibold text-green-800'>{successCount}</div>
+            <div className='rounded-lg border bg-success/10 p-3'>
+              <div className='text-xs text-(--success-soft-fg)'>{t('channels.dialogs.bulkTest.summary.success', { count: successCount })}</div>
+              <div className='mt-1 text-lg font-semibold text-(--success-soft-fg)'>{successCount}</div>
             </div>
-            <div className='rounded-lg border bg-red-50 p-3'>
-              <div className='text-xs text-red-700'>{t('channels.dialogs.bulkTest.summary.failed', { count: failedCount })}</div>
-              <div className='mt-1 text-lg font-semibold text-red-800'>{failedCount}</div>
+            <div className='rounded-lg border bg-destructive/10 p-3'>
+              <div className='text-xs text-(--destructive-soft-fg)'>{t('channels.dialogs.bulkTest.summary.failed', { count: failedCount })}</div>
+              <div className='mt-1 text-lg font-semibold text-(--destructive-soft-fg)'>{failedCount}</div>
             </div>
-            <div className='rounded-lg border bg-amber-50 p-3'>
-              <div className='text-xs text-amber-700'>{t('channels.dialogs.bulkTest.summary.skipped', { count: skippedCount })}</div>
-              <div className='mt-1 text-lg font-semibold text-amber-800'>{skippedCount}</div>
+            <div className='rounded-lg border bg-warning/10 p-3'>
+              <div className='text-xs text-(--warning-soft-fg)'>{t('channels.dialogs.bulkTest.summary.skipped', { count: skippedCount })}</div>
+              <div className='mt-1 text-lg font-semibold text-(--warning-soft-fg)'>{skippedCount}</div>
             </div>
           </div>
 
@@ -331,10 +331,10 @@ export function ChannelsBulkTestDialog() {
                             </div>
                           ) : result?.error ? (
                             <div className='max-w-full overflow-hidden'>
-                              <ErrorDisplay error={result.error} messageClassName='block max-w-full break-all text-xs font-medium text-red-600 whitespace-pre-wrap' />
+                              <ErrorDisplay error={result.error} messageClassName='block max-w-full break-all text-xs font-medium text-(--destructive-soft-fg) whitespace-pre-wrap' />
                             </div>
                           ) : result?.status === 'success' ? (
-                            <span className='block truncate text-xs text-green-700'>{t('channels.dialogs.bulkTest.success')}</span>
+                            <span className='block truncate text-xs text-(--success-soft-fg)'>{t('channels.dialogs.bulkTest.success')}</span>
                           ) : (
                             <span className='text-muted-foreground block truncate text-xs'>-</span>
                           )}

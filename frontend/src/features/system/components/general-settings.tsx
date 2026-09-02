@@ -123,10 +123,6 @@ export function GeneralSettings() {
   return (
     <div className='space-y-6'>
       <Card>
-        <CardHeader>
-          <CardTitle>{t('system.general.title')}</CardTitle>
-          <CardDescription>{t('system.general.description')}</CardDescription>
-        </CardHeader>
         <CardContent className='space-y-6'>
           <div className='space-y-2'>
             <Label htmlFor='currency-code'>{t('system.general.currencyCode.label')}</Label>

@@ -211,7 +211,7 @@ function SegmentNode({ data, selected }: NodeProps<SegmentFlowNode>) {
       <Handle type='target' position={Position.Top} className='!bg-border !h-2 !w-2' />
       <div
         className={cn(
-          'bg-card border-border/60 rounded-lg border shadow-sm transition-shadow',
+          'bg-card border-border/60 rounded-lg border transition-shadow',
           selected && 'ring-primary/40 ring-2'
         )}
         style={{ borderLeftWidth: 3, borderLeftColor: data.borderColor, width: NODE_WIDTH }}
@@ -263,7 +263,7 @@ function SegmentNode({ data, selected }: NodeProps<SegmentFlowNode>) {
                     variant='outline'
                     className={cn(
                       'ml-auto h-4 px-1 text-[9px]',
-                      info.kind === 'request' ? 'text-blue-500 border-blue-500/30' : 'text-green-500 border-green-500/30'
+                      info.kind === 'request' ? 'text-(--info-soft-fg) border-info/40' : 'text-(--success-soft-fg) border-success/40'
                     )}
                   >
                     {info.kind === 'request' ? 'REQ' : 'RES'}
@@ -304,7 +304,7 @@ function TraceFlowTimelineInner({ trace, onSelectSpan, selectedSpanId, isFullscr
   return (
     <div className='flex h-full flex-col'>
       <div className='border-border/60 mb-2 border-b pb-2'>
-        <h2 className='text-lg font-semibold'>{t('traces.flowTimeline.title')}</h2>
+        <h2 className='text-base font-medium'>{t('traces.flowTimeline.title')}</h2>
       </div>
       <div
         className={cn(

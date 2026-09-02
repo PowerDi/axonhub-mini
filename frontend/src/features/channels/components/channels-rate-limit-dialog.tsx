@@ -229,7 +229,7 @@ export function ChannelsRateLimitDialog({ open, onOpenChange, currentRow }: Prop
                         </FormControl>
                         <FormDescription>{t('channels.dialogs.rateLimit.fields.queueSize.description')}</FormDescription>
                         {showUnboundedQueueHint && (
-                          <div className='mt-1 flex items-start gap-2 rounded-md border border-blue-300 bg-blue-50 p-2 text-xs text-blue-900 dark:border-blue-700/50 dark:bg-blue-950/40 dark:text-blue-200'>
+                          <div className='mt-1 flex items-start gap-2 rounded-md border border-info/40 bg-info/10 p-2 text-xs text-(--info-soft-fg) dark:border-info/40 dark:bg-info/40 dark:text-(--info-soft-fg)'>
                             <Info className='mt-0.5 h-3.5 w-3.5 shrink-0' />
                             <span>{t('channels.dialogs.rateLimit.hints.unboundedQueue')}</span>
                           </div>

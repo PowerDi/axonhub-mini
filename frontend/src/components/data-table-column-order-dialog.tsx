@@ -27,14 +27,14 @@ function SortableColumnRow({ id, label }: SortableColumnRowProps) {
   };
 
   return (
-    <div ref={setNodeRef} style={style} className='flex items-center gap-3 rounded-lg border bg-background p-3'>
+    <div ref={setNodeRef} style={style} className='flex items-center gap-3 rounded-md bg-muted/40 px-3 py-2 transition-colors hover:bg-muted'>
       <button
         {...attributes}
         {...listeners}
-        className='cursor-grab text-muted-foreground hover:text-foreground active:cursor-grabbing'
+        className='text-muted-foreground hover:text-foreground active:cursor-grabbing cursor-grab'
         aria-label={t('common.dragToReorder', { label })}
       >
-        <GripVertical className='h-5 w-5' />
+        <GripVertical className='size-4' />
       </button>
       <span className='flex-1 truncate text-sm font-medium'>{label}</span>
     </div>
@@ -117,7 +117,7 @@ export function DataTableColumnOrderDialog<TData>({
         <div className='max-h-[60vh] overflow-y-auto py-2'>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={items} strategy={verticalListSortingStrategy}>
-              <div className='flex flex-col gap-2'>
+              <div className='flex flex-col gap-1.5'>
                 {items.map((id) => (
                   <SortableColumnRow key={id} id={id} label={labelOf(id)} />
                 ))}

@@ -12,7 +12,7 @@ export function AppSidebar({ sidebarData, ...props }: IProps) {
   const { isMobile } = useSidebar();
 
   return (
-    <Sidebar collapsible='icon' variant='floating' {...props}>
+    <Sidebar collapsible='icon' variant='inset' {...props}>
       <SidebarContent>
         {sidebarData.navGroups.map((props) => (
           <NavGroup key={props.title} {...props} />

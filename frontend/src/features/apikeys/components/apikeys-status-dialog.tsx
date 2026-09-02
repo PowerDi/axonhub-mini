@@ -36,8 +36,8 @@ export function ApiKeysStatusDialog() {
       handleConfirm={handleStatusChange}
       disabled={updateApiKeyStatus.isPending}
       title={
-        <span className={isDisabling ? 'text-destructive' : 'text-green-600'}>
-          <IconAlertTriangle className={`${isDisabling ? 'stroke-destructive' : 'stroke-green-600'} mr-1 inline-block`} size={18} />
+        <span className={isDisabling ? 'text-destructive' : 'text-(--success-soft-fg)'}>
+          <IconAlertTriangle className={`${isDisabling ? 'stroke-destructive' : 'stroke-success'} mr-1 inline-block`} size={18} />
           {isDisabling ? t('apikeys.dialogs.status.disableTitle') : t('apikeys.dialogs.status.enableTitle')}
         </span>
       }

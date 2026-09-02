@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormSwitchRow } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
@@ -201,7 +201,7 @@ export function ChannelsProxyDialog({ open, onOpenChange, currentRow }: Props) {
         <div className='space-y-6'>
           <Card>
             <CardHeader>
-              <CardTitle className='text-lg'>{t('channels.dialogs.proxy.config.title')}</CardTitle>
+              <CardTitle>{t('channels.dialogs.proxy.config.title')}</CardTitle>
               <CardDescription>{t('channels.dialogs.proxy.config.description')}</CardDescription>
             </CardHeader>
             <CardContent>
@@ -298,15 +298,14 @@ export function ChannelsProxyDialog({ open, onOpenChange, currentRow }: Props) {
                         control={form.control}
                         name='disableConnectionReuse'
                         render={({ field }) => (
-                          <FormItem className='flex flex-row items-center justify-between gap-4 rounded-md border p-3'>
-                            <div className='space-y-0.5'>
-                              <FormLabel>{t('channels.dialogs.proxy.fields.disableConnectionReuse.label')}</FormLabel>
-                              <FormDescription>{t('channels.dialogs.proxy.fields.disableConnectionReuse.description')}</FormDescription>
-                            </div>
+                          <FormSwitchRow
+                            label={t('channels.dialogs.proxy.fields.disableConnectionReuse.label')}
+                            description={t('channels.dialogs.proxy.fields.disableConnectionReuse.description')}
+                          >
                             <FormControl>
                               <Switch checked={field.value} onCheckedChange={field.onChange} />
                             </FormControl>
-                          </FormItem>
+                          </FormSwitchRow>
                         )}
                       />
                     </>
@@ -326,9 +325,9 @@ export function ChannelsProxyDialog({ open, onOpenChange, currentRow }: Props) {
 
           {/* Test Result Card */}
           {testResult && (
-            <Card className={testResult.success ? 'border-green-200' : 'border-red-200'}>
+            <Card className={testResult.success ? 'border-success/40' : 'border-destructive/40'}>
               <CardHeader>
-                <CardTitle className={`text-lg ${testResult.success ? 'text-green-800' : 'text-red-800'}`}>
+                <CardTitle className={testResult.success ? 'text-(--success-soft-fg)' : 'text-(--destructive-soft-fg)'}>
                   {testResult.success ? t('channels.dialogs.proxy.testSuccess') : t('channels.dialogs.proxy.testFailed')}
                 </CardTitle>
               </CardHeader>

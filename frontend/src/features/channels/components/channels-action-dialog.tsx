@@ -217,10 +217,10 @@ const FetchedModelItem = memo(
     <div
       className={`flex items-center gap-2 rounded-md p-2 text-sm transition-colors ${
         isAdded && !isSelected
-          ? 'bg-muted/50 text-muted-foreground'
+          ? 'text-muted-foreground bg-muted/50'
           : isSelected
             ? 'bg-primary/10 border-primary/30 border'
-            : 'hover:bg-accent cursor-pointer'
+            : 'hover:bg-muted cursor-pointer'
       }`}
     >
       <Checkbox checked={isSelected} onCheckedChange={onToggle} />
@@ -251,7 +251,7 @@ FetchedModelItem.displayName = 'FetchedModelItem';
 
 // Memoized SupportedModelItem component
 const SupportedModelItem = memo(({ model, isManual, onRemove }: { model: string; isManual: boolean; onRemove: () => void }) => (
-  <div className='hover:bg-accent flex items-center gap-2 rounded-md p-2 text-sm'>
+  <div className='hover:bg-muted flex items-center gap-2 rounded-md p-2 text-sm'>
     <Tooltip>
       <TooltipTrigger asChild>
         <span className='w-0 flex-1 cursor-help truncate'>{model}</span>
@@ -261,7 +261,7 @@ const SupportedModelItem = memo(({ model, isManual, onRemove }: { model: string;
       </TooltipContent>
     </Tooltip>
     <ManualModelBadge isManual={isManual} />
-    <Button type='button' variant='ghost' size='sm' className='hover:text-destructive h-6 w-6 shrink-0 p-0' onClick={onRemove}>
+    <Button type='button' variant='ghost' size='icon-xs' className='text-(--destructive-soft-fg) hover:bg-destructive/10 shrink-0' onClick={onRemove}>
       <X className='h-3 w-3' />
     </Button>
   </div>
@@ -1134,7 +1134,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const renderOAuthSection = useCallback(
     (oauth: ReturnType<typeof useOAuthFlow>, description: string) => (
       <div className='mt-3 space-y-2'>
-        <div className='rounded-md border p-3'>
+        <div className='rounded-lg border p-3'>
           <div className='flex flex-wrap items-center gap-2'>
             <Button type='button' variant='secondary' onClick={oauth.start} disabled={oauth.isStarting}>
               {oauth.isStarting ? t('channels.dialogs.oauth.buttons.starting') : t('channels.dialogs.oauth.buttons.startOAuth')}
@@ -1173,7 +1173,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             </Button>
           </div>
 
-          <p className='mt-2 text-xs text-amber-600 dark:text-amber-400'>{t('channels.dialogs.proxy.oauthHint')}</p>
+          <p className='text-(--warning-soft-fg) mt-2 text-xs'>{t('channels.dialogs.proxy.oauthHint')}</p>
           <p className='text-muted-foreground mt-2 text-xs'>{description}</p>
         </div>
       </div>
@@ -1797,7 +1797,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               className={`flex min-h-0 flex-1 flex-col overflow-hidden py-1 transition-all duration-300 ${showFetchedModelsPanel || showSupportedModelsPanel || showApiKeysPanel ? 'pr-2' : 'pr-0'}`}
             >
               <Form {...form}>
-                <form id='channel-form' onSubmit={form.handleSubmit(onSubmit)} className='flex min-h-0 flex-1 flex-col space-y-6 p-0.5'>
+                <form id='channel-form' onSubmit={form.handleSubmit(onSubmit)} className='flex min-h-0 flex-1 flex-col space-y-5 p-0.5'>
                   {/* Provider Selection - Left Side */}
                   <div className='flex min-h-0 flex-1 flex-col gap-4 overflow-hidden md:flex-row md:gap-6'>
                     <div className='flex max-h-48 min-h-0 w-full flex-shrink-0 flex-col md:max-h-none md:w-60'>
@@ -1827,9 +1827,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   className={`flex items-center space-x-3 rounded-lg border p-3 transition-colors shrink-0 md:w-full ${
                                     isProviderDisabled
                                       ? isSelected
-                                        ? 'border-primary bg-muted/80 cursor-not-allowed shadow-sm'
+                                        ? 'border-primary bg-accent cursor-not-allowed'
                                         : 'cursor-not-allowed opacity-60'
-                                      : (isSelected ? 'border-primary bg-accent/40 shadow-sm' : '') + ' hover:bg-accent/50'
+                                      : (isSelected ? 'border-primary bg-accent' : '') + ' hover:bg-muted'
                                   }`}
                                 >
                                   <RadioGroupItem
@@ -1853,7 +1853,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                     </div>
 
                     {/* Right Side - Form Fields */}
-                    <div className='flex-1 space-y-6 overflow-y-auto md:pr-4'>
+                    <div className='flex-1 space-y-5 overflow-y-auto md:pr-4'>
                       {selectedProvider !== 'jina' && selectedProvider !== 'codex' && selectedProvider !== 'claudecode' && (
                         <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
                           <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
@@ -2021,7 +2021,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   </Button>
                                 </div>
 
-                                <p className='mt-2 text-xs text-amber-600 dark:text-amber-400'>{t('channels.dialogs.proxy.oauthHint')}</p>
+                                <p className='text-(--warning-soft-fg) mt-2 text-xs'>{t('channels.dialogs.proxy.oauthHint')}</p>
                                 <p className='text-muted-foreground mt-2 text-xs'>
                                   {t('channels.dialogs.fields.apiFormat.antigravity.description')}
                                 </p>
@@ -2179,7 +2179,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               </Tabs>
 
                               {isCodexType && authMode === 'auth-json' && (
-                                <div className='rounded-md border p-3'>
+                                <div className='rounded-lg border p-3'>
                                   <div className='space-y-2'>
                                     <FormLabel className='text-sm font-medium'>{t('channels.dialogs.codexAuthJson.label')}</FormLabel>
                                     <Textarea
@@ -2219,7 +2219,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           <div className='col-span-2' />
                           <div className='space-y-4 md:col-span-6'>
                             {renderOAuthSection(xaiOAuth, t('channels.dialogs.fields.apiFormat.xaiSubscription.description'))}
-                            <div className='rounded-md border p-3'>
+                            <div className='rounded-lg border p-3'>
                               <div className='space-y-2'>
                                 <FormLabel htmlFor='xai-sso-token' className='text-sm font-medium'>
                                   {t('channels.dialogs.xaiSso.label')}
@@ -2339,8 +2339,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                         <Button
                                           type='button'
                                           variant='ghost'
-                                          size='sm'
-                                          className='h-7 w-7 p-0'
+                                          size='icon-sm'
                                           onClick={() => {
                                             const next = !showApiKey;
                                             setShowApiKey(next);
@@ -2357,13 +2356,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                             }
                                           }}
                                         >
-                                          {showApiKey ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
+                                          {showApiKey ? <EyeOff className='size-4' /> : <Eye className='size-4' />}
                                         </Button>
                                         <Button
                                           type='button'
                                           variant='ghost'
-                                          size='sm'
-                                          className='h-7 w-7 p-0'
+                                          size='icon-sm'
                                           onClick={() => {
                                             const keys = field.value || [];
                                             if (keys.length > 0) {
@@ -2500,8 +2498,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               <Button
                                 type='button'
                                 variant='ghost'
-                                size='sm'
-                                className='h-6 px-2 text-xs'
+                                size='xs'
                                 onClick={() => {
                                   setShowSupportedModelsPanel(true);
                                   setShowFetchedModelsPanel(false);
@@ -2728,7 +2725,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             </SelectContent>
                           </Select>
                           {passThroughBody === true && (
-                            <p className='text-xs text-amber-600 dark:text-amber-400'>{t('channels.dialogs.bodyPassThrough.warning')}</p>
+                            <p className='text-xs text-(--warning-soft-fg) dark:text-(--warning-soft-fg)'>{t('channels.dialogs.bodyPassThrough.warning')}</p>
                           )}
                         </div>
                       </FormItem>
@@ -2854,7 +2851,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               >
                 <div className='mb-3 flex items-center justify-between'>
                   <h3 className='text-sm font-semibold'>{t('channels.dialogs.fields.supportedModels.fetchedModelsLabel')}</h3>
-                  <Button type='button' variant='ghost' size='sm' className='h-6 w-6 p-0' onClick={closeFetchedModelsPanel}>
+                  <Button type='button' variant='ghost' size='icon-xs' onClick={closeFetchedModelsPanel}>
                     <ChevronLeft className='h-4 w-4' />
                   </Button>
                 </div>
@@ -2888,17 +2885,17 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                     )}
                   </div>
                   <div className='flex gap-1'>
-                    <Button type='button' variant='outline' size='sm' className='h-6 px-2 text-xs' onClick={selectAllFilteredModels}>
+                    <Button type='button' variant='outline' size='xs' onClick={selectAllFilteredModels}>
                       {t('channels.dialogs.buttons.selectAll')}
                     </Button>
-                    <Button type='button' variant='outline' size='sm' className='h-6 px-2 text-xs' onClick={deselectAllFetchedModels}>
+                    <Button type='button' variant='outline' size='xs' onClick={deselectAllFetchedModels}>
                       {t('channels.dialogs.buttons.deselectAll')}
                     </Button>
                   </div>
                 </div>
 
                 {/* Model List */}
-                <div ref={fetchedModelsParentRef} className='min-h-0 flex-1 overflow-auto pr-3'>
+                <div ref={fetchedModelsParentRef} className='min-h-0 flex-1 overflow-auto rounded-lg border p-1'>
                   <div
                     style={{
                       height: `${fetchedModelsVirtualizer.getTotalSize()}px`,
@@ -2970,8 +2967,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 className={`flex h-full min-h-0 flex-col transition-opacity duration-200 ${showApiKeysPanel ? 'opacity-100' : 'pointer-events-none absolute opacity-0'}`}
               >
                 <div className='mb-3 flex items-center justify-between'>
-                  <h3 className='text-sm font-semibold'>{t('channels.dialogs.fields.apiKey.panelTitle', { count: apiKeysCount })}</h3>
-                  <Button type='button' variant='ghost' size='sm' className='h-6 w-6 p-0' onClick={closeApiKeysPanel}>
+                  <h3 className='text-sm font-medium'>{t('channels.dialogs.fields.apiKey.panelTitle', { count: apiKeysCount })}</h3>
+                  <Button type='button' variant='ghost' size='icon-xs' onClick={closeApiKeysPanel}>
                     <ChevronLeft className='h-4 w-4' />
                   </Button>
                 </div>
@@ -3009,7 +3006,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           const masked = key.length > 8 ? `${key.slice(0, 4)}****${key.slice(-4)}` : `****${key.slice(-4)}`;
 
                           return (
-                            <div key={key} className='hover:bg-accent flex items-center justify-between gap-2 rounded-md p-2 text-sm'>
+                            <div key={key} className='hover:bg-muted flex items-center justify-between gap-2 rounded-md p-2 text-sm'>
                               <div className='flex min-w-0 items-center gap-2'>
                                 <Checkbox
                                   checked={isSelected}
@@ -3052,8 +3049,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                       onOpenChange={(isOpen) => setConfirmDisableKey(isOpen ? key : null)}
                                     >
                                       <PopoverTrigger asChild>
-                                        <Button type='button' variant='ghost' size='sm' className='h-7 w-7 p-0'>
-                                          <RefreshCw className='h-4 w-4' />
+                                        <Button type='button' variant='ghost' size='icon-sm'>
+                                          <RefreshCw className='size-4' />
                                         </Button>
                                       </PopoverTrigger>
                                       <PopoverContent className='w-72'>
@@ -3081,7 +3078,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                     <Tooltip>
                                       <TooltipTrigger asChild>
                                         <span className='inline-flex'>
-                                          <Button type='button' variant='ghost' size='sm' className='text-muted-foreground h-7 w-7 p-0' disabled>
+                                          <Button type='button' variant='ghost' size='icon-sm' className='text-muted-foreground' disabled>
                                             <Ban className='h-4 w-4' />
                                           </Button>
                                         </span>
@@ -3096,7 +3093,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                       onOpenChange={(isOpen) => setConfirmDisableKey(isOpen ? key : null)}
                                     >
                                       <PopoverTrigger asChild>
-                                        <Button type='button' variant='ghost' size='sm' className='text-orange-500 h-7 w-7 p-0' disabled={disableAPIKey.isPending || isFetchingDisabledKeys}>
+                                        <Button type='button' variant='ghost' size='icon-sm' className='text-(--warning-soft-fg) hover:bg-warning/10' disabled={disableAPIKey.isPending || isFetchingDisabledKeys}>
                                           <Ban className='h-4 w-4' />
                                         </Button>
                                       </PopoverTrigger>
@@ -3132,11 +3129,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                         <Button
                                           type='button'
                                           variant='ghost'
-                                          size='sm'
-                                          className='text-muted-foreground h-7 w-7 p-0'
+                                          size='icon-sm'
+                                          className='text-muted-foreground'
                                           disabled
                                         >
-                                          <Trash2 className='h-4 w-4' />
+                                          <Trash2 className='size-4' />
                                         </Button>
                                       </span>
                                     </TooltipTrigger>
@@ -3150,8 +3147,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                     onOpenChange={(isOpen) => setConfirmRemoveKey(isOpen ? key : null)}
                                   >
                                     <PopoverTrigger asChild>
-                                      <Button type='button' variant='ghost' size='sm' className='text-destructive h-7 w-7 p-0'>
-                                        <Trash2 className='h-4 w-4' />
+                                      <Button type='button' variant='ghost' size='icon-sm' className='text-(--destructive-soft-fg) hover:bg-destructive/10'>
+                                        <Trash2 className='size-4' />
                                       </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className='w-72'>
@@ -3227,10 +3224,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               >
                 <div className='mb-3 flex items-center justify-between'>
                   <div className='flex items-center gap-2'>
-                    <Button type='button' variant='ghost' size='sm' className='h-6 w-6 p-0' onClick={closeSupportedModelsPanel}>
-                      <PanelLeft className='h-4 w-4' />
+                    <Button type='button' variant='ghost' size='icon-xs' onClick={closeSupportedModelsPanel}>
+                      <PanelLeft className='size-4' />
                     </Button>
-                    <h3 className='text-sm font-semibold'>
+                    <h3 className='text-sm font-medium'>
                       {manualModels.length > 0
                         ? t('channels.dialogs.fields.supportedModels.allModelsWithManual', {
                             autoCount: Math.max(0, supportedModels.length - manualModels.length),
@@ -3241,8 +3238,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                   </div>
                   <Popover open={showClearAllPopover} onOpenChange={setShowClearAllPopover}>
                     <PopoverTrigger asChild>
-                      <Button type='button' variant='ghost' size='sm' className='h-6 w-6 p-0' disabled={supportedModels.length === 0}>
-                        <X className='h-4 w-4' />
+                      <Button type='button' variant='ghost' size='icon-xs' disabled={supportedModels.length === 0}>
+                        <X className='size-4' />
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className='border-destructive/50 bg-background w-80' align='end'>

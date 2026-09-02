@@ -82,7 +82,7 @@ export default function UsersManagement() {
       <Header fixed>
         <div className='flex flex-1 items-center justify-between'>
           <div>
-            <h2 className='text-xl font-bold tracking-tight'>{t('projectUsers.title')}</h2>
+            <h2 className='text-lg font-normal tracking-tight'>{t('projectUsers.title')}</h2>
             <p className='text-sm text-muted-foreground'>{t('projectUsers.description')}</p>
           </div>
           <UsersPrimaryButtons />

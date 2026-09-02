@@ -294,6 +294,7 @@
   "models.groupedView.expandAll": "Expand All",
   "models.groupedView.collapseAll": "Collapse All",
   "models.groupedView.summary": "{{groups}} developers · {{models}} models",
+  "models.groupedView.groupCount": "{{count}} model(s)",
   "models.onboarding.steps.settingsButton.title": "Model Settings",
   "models.onboarding.steps.settingsButton.description": "Click here to access global model settings. Let's explore what you can configure."
 }

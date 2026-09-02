@@ -15,6 +15,7 @@ import {
 } from '@tanstack/react-table';
 import { IconBan, IconCheck, IconTrash, IconX } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -127,28 +128,26 @@ export function RulesTable({
   }, [data, rowSelection]);
 
   return (
-    <div className='flex flex-1 flex-col overflow-hidden'>
-      <div className='mb-4 flex items-center justify-between'>
-        <div className='flex flex-1 items-center space-x-2'>
-          <Input
-            placeholder={t('promptProtectionRules.filters.filterByName')}
-            value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
-            onChange={(event) => table.getColumn('name')?.setFilterValue(event.target.value)}
-            className='h-8 w-[150px] lg:w-[250px]'
-          />
-        </div>
+    <div className='flex flex-1 flex-col gap-3 overflow-hidden'>
+      <div className='flex flex-wrap items-center gap-2 sm:gap-3'>
+        <Input
+          placeholder={t('promptProtectionRules.filters.filterByName')}
+          value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
+          onChange={(event) => table.getColumn('name')?.setFilterValue(event.target.value)}
+          className='w-[200px] lg:w-[240px]'
+        />
       </div>
 
-      <div className='shadow-soft relative mt-4 flex-1 overflow-auto rounded-2xl border border-[var(--table-border)]'>
-        <Table className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
-          <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
+      <div className='relative flex-1 overflow-auto rounded-lg border'>
+        <Table>
+          <TableHeader className='sticky top-0 z-20'>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className='group/row border-0'>
+              <TableRow key={headerGroup.id} className='group/row'>
                 {headerGroup.headers.map((header) => (
                   <TableHead
                     key={header.id}
                     colSpan={header.colSpan}
-                    className={`${header.column.columnDef.meta?.className ?? ''} text-muted-foreground border-0 text-xs font-semibold tracking-wider uppercase`}
+                    className={header.column.columnDef.meta?.className ?? ''}
                   >
                     {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
@@ -156,22 +155,22 @@ export function RulesTable({
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody className='space-y-1 !bg-[var(--table-background)] p-2'>
+          <TableBody>
             {loading ? (
               <TableSkeleton rows={pageSize} columns={columns.length} />
             ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'} className='group/row table-row-hover rounded-xl border-0 !bg-[var(--table-background)] transition-all duration-200 ease-in-out'>
+                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'} className='group/row'>
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className={`${cell.column.columnDef.meta?.className ?? ''} border-0 bg-inherit px-4 py-3`}>
+                    <TableCell key={cell.id} className={cell.column.columnDef.meta?.className ?? ''}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
-              <TableRow className='!bg-[var(--table-background)]'>
-                <TableCell colSpan={columns.length} className='h-24 !bg-[var(--table-background)] text-center'>
+              <TableRow className='hover:bg-transparent'>
+                <TableCell colSpan={columns.length} className='h-24 text-center'>
                   {t('common.noData')}
                 </TableCell>
               </TableRow>
@@ -180,7 +179,7 @@ export function RulesTable({
         </Table>
       </div>
 
-      <div className='mt-4 flex-shrink-0'>
+      <div className='flex-shrink-0'>
         <ServerSidePagination
           pageInfo={pageInfo}
           pageSize={pageSize}
@@ -195,31 +194,31 @@ export function RulesTable({
 
       {selectedCount > 0 && canWrite && (
         <div className='fixed bottom-6 left-1/2 z-50 -translate-x-1/2'>
-          <div className='flex items-center gap-2 rounded-lg border bg-[var(--table-background)] px-4 py-2 shadow-lg'>
-            <div className='bg-border mx-2 h-6 w-px' />
-            <Button variant='ghost' size='icon' className='h-8 w-8' onClick={() => setRowSelection({})}>
-              <IconX className='h-4 w-4' />
-            </Button>
-            <div className='flex items-center gap-1.5 px-2'>
-              <span className='bg-primary text-primary-foreground flex h-6 min-w-6 items-center justify-center rounded px-1.5 text-xs font-medium'>
+          <div className='bg-popover flex items-center gap-2 rounded-lg px-2 py-1.5 shadow-lg ring-1 ring-foreground/10'>
+            <div className='flex items-center gap-1.5 px-1'>
+              <Badge variant='secondary' className='tabular-nums'>
                 {selectedCount}
-              </span>
+              </Badge>
               <span className='text-muted-foreground text-sm'>{t('common.selected')}</span>
             </div>
-            <div className='bg-border mx-2 h-6 w-px' />
+            <div className='bg-border mx-1 h-6 w-px' />
             <PermissionGuard requiredScope='write_channels'>
               <>
-                <Button variant='ghost' size='icon' className='h-8 w-8 text-green-600 hover:bg-green-100 hover:text-green-700' onClick={() => setOpen('bulkEnable')} title={t('common.buttons.enable')}>
-                  <IconCheck className='h-4 w-4' />
+                <Button variant='ghost' size='icon' className='text-(--success-soft-fg) hover:bg-success/10' onClick={() => setOpen('bulkEnable')} title={t('common.buttons.enable')}>
+                  <IconCheck className='size-4' />
                 </Button>
-                <Button variant='ghost' size='icon' className='h-8 w-8 text-amber-600 hover:bg-amber-100 hover:text-amber-700' onClick={() => setOpen('bulkDisable')} title={t('common.buttons.disable')}>
-                  <IconBan className='h-4 w-4' />
+                <Button variant='ghost' size='icon' className='text-(--warning-soft-fg) hover:bg-warning/10' onClick={() => setOpen('bulkDisable')} title={t('common.buttons.disable')}>
+                  <IconBan className='size-4' />
                 </Button>
-                <Button variant='ghost' size='icon' className='text-destructive h-8 w-8 hover:bg-red-100 hover:text-red-700' onClick={() => setOpen('bulkDelete')} title={t('common.buttons.delete')}>
-                  <IconTrash className='h-4 w-4' />
+                <Button variant='ghost' size='icon' className='text-(--destructive-soft-fg) hover:bg-destructive/10' onClick={() => setOpen('bulkDelete')} title={t('common.buttons.delete')}>
+                  <IconTrash className='size-4' />
                 </Button>
               </>
             </PermissionGuard>
+            <div className='bg-border mx-1 h-6 w-px' />
+            <Button variant='ghost' size='icon' onClick={() => setRowSelection({})}>
+              <IconX className='size-4' />
+            </Button>
           </div>
         </div>
       )}

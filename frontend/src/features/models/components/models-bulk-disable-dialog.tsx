@@ -56,8 +56,8 @@ export function ModelsBulkDisableDialog() {
       }
       desc={t('models.dialogs.bulkDisable.description', { count: selectedCount })}
     >
-      <div className='flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm dark:border-amber-900 dark:bg-amber-900/20'>
-        <IconBan className='mt-0.5 h-4 w-4 text-amber-600 dark:text-amber-400' />
+      <div className='flex items-start gap-3 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm dark:border-warning/40 dark:bg-warning/20'>
+        <IconBan className='mt-0.5 h-4 w-4 text-(--warning-soft-fg) dark:text-(--warning-soft-fg)' />
         <div className='space-y-1 text-left'>
           <p>{t('models.dialogs.bulkDisable.warning')}</p>
         </div>

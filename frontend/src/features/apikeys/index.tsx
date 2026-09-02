@@ -202,7 +202,7 @@ function ApiKeysContent() {
   return (
     <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ApiKeyTabKey)} className='w-full'>
-        <TabsList className='shadow-soft border-border bg-background grid w-full grid-cols-4 rounded-2xl border'>
+        <TabsList className='border-border bg-background grid w-full grid-cols-4 rounded-2xl border'>
           <TabsTrigger value='all' data-value='all'>
             {t('apikeys.tabs.all')}
           </TabsTrigger>
@@ -255,7 +255,7 @@ export default function ApiKeysManagement() {
       <Header fixed>
         <div className='flex flex-1 items-center justify-between'>
           <div>
-            <h2 className='text-xl font-bold tracking-tight'>{t('apikeys.title')}</h2>
+            <h2 className='text-lg font-normal tracking-tight'>{t('apikeys.title')}</h2>
             <p className='text-sm text-muted-foreground'>{t('apikeys.description')}</p>
           </div>
           <ApiKeysPrimaryButtons />

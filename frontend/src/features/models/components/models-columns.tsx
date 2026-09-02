@@ -2,7 +2,6 @@ import { useCallback, useState } from 'react';
 import { format } from 'date-fns';
 import { ColumnDef, Row, Table } from '@tanstack/react-table';
 import { IconCheck, IconX, IconLink, IconChevronDown, IconChevronRight } from '@tabler/icons-react';
-import * as Icons from '@lobehub/icons';
 import { useTranslation } from 'react-i18next';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +14,7 @@ import { useModels } from '../context/models-context';
 import { Model } from '../data/schema';
 import { DataTableRowActions } from './data-table-row-actions';
 import { ModelsStatusDialog } from './models-status-dialog';
+import { ModelFamilyLogo, ModelLogo } from './model-icons';
 import { useDeveloperLabel } from './models-table';
 
 // Status Switch Cell Component to handle status toggle with confirmation dialog
@@ -126,17 +126,9 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('models.columns.icon')} />,
       cell: ({ row }) => {
         const model = row.original;
-        const iconName = model.icon;
-        const IconComponent = iconName && Icons[iconName as keyof typeof Icons];
-
         return (
           <div className='flex items-center justify-center'>
-            {IconComponent ? (
-              //@ts-ignore
-              <IconComponent className='h-5 w-5' />
-            ) : (
-              <span className='text-muted-foreground text-xs'>-</span>
-            )}
+            <ModelLogo model={model} />
           </div>
         );
       },
@@ -166,7 +158,13 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       accessorKey: 'modelID',
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('models.columns.modelId')} />,
       cell: ({ row }) => {
-        return <span className='text-sm font-medium'>{row.getValue('modelID')}</span>;
+        const model = row.original;
+        return (
+          <div className='flex items-center gap-2'>
+            <ModelFamilyLogo model={model} />
+            <span className='font-mono text-xs'>{model.modelID}</span>
+          </div>
+        );
       },
       meta: {
         className: 'min-w-48',
@@ -235,7 +233,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
 
         return (
           <div className='flex justify-center'>
-            {toolCall ? <IconCheck className='h-4 w-4 text-green-600' /> : <IconX className='text-muted-foreground h-4 w-4' />}
+            {toolCall ? <IconCheck className='text-(--success-soft-fg) size-4' /> : <IconX className='text-muted-foreground size-4' />}
           </div>
         );
       },

@@ -310,7 +310,7 @@ export function ChannelsDisabledAPIKeysDialog({ open, onOpenChange }: ChannelsDi
                             )}
                           </div>
                           {dk.expiresAt && new Date(dk.expiresAt).getTime() > now && (
-                            <div className='text-xs text-blue-500'>
+                            <div className='text-xs text-(--info-soft-fg)'>
                               {t('channels.dialogs.disabledAPIKeys.expiresIn', {
                                 time: formatDuration(new Date(dk.expiresAt), i18n.language),
                               })}

@@ -24,7 +24,7 @@ export function ManualModelBadge({ isManual = false, className }: ManualModelBad
     <Badge
       variant="secondary"
       className={cn(
-        'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800',
+        'bg-warning/10 text-(--warning-soft-fg) border-warning/40 dark:bg-warning/30 dark:text-(--warning-soft-fg) dark:border-warning/40',
         className
       )}
     >

@@ -69,9 +69,9 @@ const SidebarMenuLink = ({ item, href }: { item: NavLink; href: string }) => {
 
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton asChild isActive={checkIsActive(href, item)} tooltip={item.title} className='h-12 rounded-2xl transition-all'>
+      <SidebarMenuButton asChild isActive={checkIsActive(href, item)} tooltip={item.title}>
         <Link to={item.url} onClick={() => setOpenMobile(false)}>
-          {item.icon && <item.icon className='text-xl' />}
+          {item.icon && <item.icon />}
           <span>{item.title}</span>
           {item.badge && <NavBadge>{item.badge}</NavBadge>}
         </Link>
@@ -89,8 +89,8 @@ const SidebarMenuCollapsible = ({ item, href }: { item: NavCollapsible; href: st
     <Collapsible asChild defaultOpen={checkIsActive(href, item, true)} className='group/collapsible'>
       <SidebarMenuItem>
         <CollapsibleTrigger asChild>
-          <SidebarMenuButton tooltip={item.title} className='h-12 rounded-2xl transition-all'>
-            {item.icon && <item.icon className='text-xl' />}
+          <SidebarMenuButton tooltip={item.title}>
+            {item.icon && <item.icon />}
             <span>{item.title}</span>
             {item.badge && <NavBadge>{item.badge}</NavBadge>}
             <ChevronRight className='ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90' />
@@ -124,8 +124,8 @@ const SidebarMenuCollapsedDropdown = ({ item, href }: { item: NavCollapsible; hr
     <SidebarMenuItem>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <SidebarMenuButton tooltip={item.title} isActive={checkIsActive(href, item)} className='h-12 rounded-2xl transition-all'>
-            {item.icon && <item.icon className='text-xl' />}
+          <SidebarMenuButton tooltip={item.title} isActive={checkIsActive(href, item)}>
+            {item.icon && <item.icon />}
             <span>{item.title}</span>
             {item.badge && <NavBadge>{item.badge}</NavBadge>}
             <ChevronRight className='ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90' />

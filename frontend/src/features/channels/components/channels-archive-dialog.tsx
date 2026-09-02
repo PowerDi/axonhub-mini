@@ -38,10 +38,10 @@ export function ChannelsArchiveDialog({ open, onOpenChange, currentRow }: Props)
     return (
       <div className='space-y-3'>
         <p>{baseDescription}</p>
-        <div className='rounded-md border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20'>
+        <div className='rounded-md border border-info/40 bg-info/10 p-3 dark:border-info/40 dark:bg-info/20'>
           <div className='flex items-start space-x-2'>
-            <IconInfoCircle className='mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400' />
-            <div className='text-sm text-blue-800 dark:text-blue-200'>
+            <IconInfoCircle className='mt-0.5 h-4 w-4 flex-shrink-0 text-(--info-soft-fg) dark:text-(--info-soft-fg)' />
+            <div className='text-sm text-(--info-soft-fg) dark:text-(--info-soft-fg)'>
               <p>{infoText}</p>
             </div>
           </div>
@@ -57,8 +57,8 @@ export function ChannelsArchiveDialog({ open, onOpenChange, currentRow }: Props)
       handleConfirm={handleStatusChange}
       disabled={updateChannelStatus.isPending}
       title={
-        <span className={isArchived ? 'text-green-600' : 'text-orange-600'}>
-          {isArchived ? <IconCheck className='mr-1 inline-block stroke-green-600' size={18} /> : <IconArchive className='mr-1 inline-block stroke-orange-600' size={18} />}
+        <span className={isArchived ? 'text-(--success-soft-fg)' : 'text-(--warning-soft-fg)'}>
+          {isArchived ? <IconCheck className='mr-1 inline-block stroke-success' size={18} /> : <IconArchive className='mr-1 inline-block stroke-warning' size={18} />}
           {t(isArchived ? 'channels.dialogs.status.restore.title' : 'channels.dialogs.status.archive.title')}
         </span>
       }

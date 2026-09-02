@@ -2,6 +2,7 @@ import { Activity } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatNumber } from '@/utils/format-number';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { IconBadge } from '@/components/ui/icon-badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDashboardStats } from '../data/dashboard';
 
@@ -31,38 +32,54 @@ export function TodayRequestsCard() {
       <Card>
         <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
           <div className='flex items-center gap-2'>
-            <div className='bg-primary/10 text-primary dark:bg-primary/20 rounded-lg p-1.5'>
-              <Activity className='h-4 w-4' />
-            </div>
-            <CardTitle className='text-sm font-medium'>{t('dashboard.stats.todayRequests')}</CardTitle>
+            <IconBadge tone='info' size='sm'>
+              <Activity />
+            </IconBadge>
+            <CardTitle className='text-muted-foreground text-xs font-medium tracking-wide uppercase'>
+              {t('dashboard.stats.todayRequests')}
+            </CardTitle>
           </div>
         </CardHeader>
         <CardContent>
-          <div className='text-sm text-red-500'>{t('common.loadError')}</div>
+          <div className='text-sm text-(--destructive-soft-fg)'>{t('common.loadError')}</div>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className='bg-primary text-primary-foreground hover-card'>
+    <Card>
       <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
         <div className='flex items-center gap-2'>
-          <Activity className='text-primary-foreground/70 h-4 w-4' />
-          <CardTitle className='text-primary-foreground/90 text-sm font-medium'>{t('dashboard.stats.todayRequests')}</CardTitle>
+          <IconBadge tone='info' size='sm'>
+            <Activity />
+          </IconBadge>
+          <CardTitle className='text-muted-foreground text-xs font-medium tracking-wide uppercase'>
+            {t('dashboard.stats.todayRequests')}
+          </CardTitle>
         </div>
-        <div className='bg-primary-foreground h-2 w-2 animate-ping rounded-full' />
+        <div className='bg-primary size-2 animate-ping rounded-full' />
       </CardHeader>
-      <CardContent>
-        <div className='space-y-4'>
-          <div className='mt-2 font-mono text-4xl font-bold tracking-tight'>{formatNumber(stats?.requestStats?.requestsToday || 0)}</div>
-          <div className='border-primary-foreground/10 text-primary-foreground/70 mt-4 flex justify-between border-t pt-3 text-xs'>
-            <span>
-              {t('dashboard.stats.thisWeek')}: {formatNumber(stats?.requestStats?.requestsThisWeek || 0)}
-            </span>
-            <span>
-              {t('dashboard.stats.thisMonth')}: {formatNumber(stats?.requestStats?.requestsThisMonth || 0)}
-            </span>
+      <CardContent className='flex flex-col gap-3'>
+        <div className='text-2xl font-semibold tracking-tight tabular-nums'>
+          {formatNumber(stats?.requestStats?.requestsToday || 0)}
+        </div>
+        <div className='grid grid-cols-2 gap-2'>
+          <div className='bg-muted/40 rounded-lg border px-2.5 py-2'>
+            <div className='text-muted-foreground truncate text-[11px] leading-none font-medium'>
+              {t('dashboard.stats.thisWeek')}
+            </div>
+            <div className='mt-1.5 truncate text-xs font-semibold tabular-nums'>
+              {formatNumber(stats?.requestStats?.requestsThisWeek || 0)}
+            </div>
+          </div>
+          <div className='bg-muted/40 rounded-lg border px-2.5 py-2'>
+            <div className='text-muted-foreground truncate text-[11px] leading-none font-medium'>
+              {t('dashboard.stats.thisMonth')}
+            </div>
+            <div className='mt-1.5 truncate text-xs font-semibold tabular-nums'>
+              {formatNumber(stats?.requestStats?.requestsThisMonth || 0)}
+            </div>
           </div>
         </div>
       </CardContent>

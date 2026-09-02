@@ -74,10 +74,10 @@ export function ChannelsStatusDialog({ open, onOpenChange, currentRow }: Props) 
     return (
       <div className='min-w-0 space-y-3'>
         <p>{baseDescription}</p>
-        <div className='rounded-md border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20'>
+        <div className='rounded-md border border-warning/40 bg-warning/10 p-3 dark:border-warning/40 dark:bg-warning/20'>
           <div className='flex items-start space-x-2'>
-            <IconAlertTriangle className='mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600 dark:text-amber-400' />
-            <div className='text-sm text-amber-800 dark:text-amber-200'>
+            <IconAlertTriangle className='mt-0.5 h-4 w-4 flex-shrink-0 text-(--warning-soft-fg) dark:text-(--warning-soft-fg)' />
+            <div className='text-sm text-(--warning-soft-fg) dark:text-(--warning-soft-fg)'>
               <p className='font-medium'>{t('channels.dialogs.status.enable.warningTitle')}</p>
               <p className='mt-1'>{warningText}</p>
             </div>
@@ -99,8 +99,8 @@ export function ChannelsStatusDialog({ open, onOpenChange, currentRow }: Props) 
               <div
                 className={`rounded p-3 text-sm ${
                   testResult.success
-                    ? 'border border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-900/20 dark:text-green-200'
-                    : 'border border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-900/20 dark:text-red-200'
+                    ? 'border border-success/40 bg-success/10 text-(--success-soft-fg) dark:border-success/40 dark:bg-success/20 dark:text-(--success-soft-fg)'
+                    : 'border border-destructive/40 bg-destructive/10 text-(--destructive-soft-fg) dark:border-destructive/40 dark:bg-destructive/20 dark:text-(--destructive-soft-fg)'
                 }`}
               >
                 <div className='space-y-2'>
@@ -121,11 +121,11 @@ export function ChannelsStatusDialog({ open, onOpenChange, currentRow }: Props) 
                   {testResult.error && !testResult.success && (
                     <div className='text-xs'>
                       <span className='font-medium'>{t('channels.dialogs.status.enable.errorDetails')}:</span>
-                      <div className='mt-1 min-w-0 max-w-full overflow-hidden rounded border-l-2 border-red-400 bg-red-100 p-2 dark:border-red-600 dark:bg-red-900/30'>
+                      <div className='mt-1 min-w-0 max-w-full overflow-hidden rounded border-l-2 border-destructive/40 bg-destructive/10 p-2 dark:border-destructive/40 dark:bg-destructive/30'>
                         <ErrorDisplay
                           error={testResult.error}
                           className='min-w-0 max-w-full'
-                          messageClassName='block max-w-full break-all whitespace-pre-wrap text-xs font-medium text-red-800 dark:text-red-200'
+                          messageClassName='block max-w-full break-all whitespace-pre-wrap text-xs font-medium text-(--destructive-soft-fg) dark:text-(--destructive-soft-fg)'
                         />
                       </div>
                     </div>
@@ -148,8 +148,8 @@ export function ChannelsStatusDialog({ open, onOpenChange, currentRow }: Props) 
       handleConfirm={handleStatusChange}
       disabled={updateChannelStatus.isPending}
       title={
-        <span className={isDisabling ? 'text-destructive' : 'text-green-600'}>
-          <IconAlertTriangle className={`${isDisabling ? 'stroke-destructive' : 'stroke-green-600'} mr-1 inline-block`} size={18} />
+        <span className={isDisabling ? 'text-destructive' : 'text-(--success-soft-fg)'}>
+          <IconAlertTriangle className={`${isDisabling ? 'stroke-destructive' : 'stroke-success'} mr-1 inline-block`} size={18} />
           {title}
         </span>
       }

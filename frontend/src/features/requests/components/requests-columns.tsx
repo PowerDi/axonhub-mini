@@ -113,8 +113,8 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
               <Badge
                 className={
                   isStream
-                    ? 'border-green-200 bg-green-100 text-green-800 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300'
-                    : 'border-gray-200 bg-gray-100 text-gray-800 dark:border-gray-800 dark:bg-gray-900/20 dark:text-gray-300'
+                    ? 'border-success/40 bg-success/10 text-(--success-soft-fg)'
+                    : 'border-border bg-muted text-muted-foreground'
                 }
               >
                 {isStream ? t('requests.stream.streaming') : t('requests.stream.nonStreaming')}
@@ -153,16 +153,16 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
               <TooltipTrigger asChild>
                 <button
                   type='button'
-                  className='flex w-fit cursor-help items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2 py-0.5 font-mono text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 dark:border-amber-800/50 dark:bg-amber-900/30 dark:text-amber-300 dark:hover:bg-amber-900/50'
+                  className='flex w-fit cursor-help items-center gap-1.5 rounded-lg border border-warning/40 bg-warning/10 px-2 py-0.5 font-mono text-xs font-medium text-(--warning-soft-fg) transition-colors hover:bg-warning/15'
                 >
                   <span>{originalModelId}</span>
                   <IconRoute className='h-3.5 w-3.5 opacity-80' />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side='right' className='border-amber-200 bg-white dark:bg-zinc-900'>
+              <TooltipContent side='right' className='bg-popover text-popover-foreground border-warning/40'>
                 <div className='flex items-center gap-2 p-2'>
                   <span className='text-muted-foreground text-xs whitespace-nowrap'>{t('requests.columns.executedModelId')}:</span>
-                  <span className='rounded bg-amber-100 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-amber-800 dark:bg-amber-900/40 dark:text-amber-200'>
+                  <span className='rounded bg-warning/10 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-(--warning-soft-fg)'>
                     {executionModelIds[0]}
                   </span>
                 </div>
@@ -177,7 +177,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
             {modelLabel}
             <div className='flex items-center gap-1.5'>
               {reasoningEffort && (
-                <Badge className='border-sky-200 bg-sky-100 text-sky-800 dark:border-sky-800 dark:bg-sky-900/20 dark:text-sky-300'>
+                <Badge className='border-info/40 bg-info/10 text-(--info-soft-fg)'>
                   {reasoningEffort}
                 </Badge>
               )}
@@ -185,7 +185,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
                 <TooltipTrigger asChild>
                   <span
                     className={`inline-flex h-5 w-5 items-center justify-center ${
-                      passThroughApplied ? 'text-amber-700 dark:text-amber-300' : 'text-muted-foreground/45'
+                      passThroughApplied ? 'text-(--warning-soft-fg)' : 'text-muted-foreground/45'
                     }`}
                     tabIndex={0}
                     role='img'
@@ -210,7 +210,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
       cell: ({ row }) => {
         const format = row.original.format;
         return format ? (
-          <span className='inline-flex items-center rounded-md border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-xs font-medium text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800/50 dark:text-zinc-300'>
+          <span className='text-muted-foreground border-border bg-muted inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium'>
             {format}
           </span>
         ) : (
@@ -248,7 +248,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
                       type='button'
                       variant='ghost'
                       size='icon-sm'
-                      className='h-6 w-6 shrink-0 text-red-500/80 hover:bg-red-50 hover:text-red-600 dark:text-red-300/80 dark:hover:bg-red-950/30 dark:hover:text-red-300'
+                      className='text-(--destructive-soft-fg) h-6 w-6 shrink-0 hover:bg-destructive/10'
                       disabled={updateSecuritySettings.isPending}
                       onClick={() => void handleUnblockIP(normalizedIP)}
                       aria-label={t('requests.actions.unblockIP')}
@@ -265,7 +265,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
                       type='button'
                       variant='ghost'
                       size='icon-sm'
-                      className='text-muted-foreground h-6 w-6 shrink-0 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30 dark:hover:text-red-300'
+                      className='text-muted-foreground h-6 w-6 shrink-0 hover:bg-destructive/10 hover:text-(--destructive-soft-fg)'
                       disabled={updateSecuritySettings.isPending}
                       onClick={() => void handleBlockIP(normalizedIP)}
                       aria-label={t('requests.actions.blockIP')}
@@ -310,16 +310,16 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
                     <TooltipTrigger asChild>
                       <button
                         type='button'
-                        className='flex w-fit cursor-help items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700 transition-colors hover:bg-rose-100 dark:border-rose-800/50 dark:bg-rose-900/30 dark:text-rose-300 dark:hover:bg-rose-900/50'
+                        className='flex w-fit cursor-help items-center gap-1.5 rounded-lg border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-xs font-medium text-(--destructive-soft-fg) transition-colors hover:bg-destructive/15'
                       >
                         <span>{channel.name}</span>
                         <IconArrowsJoin2 className='h-3.5 w-3.5 opacity-80' />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent side='right' className='border-rose-200 bg-white p-0 dark:bg-zinc-900'>
+                    <TooltipContent side='right' className='bg-popover text-popover-foreground border-destructive/40 p-0'>
                       <div className='flex min-w-[240px] flex-col'>
-                        <div className='flex flex-col gap-1 border-b bg-rose-50/50 p-3 dark:bg-rose-900/10'>
-                          <div className='flex items-center gap-2 text-xs font-bold tracking-wider text-rose-900 uppercase dark:text-rose-300'>
+                        <div className='bg-destructive/5 flex flex-col gap-1 border-b p-3'>
+                          <div className='text-(--destructive-soft-fg) flex items-center gap-2 text-xs font-bold tracking-wider uppercase'>
                             <IconArrowsJoin2 className='h-3.5 w-3.5' />
                             {t('requests.columns.retryProcess')}
                           </div>
@@ -435,7 +435,7 @@ export function useRequestsColumns(options?: UseRequestsColumnsOptions): ColumnD
         return (
           <div className='text-xs'>
             <div className='text-sm font-medium'>{cachedTokens.toLocaleString()}</div>
-            <div className={isLowHitRate ? 'font-medium text-red-600 dark:text-red-400' : 'text-muted-foreground'}>
+            <div className={isLowHitRate ? 'text-(--destructive-soft-fg) font-medium' : 'text-muted-foreground'}>
               {t('requests.columns.cacheHitRate', {
                 rate: hitRate.toFixed(1),
               })}

@@ -41,8 +41,8 @@ export function ApiKeysBulkEnableDialog() {
       confirmText={t('common.buttons.enable')}
       cancelBtnText={t('common.buttons.cancel')}
     >
-      <div className='flex items-start gap-3 rounded-md border border-green-200 bg-green-50 p-3 text-sm dark:border-green-900 dark:bg-green-900/20'>
-        <IconCheck className='mt-0.5 h-4 w-4 text-green-600 dark:text-green-400' />
+      <div className='flex items-start gap-3 rounded-md border border-success/40 bg-success/10 p-3 text-sm dark:border-success/40 dark:bg-success/20'>
+        <IconCheck className='mt-0.5 h-4 w-4 text-(--success-soft-fg) dark:text-(--success-soft-fg)' />
         <div className='space-y-1 text-left'>
           <p>{t('apikeys.dialogs.bulkEnable.warning')}</p>
         </div>

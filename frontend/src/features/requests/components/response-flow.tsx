@@ -53,8 +53,8 @@ export function ResponseFlow({ chunks, body, isLive, reasoningDurationMs }: Resp
     <div className='bg-muted/10 rounded-xl border p-6'>
       {isLive && (
         <div className='mb-4 flex justify-end'>
-          <Badge className='bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 gap-1.5 border-none px-2 py-0.5'>
-            <span className='h-2 w-2 rounded-full bg-green-500 animate-pulse' />
+          <Badge variant='success' className='gap-1.5 px-2 py-0.5'>
+            <span className='bg-success h-2 w-2 animate-pulse rounded-full' />
             Live
           </Badge>
         </div>
@@ -103,9 +103,7 @@ export function ResponseFlow({ chunks, body, isLive, reasoningDurationMs }: Resp
                           Copy
                         </button>
                       </div>
-                      <div className='bg-muted/50 rounded-md'>
-                        <CodeBlock code={JSON.stringify(parseJson(tc.function?.arguments || '{}'), null, 2)} language='json' />
-                      </div>
+                      <CodeBlock code={JSON.stringify(parseJson(tc.function?.arguments || '{}'), null, 2)} language='json' />
                     </div>
                   </ToolContent>
                 </Tool>

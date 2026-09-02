@@ -58,7 +58,7 @@ function ForbiddenPage({ onGoBack }: { onGoBack: () => void }) {
     <div className='flex h-screen items-center justify-center'>
       <div className='max-w-md text-center'>
         <div className='mb-6'>
-          <IconShieldX className='mx-auto h-16 w-16 text-red-500' />
+          <IconShieldX className='mx-auto h-16 w-16 text-(--destructive-soft-fg)' />
         </div>
 
         <Alert className='mb-6'>
