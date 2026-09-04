@@ -228,6 +228,8 @@ var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 		{APIFormat: llm.APIFormatOpenAITranscription.String()},
 		{APIFormat: llm.APIFormatOpenAITranslation.String()},
 	},
+	channel.TypeCommandcode:          openAIChatOnlyDefaultEndpoints,
+	channel.TypeCommandcodeAnthropic: {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
 }
 
 func DefaultEndpointsForChannelType(t channel.Type) []objects.ChannelEndpoint {

@@ -128,6 +128,8 @@ export const channelTypeSchema = z.enum([
   'zenmux_responses',
   'zenmux_anthropic',
   'zenmux_gemini',
+  'commandcode',
+  'commandcode_anthropic',
 ]);
 export type ChannelType = z.infer<typeof channelTypeSchema>;
 
@@ -290,6 +292,20 @@ export const retryableErrorPatternSchema = z.object({
 });
 export type RetryableErrorPattern = z.infer<typeof retryableErrorPatternSchema>;
 
+// Provider quota collection settings stored inside channel settings. Mirrors the
+// GraphQL `CommandCodeQuotaSettings` / `ChannelProviderQuotaSettings` types; it
+// is used for the Command Code billing-quota cookie, kept separate from API
+// credentials.
+export const commandCodeQuotaSettingsSchema = z.object({
+  authCookie: z.string().optional().nullable(),
+});
+export type CommandCodeQuotaSettings = z.infer<typeof commandCodeQuotaSettingsSchema>;
+
+export const channelProviderQuotaSettingsSchema = z.object({
+  commandCode: commandCodeQuotaSettingsSchema.optional().nullable(),
+});
+export type ChannelProviderQuotaSettings = z.infer<typeof channelProviderQuotaSettingsSchema>;
+
 // Channel Settings
 export const channelSettingsSchema = z.object({
   extraModelPrefix: z.string().optional(),
@@ -308,6 +324,7 @@ export const channelSettingsSchema = z.object({
   rateLimit: channelRateLimitSchema.optional().nullable(),
   retryableStatusCodes: z.array(z.number().int().min(400).max(599)).optional().nullable(),
   retryableErrorPatterns: z.array(retryableErrorPatternSchema).optional().nullable(),
+  providerQuota: channelProviderQuotaSettingsSchema.optional().nullable(),
 });
 
 export type ChannelSettings = z.infer<typeof channelSettingsSchema>;

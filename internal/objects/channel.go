@@ -279,6 +279,33 @@ type ChannelSettings struct {
 	// trigger retry for this channel. When Regex is false, Pattern is matched as a
 	// case-sensitive substring of the error text.
 	RetryableErrorPatterns []RetryableErrorPattern `json:"retryableErrorPatterns,omitempty"`
+
+	// ProviderQuota holds provider-specific quota collection credentials and
+	// options. Fields are sensitive (e.g. auth cookies) and only exposed to
+	// operators holding channel write permission.
+	ProviderQuota *ChannelProviderQuotaSettings `json:"providerQuota,omitempty"`
+}
+
+// ChannelProviderQuotaSettings groups per-provider quota collection settings.
+type ChannelProviderQuotaSettings struct {
+	// CommandCode holds the quota collection settings for Command Code channels.
+	CommandCode *CommandCodeQuotaSettings `json:"commandCode,omitempty"`
+}
+
+// CommandCodeQuotaSettings holds the credentials used to query the Command Code
+// account quota. AuthCookie is the commandcode.ai session cookie (a
+// "__Secure-commandcode_prod_.session_token" style value) sent to the internal
+// billing endpoints.
+type CommandCodeQuotaSettings struct {
+	AuthCookie string `json:"authCookie,omitempty"`
+}
+
+// String redacts the auth cookie so settings never leak it into logs.
+func (s CommandCodeQuotaSettings) String() string {
+	if s.AuthCookie == "" {
+		return "CommandCodeQuotaSettings{AuthCookie: \"\"}"
+	}
+	return "CommandCodeQuotaSettings{AuthCookie: <redacted>}"
 }
 
 type RetryableErrorPattern struct {
