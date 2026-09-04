@@ -39,6 +39,66 @@ type ModelMapping struct {
 	To string `json:"to"`
 }
 
+// ModelAPIFormatPolicy restricts which endpoint api_formats a model may use
+// on a channel. Keyed by request model (same resolution as ModelMappings,
+// i.e. matched against the request-side model name before any mapping is
+// applied). An absent entry means all channel endpoints are allowed.
+// When Allow is non-empty it takes precedence and Exclude is ignored.
+type ModelAPIFormatPolicy struct {
+	// Model is the request-side model name this policy applies to.
+	Model string `json:"model"`
+
+	// Exclude lists api_formats this model cannot use.
+	Exclude []string `json:"exclude,omitempty"`
+
+	// Allow, when non-empty, restricts the model to only these api_formats.
+	// It overrides Exclude.
+	Allow []string `json:"allow,omitempty"`
+}
+
+// GetModelAPIFormatPolicy returns the policy configured for the given request
+// model, or nil when the model has no policy (all endpoints allowed).
+// Lookup is by exact request-side model name; channels that lowercase model
+// IDs must resolve the policy with the request model as matched by
+// GetModelEntries (i.e. after lowercasing when enabled).
+func (s *ChannelSettings) GetModelAPIFormatPolicy(model string) *ModelAPIFormatPolicy {
+	if s == nil || model == "" || len(s.ModelAPIFormatPolicies) == 0 {
+		return nil
+	}
+
+	for i := range s.ModelAPIFormatPolicies {
+		if s.ModelAPIFormatPolicies[i].Model == model {
+			return &s.ModelAPIFormatPolicies[i]
+		}
+	}
+
+	return nil
+}
+
+// AllowsAPIFormat reports whether the policy permits the given api_format.
+// A nil policy allows everything.
+func (p *ModelAPIFormatPolicy) AllowsAPIFormat(apiFormat string) bool {
+	if p == nil {
+		return true
+	}
+
+	if len(p.Allow) > 0 {
+		return containsString(p.Allow, apiFormat)
+	}
+
+	return !containsString(p.Exclude, apiFormat)
+}
+
+func containsString(values []string, target string) bool {
+	for _, v := range values {
+		if v == target {
+			return true
+		}
+	}
+
+	return false
+}
+
 type HeaderEntry struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
@@ -141,6 +201,15 @@ type ChannelSettings struct {
 	// ModelMappings add model alias for the model in the channels.
 	// e.g. {"from": "deepseek-chat", "to": "deepseek/deepseek-chat"} will add a alias "deepseek-chat" for "deepseek/deepseek-chat".
 	ModelMappings []ModelMapping `json:"modelMappings"`
+
+	// ModelAPIFormatPolicies restrict which endpoint api_formats individual
+	// models may use on this channel. Keyed by request model name (same
+	// resolution as ModelMappings: the request-side name before any mapping).
+	// Models without an entry may use every channel endpoint.
+	// Example: {"model": "deepseek-chat", "exclude": ["anthropic/messages"]}
+	// makes anthropic-protocol requests for deepseek-chat fall back to an
+	// OpenAI endpoint and be converted, while other models keep pass-through.
+	ModelAPIFormatPolicies []ModelAPIFormatPolicy `json:"modelApiFormatPolicies,omitempty"`
 
 	// HideOriginalModels hides the original models from the model list when model mappings are configured.
 	// When enabled, only the mapped model names (from field) will be exposed, not the actual model names (to field).

@@ -59,6 +59,12 @@ export const PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     color: 'bg-white-100 text-white-800 border-white-200',
     channelTypes: ['openai', 'openai_responses'],
   },
+  openai_multiprotocol: {
+    provider: 'openai_multiprotocol',
+    icon: OpenAI,
+    color: 'bg-green-100 text-green-800 border-green-200',
+    channelTypes: ['openai_multiprotocol'],
+  },
   atlascloud: {
     provider: 'atlascloud',
     icon: AtlasCloudIcon,

@@ -9,6 +9,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 )
 
@@ -77,17 +78,51 @@ func populateAPIFormat(candidates []*ChannelModelsCandidate, req *llm.Request) [
 
 		endpoints := c.Channel.ResolveEndpoints()
 		if c.APIFormat == "" {
-			c.APIFormat = SelectAPIFormat(endpoints, req)
+			// Per-model endpoint policies sink the API format choice to entry
+			// granularity: when the candidate carries exactly one entry, its
+			// policy filters the channel's endpoints here; entries with no
+			// policy keep the unfiltered behaviour (backward compatible).
+			// Candidates carrying multiple entries resolve their own formats
+			// lazily in TransformRequest, driven by CurrentModelIndex.
+			var policy *objects.ModelAPIFormatPolicy
+			if len(c.Models) == 1 {
+				policy = c.Models[0].Policy
+			}
+			if policy != nil && PolicyStarvesRequest(endpoints, req, policy) {
+				// The policy leaves no endpoint that can serve this request:
+				// the candidate cannot serve this model, skip it so a capable
+				// channel takes over instead of failing (or worse, passing
+				// through) at request time. Without a policy this never
+				// triggers — legacy behaviour intact.
+				continue
+			}
+			c.APIFormat = SelectAPIFormatForModel(endpoints, req, policy)
 		}
 
-		if req.RequestType == llm.RequestTypeAlphaSearch && !hasAPIFormat(endpoints, llm.APIFormatOpenAIAlphaSearch.String()) {
-			continue
+		if req.RequestType == llm.RequestTypeAlphaSearch {
+			// For alpha search, every entry must be able to reach the
+			// alpha search endpoint, so apply each entry's policy too.
+			if !hasAPIFormatForEntries(endpoints, llm.APIFormatOpenAIAlphaSearch.String(), c.Models) {
+				continue
+			}
 		}
 
 		filtered = append(filtered, c)
 	}
 
 	return filtered
+}
+
+// hasAPIFormatForEntries reports whether the alpha search endpoint survives
+// every entry's per-model policy (a nil policy filters nothing).
+func hasAPIFormatForEntries(endpoints []objects.ChannelEndpoint, apiFormat string, entries []biz.ChannelModelEntry) bool {
+	for _, entry := range entries {
+		if entry.Policy != nil && !entry.Policy.AllowsAPIFormat(apiFormat) {
+			return false
+		}
+	}
+
+	return hasAPIFormat(endpoints, apiFormat)
 }
 
 func hasAPIFormat(endpoints []objects.ChannelEndpoint, apiFormat string) bool {

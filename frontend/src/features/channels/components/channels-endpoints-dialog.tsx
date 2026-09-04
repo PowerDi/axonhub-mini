@@ -142,10 +142,51 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
     setNewBaseURL('');
   }, [newApiFormat, newPath, newBaseURL, usedApiFormats, t]);
 
-  const handleRemoveEndpoint = useCallback((apiFormat: string) => {
-    setEndpoints((prev) => prev.filter((ep) => ep.apiFormat !== apiFormat));
-    setError(null);
-  }, []);
+  // Per-model endpoint policies reference api_formats; removing an endpoint
+  // can starve them. Compute the models whose policy loses its last allowed
+  // endpoint when the given format is removed.
+  const modelsStarvedByRemoving = useCallback(
+    (apiFormat: string): string[] => {
+      const policies = channel.settings?.modelApiFormatPolicies || [];
+      const remaining = new Set(
+        [...(channel.defaultEndpoints || []), ...(channel.endpoints || [])]
+          .map((ep) => ep.apiFormat)
+          .filter((format) => format !== apiFormat)
+      );
+      if (remaining.size === 0) {
+        return [];
+      }
+
+      const starved: string[] = [];
+      for (const policy of policies) {
+        const allows = (format: string): boolean => {
+          if (policy.allow && policy.allow.length > 0) {
+            return policy.allow.includes(format);
+          }
+          return !(policy.exclude || []).includes(format);
+        };
+        if (!Array.from(remaining).some(allows)) {
+          starved.push(policy.model);
+        }
+      }
+
+      return starved;
+    },
+    [channel]
+  );
+
+  const handleRemoveEndpoint = useCallback(
+    (apiFormat: string) => {
+      const starved = modelsStarvedByRemoving(apiFormat);
+      if (starved.length > 0) {
+        setError(t('channels.endpoints.policyStarvationWarning', { models: starved.join(', ') }));
+        return;
+      }
+      setEndpoints((prev) => prev.filter((ep) => ep.apiFormat !== apiFormat));
+      setError(null);
+    },
+    [modelsStarvedByRemoving, t]
+  );
 
   const handleSave = useCallback(async () => {
     setError(null);

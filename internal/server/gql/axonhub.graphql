@@ -135,6 +135,7 @@ input RetryableErrorPatternInput {
 type ChannelSettings {
   extraModelPrefix: String
   modelMappings: [ModelMapping!]
+  modelApiFormatPolicies: [ModelAPIFormatPolicy!]
   autoTrimedModelPrefixes: [String!]
   hideOriginalModels: Boolean
   hideMappedModels: Boolean
@@ -198,9 +199,22 @@ input ModelMappingInput {
   to: String!
 }
 
+type ModelAPIFormatPolicy {
+  model: String!
+  exclude: [String!]
+  allow: [String!]
+}
+
+input ModelAPIFormatPolicyInput {
+  model: String!
+  exclude: [String!]
+  allow: [String!]
+}
+
 input ChannelSettingsInput {
   extraModelPrefix: String
   modelMappings: [ModelMappingInput!]
+  modelApiFormatPolicies: [ModelAPIFormatPolicyInput!]
   autoTrimedModelPrefixes: [String!]
   hideOriginalModels: Boolean
   hideMappedModels: Boolean
@@ -298,6 +312,10 @@ input TestChannelInput {
   channelID: ID!
   modelID: String
   proxy: ProxyConfigInput
+  # Optional endpoint API format to test (e.g. openai/chat_completions).
+  # When set, the test probes exactly this endpoint, overriding per-model
+  # endpoint policies; the channel must actually have the endpoint.
+  apiFormat: String
 }
 
 type TestChannelPayload {

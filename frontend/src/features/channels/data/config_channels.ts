@@ -121,6 +121,14 @@ export const CHANNEL_CONFIGS: Record<ChannelType, ChannelConfig> = {
     color: 'bg-green-100 text-green-800 border-green-200',
     icon: OpenAI,
   },
+  openai_multiprotocol: {
+    channelType: 'openai_multiprotocol',
+    baseURL: 'https://api.openai.com/v1',
+    defaultModels: ['gpt-4o', 'gpt-4o-mini', 'gpt-5', 'gpt-5.1'],
+    apiFormat: OPENAI_CHAT_COMPLETIONS,
+    color: 'bg-green-100 text-green-800 border-green-200',
+    icon: OpenAI,
+  },
   codex: {
     channelType: 'codex',
     baseURL: 'https://chatgpt.com/backend-api/codex#',
@@ -823,6 +831,7 @@ export const getDefaultModels = (channelType: ChannelType): string[] => {
  */
 export type Provider =
   | 'openai'
+  | 'openai_multiprotocol'
   | 'atlascloud'
   | 'qiniu'
   | 'fenno'
@@ -869,6 +878,7 @@ export type Provider =
 export const CHANNEL_TYPE_TO_PROVIDER: Record<ChannelType, Provider> = {
   openai: 'openai',
   openai_responses: 'openai',
+  openai_multiprotocol: 'openai_multiprotocol',
   atlascloud: 'atlascloud',
   qiniu: 'qiniu',
   qiniu_anthropic: 'qiniu',

@@ -10,6 +10,7 @@ type ChannelsDialogType =
   | 'settings'
   | 'channelSettings'
   | 'modelMapping'
+  | 'modelApiFormatPolicy'
   | 'overrides'
   | 'proxy'
   | 'status'

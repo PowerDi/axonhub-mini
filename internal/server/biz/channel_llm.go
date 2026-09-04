@@ -172,6 +172,15 @@ func getAPIKeyProvider(ch *Channel) auth.APIKeyProvider {
 	panic(fmt.Errorf("no enabled api key configured for channel %s", ch.Name))
 }
 
+// multiprotocolChannelType reports whether the channel type exposes multiple
+// default endpoints whose non-primary API formats must NOT be bound to the
+// primary outbound transformer. For these types, default endpoints that do
+// not match the primary outbound's API format are built via
+// buildNonDefaultEndpointOutbound instead of sharing the primary transformer.
+func multiprotocolChannelType(t channel.Type) bool {
+	return t == channel.TypeXai || t == channel.TypeOpenaiMultiprotocol
+}
+
 // BuildOutboundByAPIFormat returns the outbound transformer for a resolved endpoint API format.
 // If the channel does not support the format, returns an error.
 func BuildOutboundByAPIFormat(ch *Channel, apiFormat string) (transformer.Outbound, error) {
@@ -214,7 +223,7 @@ func (svc *ChannelService) buildChannelWithOutbounds(c *ent.Channel, apiKeyOverr
 			continue
 		}
 
-		if c.Type != channel.TypeXai || ep.APIFormat == ch.Outbound.APIFormat().String() {
+		if !multiprotocolChannelType(c.Type) || ep.APIFormat == ch.Outbound.APIFormat().String() {
 			outbounds[ep.APIFormat] = ch.Outbound
 			continue
 		}
@@ -1054,7 +1063,7 @@ func (svc *ChannelService) buildChannelWithTransformer(c *ent.Channel, apiKeyOve
 	case channel.TypeOpenai, channel.TypeAtlascloud, channel.TypeDeepinfra, channel.TypeQiniu, channel.TypeMinimax,
 		channel.TypePpio, channel.TypeSiliconflow,
 		channel.TypeVercel, channel.TypeAihubmix, channel.TypeBurncloud, channel.TypeGithub,
-		channel.TypeEvolink, channel.TypeGroq:
+		channel.TypeEvolink, channel.TypeGroq, channel.TypeOpenaiMultiprotocol:
 		var reasoningEffortMapping []llm.ReasoningEffortMapping
 		if c.Settings != nil {
 			reasoningEffortMapping = c.Settings.TransformOptions.ReasoningEffortMapping
@@ -1356,6 +1365,15 @@ func (ch *Channel) GetModelEntries() map[string]ChannelModelEntry {
 		entries = lowercased
 	}
 
+	// 7. Resolve per-model API format policies onto the entries.
+	// Done last so it uses the final request-side keys (after lowercasing),
+	// matching the key the policy was configured against — the same key
+	// ModelMappings resolves against.
+	for key, entry := range entries {
+		entry.Policy = ch.Settings.GetModelAPIFormatPolicy(key)
+		entries[key] = entry
+	}
+
 	ch.cachedModelEntries = entries
 
 	return entries
@@ -1376,6 +1394,25 @@ func (ch *Channel) GetDirectModelEntries() map[string]ChannelModelEntry {
 				ActualModel:  model,
 				Source:       "direct",
 			}
+		}
+	}
+
+	// Resolve per-model API format policies so the channel test flow
+	// (SpecifiedChannelSelector) exercises the same endpoint selection as
+	// real traffic — a policy that pins a model to a converted endpoint must
+	// also steer the test request there.
+	//
+	// On LowercaseModelID channels, runtime request models are lowercased
+	// before matching, so policies are keyed by the lowercased name. Direct
+	// entries keep their original casing here, so resolve the policy the same
+	// way the request path would: exact key first, then the lowercased key.
+	if ch.Settings != nil {
+		for key, entry := range entries {
+			entry.Policy = ch.Settings.GetModelAPIFormatPolicy(key)
+			if entry.Policy == nil && ch.Settings.LowercaseModelID {
+				entry.Policy = ch.Settings.GetModelAPIFormatPolicy(strings.ToLower(key))
+			}
+			entries[key] = entry
 		}
 	}
 

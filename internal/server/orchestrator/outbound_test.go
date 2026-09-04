@@ -468,17 +468,12 @@ func TestPersistentOutboundTransformer_NextChannel_UsesCandidateAPIFormatOutboun
 	require.Same(t, embeddingOutbound, processor.wrapped)
 }
 
-func TestSelectOutboundForCandidate(t *testing.T) {
+func TestOutboundForAPIFormat(t *testing.T) {
 	primaryOutbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion}
 	embeddingOutbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIEmbedding}
 
-	t.Run("nil candidate returns nil", func(t *testing.T) {
-		require.Nil(t, selectOutboundForCandidate(nil))
-	})
-
-	t.Run("candidate with nil channel returns nil", func(t *testing.T) {
-		candidate := &ChannelModelsCandidate{APIFormat: llm.APIFormatOpenAIEmbedding.String()}
-		require.Nil(t, selectOutboundForCandidate(candidate))
+	t.Run("nil channel returns nil", func(t *testing.T) {
+		require.Nil(t, outboundForAPIFormat(nil, llm.APIFormatOpenAIEmbedding.String()))
 	})
 
 	t.Run("api format set and found in outbounds returns matching outbound", func(t *testing.T) {
@@ -487,11 +482,7 @@ func TestSelectOutboundForCandidate(t *testing.T) {
 			Outbound:  primaryOutbound,
 			Outbounds: map[string]transformer.Outbound{llm.APIFormatOpenAIEmbedding.String(): embeddingOutbound},
 		}
-		candidate := &ChannelModelsCandidate{
-			Channel:   channel,
-			APIFormat: llm.APIFormatOpenAIEmbedding.String(),
-		}
-		require.Same(t, embeddingOutbound, selectOutboundForCandidate(candidate))
+		require.Same(t, embeddingOutbound, outboundForAPIFormat(channel, llm.APIFormatOpenAIEmbedding.String()))
 	})
 
 	t.Run("api format set but not in outbounds falls back to channel outbound", func(t *testing.T) {
@@ -500,11 +491,7 @@ func TestSelectOutboundForCandidate(t *testing.T) {
 			Outbound:  primaryOutbound,
 			Outbounds: map[string]transformer.Outbound{},
 		}
-		candidate := &ChannelModelsCandidate{
-			Channel:   channel,
-			APIFormat: llm.APIFormatOpenAIEmbedding.String(),
-		}
-		require.Same(t, primaryOutbound, selectOutboundForCandidate(candidate))
+		require.Same(t, primaryOutbound, outboundForAPIFormat(channel, llm.APIFormatOpenAIEmbedding.String()))
 	})
 
 	t.Run("nil outbounds falls back to channel outbound", func(t *testing.T) {
@@ -512,11 +499,7 @@ func TestSelectOutboundForCandidate(t *testing.T) {
 			Channel:  &ent.Channel{ID: 1, Name: "test"},
 			Outbound: primaryOutbound,
 		}
-		candidate := &ChannelModelsCandidate{
-			Channel:   channel,
-			APIFormat: llm.APIFormatOpenAIEmbedding.String(),
-		}
-		require.Same(t, primaryOutbound, selectOutboundForCandidate(candidate))
+		require.Same(t, primaryOutbound, outboundForAPIFormat(channel, llm.APIFormatOpenAIEmbedding.String()))
 	})
 
 	t.Run("empty api format falls back to channel outbound", func(t *testing.T) {
@@ -525,11 +508,111 @@ func TestSelectOutboundForCandidate(t *testing.T) {
 			Outbound:  primaryOutbound,
 			Outbounds: map[string]transformer.Outbound{llm.APIFormatOpenAIEmbedding.String(): embeddingOutbound},
 		}
-		candidate := &ChannelModelsCandidate{
-			Channel:   channel,
-			APIFormat: "",
+		require.Same(t, primaryOutbound, outboundForAPIFormat(channel, ""))
+	})
+}
+
+func TestSelectOutboundForEntry(t *testing.T) {
+	chatOutbound := &mockTransformer{apiFormat: llm.APIFormatOpenAIChatCompletion}
+	anthropicOutbound := &mockTransformer{apiFormat: llm.APIFormatAnthropicMessage}
+
+	req := &llm.Request{RequestType: llm.RequestTypeChat, APIFormat: llm.APIFormatAnthropicMessage}
+
+	newChannel := func() *biz.Channel {
+		return &biz.Channel{
+			Channel: &ent.Channel{
+				ID:   1,
+				Name: "test",
+				Type: entchannel.TypeOpenai,
+				Endpoints: []objects.ChannelEndpoint{
+					{APIFormat: llm.APIFormatAnthropicMessage.String()},
+				},
+			},
+			Outbound: chatOutbound,
+			Outbounds: map[string]transformer.Outbound{
+				llm.APIFormatOpenAIChatCompletion.String(): chatOutbound,
+				llm.APIFormatAnthropicMessage.String():    anthropicOutbound,
+			},
 		}
-		require.Same(t, primaryOutbound, selectOutboundForCandidate(candidate))
+	}
+
+	t.Run("nil candidate returns not ok", func(t *testing.T) {
+		outbound, format, ok := selectOutboundForEntry(nil, 0, req)
+		require.False(t, ok)
+		require.Nil(t, outbound)
+		require.Empty(t, format)
+	})
+
+	t.Run("entry without policy keeps candidate format", func(t *testing.T) {
+		candidate := &ChannelModelsCandidate{
+			Channel:   newChannel(),
+			APIFormat: llm.APIFormatAnthropicMessage.String(),
+			Models:    []biz.ChannelModelEntry{{RequestModel: "m", ActualModel: "m"}},
+		}
+		outbound, format, ok := selectOutboundForEntry(candidate, 0, req)
+		require.True(t, ok)
+		require.Equal(t, llm.APIFormatAnthropicMessage.String(), format)
+		require.Same(t, anthropicOutbound, outbound)
+	})
+
+	t.Run("policy rejecting candidate format re-selects a converted endpoint", func(t *testing.T) {
+		candidate := &ChannelModelsCandidate{
+			Channel:   newChannel(),
+			APIFormat: llm.APIFormatAnthropicMessage.String(),
+			Models: []biz.ChannelModelEntry{{
+				RequestModel: "m",
+				ActualModel:  "m",
+				Policy:       &objects.ModelAPIFormatPolicy{Model: "m", Exclude: []string{llm.APIFormatAnthropicMessage.String()}},
+			}},
+		}
+		outbound, format, ok := selectOutboundForEntry(candidate, 0, req)
+		require.True(t, ok)
+		require.Equal(t, llm.APIFormatOpenAIChatCompletion.String(), format)
+		require.Same(t, chatOutbound, outbound)
+	})
+
+	t.Run("starved policy reports not ok instead of falling back", func(t *testing.T) {
+		// The policy excludes every format the channel exposes for chat.
+		candidate := &ChannelModelsCandidate{
+			Channel:   newChannel(),
+			APIFormat: llm.APIFormatAnthropicMessage.String(),
+			Models: []biz.ChannelModelEntry{{
+				RequestModel: "m",
+				ActualModel:  "m",
+				Policy: &objects.ModelAPIFormatPolicy{
+					Model: "m",
+					Exclude: []string{
+						llm.APIFormatAnthropicMessage.String(),
+						llm.APIFormatOpenAIChatCompletion.String(),
+					},
+				},
+			}},
+		}
+		outbound, format, ok := selectOutboundForEntry(candidate, 0, req)
+		require.False(t, ok)
+		require.Nil(t, outbound)
+		require.Empty(t, format)
+	})
+
+	t.Run("starved policy does not fall through on empty candidate format", func(t *testing.T) {
+		// Regression for the empty-format early exit: a policy on a candidate
+		// with an unset channel-level format must not silently fall back to
+		// the primary outbound.
+		candidate := &ChannelModelsCandidate{
+			Channel: newChannel(),
+			Models: []biz.ChannelModelEntry{{
+				RequestModel: "m",
+				ActualModel:  "m",
+				Policy: &objects.ModelAPIFormatPolicy{
+					Model: "m",
+					Allow: []string{llm.APIFormatGeminiContents.String()},
+				},
+			}},
+		}
+		outbound, format, ok := selectOutboundForEntry(candidate, 0, req)
+		require.False(t, ok)
+		require.Nil(t, outbound)
+		require.Empty(t, format)
 	})
 }
 

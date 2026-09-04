@@ -15,6 +15,7 @@ import { ChannelsDeleteDialog } from './channels-delete-dialog';
 import { ChannelsDisabledAPIKeysDialog } from './channels-disabled-api-keys-dialog';
 import { ChannelsErrorResolvedDialog } from './channels-error-resolved-dialog';
 import { ChannelsModelMappingDialog } from './channels-model-mapping-dialog';
+import { ChannelsModelApiFormatPolicyDialog } from './channels-model-api-format-policy-dialog';
 import { ChannelsModelPriceDialog } from './channels-model-price-dialog';
 import { ChannelsOverrideDialog } from './channels-override-dialog';
 import { ChannelsProxyDialog } from './channels-proxy-dialog';
@@ -141,6 +142,20 @@ export function ChannelsDialogs() {
               if (isOpen) {
                 setOpen('modelMapping');
               } else {
+                setOpen(null);
+                setTimeout(() => {
+                  setCurrentRow(null);
+                }, 500);
+              }
+            }}
+            currentRow={currentRow}
+          />
+
+          <ChannelsModelApiFormatPolicyDialog
+            key={`channel-model-api-format-policy-${currentRow.id}`}
+            open={open === 'modelApiFormatPolicy'}
+            onOpenChange={(isOpen) => {
+              if (!isOpen) {
                 setOpen(null);
                 setTimeout(() => {
                   setCurrentRow(null);

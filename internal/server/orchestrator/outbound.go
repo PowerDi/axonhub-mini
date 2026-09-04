@@ -357,18 +357,94 @@ func shouldForceStreamingForCandidate(candidate *ChannelModelsCandidate, req *ll
 	return supportsAutoAggregateRequest(req)
 }
 
-func selectOutboundForCandidate(candidate *ChannelModelsCandidate) transformer.Outbound {
+// errEntryStarvedByPolicy marks a request attempt whose entry's per-model
+// policy filters out every usable endpoint on the channel. The attempt must
+// skip to the next entry/candidate instead of falling back to the primary
+// outbound, which would send the request through a protocol the policy
+// explicitly forbids.
+var errEntryStarvedByPolicy = errors.New("model has no usable endpoint on channel after per-model policy filtering")
+
+// apiFormatForEntry resolves the endpoint API format for the entry at
+// modelIndex of the candidate. The second return value reports whether the
+// entry is usable:
+//
+//   - no policy, or a policy permitting the candidate-level format: the
+//     candidate format stands (identical to the pre-policy behaviour),
+//   - a policy that rejects the candidate format: the format is re-selected
+//     over the policy-filtered endpoints so the request is converted through
+//     an allowed protocol,
+//   - a policy that filters out every usable endpoint (starvation): ok is
+//     false and the caller must skip the entry — never fall back to the
+//     primary outbound.
+//
+// The candidate is never mutated: the returned format is local to this
+// attempt, so a later entry on the same candidate still resolves from the
+// original channel-level value.
+func apiFormatForEntry(candidate *ChannelModelsCandidate, modelIndex int, req *llm.Request) (string, bool) {
 	if candidate == nil || candidate.Channel == nil {
+		return "", false
+	}
+
+	if modelIndex < 0 || modelIndex >= len(candidate.Models) {
+		return candidate.APIFormat, true
+	}
+
+	entry := candidate.Models[modelIndex]
+	if entry.Policy == nil {
+		return candidate.APIFormat, true
+	}
+
+	if candidate.APIFormat != "" && entry.Policy.AllowsAPIFormat(candidate.APIFormat) {
+		return candidate.APIFormat, true
+	}
+
+	endpoints := candidate.Channel.ResolveEndpoints()
+	if PolicyStarvesRequest(endpoints, req, entry.Policy) {
+		return "", false
+	}
+
+	return SelectAPIFormatForModel(endpoints, req, entry.Policy), true
+}
+
+// outboundForAPIFormat looks up the outbound transformer for an endpoint API
+// format, falling back to the channel's primary outbound.
+func outboundForAPIFormat(channel *biz.Channel, apiFormat string) transformer.Outbound {
+	if channel == nil {
 		return nil
 	}
 
-	if candidate.APIFormat != "" && candidate.Channel.Outbounds != nil {
-		if out, ok := candidate.Channel.Outbounds[candidate.APIFormat]; ok {
+	if apiFormat != "" && channel.Outbounds != nil {
+		if out, ok := channel.Outbounds[apiFormat]; ok {
 			return out
 		}
 	}
 
-	return candidate.Channel.Outbound
+	return channel.Outbound
+}
+
+// selectOutboundForEntry resolves the outbound transformer for the entry at
+// modelIndex, applying its per-model policy. Alongside the outbound it
+// returns the entry's effective API format; ok is false when the policy
+// starves the entry of every usable endpoint.
+func selectOutboundForEntry(candidate *ChannelModelsCandidate, modelIndex int, req *llm.Request) (transformer.Outbound, string, bool) {
+	format, ok := apiFormatForEntry(candidate, modelIndex, req)
+	if !ok {
+		return nil, "", false
+	}
+
+	return outboundForAPIFormat(candidate.Channel, format), format, true
+}
+
+// apiFormatForEntryBestEffort is used by the retry advance paths, which only
+// need a placeholder outbound until the next TransformRequest re-resolves it.
+// Starved entries fall back to the candidate-level format there.
+func apiFormatForEntryBestEffort(candidate *ChannelModelsCandidate, modelIndex int, req *llm.Request) string {
+	format, ok := apiFormatForEntry(candidate, modelIndex, req)
+	if !ok {
+		return candidate.APIFormat
+	}
+
+	return format
 }
 
 // APIFormat returns the API format of the transformer.
@@ -397,20 +473,27 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 	p.state.CurrentCandidate = candidate
 	p.state.StreamCompleted = false
 
-	p.wrapped = selectOutboundForCandidate(candidate)
+	outbound, entryFormat, ok := selectOutboundForEntry(candidate, p.state.CurrentModelIndex, llmRequest)
+	if !ok {
+		// The entry's per-model policy filters out every usable endpoint on
+		// this channel. Never fall back to the primary outbound: skip this
+		// entry (retry advances to the next model or candidate).
+		return nil, fmt.Errorf("%w: model %q on channel %q", errEntryStarvedByPolicy, entry.RequestModel, candidate.Channel.Name)
+	}
+	p.wrapped = outbound
 
 	log.Debug(ctx, "using candidate",
 		log.String("channel", candidate.Channel.Name),
 		log.String("request_model", p.state.OriginalModel),
 		log.String("actual_model", entry.ActualModel),
-		log.String("api_format", candidate.APIFormat),
+		log.String("api_format", entryFormat),
 	)
 
 	llmRequest.Model = entry.ActualModel
 
 	outboundFormat := p.wrapped.APIFormat()
-	if candidate.APIFormat != "" {
-		outboundFormat = llm.APIFormat(candidate.APIFormat)
+	if entryFormat != "" {
+		outboundFormat = llm.APIFormat(entryFormat)
 	}
 
 	// Apply channel transform options to create a new request
@@ -594,7 +677,10 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 
 	candidate := p.state.ChannelModelsCandidates[p.state.CurrentCandidateIndex]
 	p.state.CurrentCandidate = candidate
-	p.wrapped = selectOutboundForCandidate(candidate)
+	// Best-effort outbound for the new candidate's first entry; every attempt
+	// re-resolves through TransformRequest, which also rejects starved
+	// entries with errEntryStarvedByPolicy.
+	p.wrapped = outboundForAPIFormat(candidate.Channel, apiFormatForEntryBestEffort(candidate, 0, p.state.LlmRequest))
 
 	if log.DebugEnabled(ctx) {
 		model := candidate.Models[0].ActualModel
@@ -626,6 +712,14 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 
 	if errors.Is(err, errSkipCandidateByCircuitBreaker) {
 		return false
+	}
+
+	// A starved entry (per-model policy filtered out every usable endpoint)
+	// cannot succeed on this model, but another entry of the same candidate
+	// may still work. Advance within the candidate when models remain,
+	// otherwise let the pipeline switch to the next candidate.
+	if errors.Is(err, errEntryStarvedByPolicy) {
+		return p.state.CurrentModelIndex+1 < len(p.state.CurrentCandidate.Models)
 	}
 
 	// Local admission rejection: the same channel cannot make progress until the
@@ -688,7 +782,9 @@ func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) err
 	if p.state.CurrentModelIndex+1 < len(candidate.Models) {
 		// Increase the model index to the next model.
 		p.state.CurrentModelIndex++
-		p.wrapped = selectOutboundForCandidate(candidate)
+		// Best-effort outbound for the advanced entry; TransformRequest
+		// re-resolves per attempt and rejects starved entries.
+		p.wrapped = outboundForAPIFormat(candidate.Channel, apiFormatForEntryBestEffort(candidate, p.state.CurrentModelIndex, p.state.LlmRequest))
 
 		if log.DebugEnabled(ctx) {
 			model := candidate.Models[p.state.CurrentModelIndex].ActualModel

@@ -39,6 +39,13 @@ type ChannelModelEntry struct {
 
 	// Source indicates how this model is supported
 	Source string // "direct", "prefix", "auto_trim", "mapping"
+
+	// Policy is the channel's per-model API format policy resolved for
+	// RequestModel. Nil when the channel has no policy for this model, which
+	// means every channel endpoint is allowed. Populated by GetModelEntries so
+	// endpoint selection can filter per model even when one candidate carries
+	// several models with different policies.
+	Policy *objects.ModelAPIFormatPolicy `json:"-"`
 }
 
 type Channel struct {
@@ -561,12 +568,27 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 		if err := NormalizeRetryableErrorPatterns(input.Settings); err != nil {
 			return nil, err
 		}
+
+		if err := ValidateModelAPIFormatPolicies(input.Settings); err != nil {
+			return nil, err
+		}
 	}
 
 	if input.Endpoints != nil {
 		if err := ValidateEndpoints(input.Endpoints); err != nil {
 			return nil, fmt.Errorf("invalid endpoints: %w", err)
 		}
+	}
+
+	// Edit-time routability check for every create path (single create,
+	// duplicate, bulk import): reject a channel whose per-model policies
+	// would starve a model of every usable endpoint with no other enabled
+	// channel serving it. Runs after the structural checks so unknown
+	// api_formats report their own error first. New channels start disabled,
+	// but creation expresses intent to serve traffic, so the check applies as
+	// if the channel were enabled.
+	if err := svc.ValidateChannelModelRoutability(ctx, 0, input.Type, channel.StatusEnabled, input.Endpoints, input.Settings); err != nil {
+		return nil, err
 	}
 
 	createBuilder := svc.entFromContext(ctx).Channel.Create().
@@ -845,12 +867,24 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		if err := NormalizeRetryableErrorPatterns(input.Settings); err != nil {
 			return nil, err
 		}
+
+		if err := ValidateModelAPIFormatPolicies(input.Settings); err != nil {
+			return nil, err
+		}
 	}
 
 	if input.Endpoints != nil {
 		if err := ValidateEndpoints(input.Endpoints); err != nil {
 			return nil, fmt.Errorf("invalid endpoints: %w", err)
 		}
+	}
+
+	// Edit-time bidirectional routability check: a settings or endpoints edit
+	// that starves a per-model policy to zero usable endpoints — with no other
+	// enabled channel serving that model — is rejected here. Runs before the
+	// transaction mutates anything.
+	if err := svc.validateUpdateModelRoutability(ctx, id, input); err != nil {
+		return nil, err
 	}
 
 	var updated *ent.Channel
@@ -1025,6 +1059,13 @@ func (svc *ChannelService) SaveChannelEndpoints(ctx context.Context, input SaveC
 	}
 	if ch.Type == channel.TypeXaiSubscription {
 		return nil, errors.New("xAI subscription channels do not support custom endpoints")
+	}
+
+	// Endpoint edits can starve existing per-model policies: reject when a
+	// policy ends up with zero usable endpoints and no other enabled channel
+	// serves that model.
+	if err := svc.ValidateChannelModelRoutability(ctx, input.ChannelID.ID, ch.Type, ch.Status, input.Endpoints, ch.Settings); err != nil {
+		return nil, err
 	}
 
 	ch, err = svc.entFromContext(ctx).Channel.UpdateOne(ch).

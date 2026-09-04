@@ -133,7 +133,14 @@ func (s *DefaultSelector) selectChannelCadidates(ctx context.Context, req *llm.R
 		}
 
 		endpoints := ch.ResolveEndpoints()
-		apiFormat := SelectAPIFormat(endpoints, req)
+		if entry.Policy != nil && PolicyStarvesRequest(endpoints, req, entry.Policy) {
+			// The per-model policy leaves no endpoint that can serve this
+			// request: the channel cannot serve the model under its policy,
+			// skip it. (Without a policy this never triggers — legacy
+			// behaviour intact.)
+			continue
+		}
+		apiFormat := SelectAPIFormatForModel(endpoints, req, entry.Policy)
 		if req.RequestType == llm.RequestTypeAlphaSearch && apiFormat == "" {
 			continue
 		}
@@ -968,6 +975,11 @@ type SpecifiedChannelSelector struct {
 	// SelectedAPIKey, if non-empty, forces the outbound to use this specific API key.
 	// Used by the channel key test flow to test a single key.
 	SelectedAPIKey string
+	// APIFormat, when non-empty, forces the test through the channel's
+	// endpoint with this API format. It overrides per-model endpoint
+	// policies — the tester explicitly picked the endpoint to probe — but
+	// still requires the channel to actually expose that endpoint.
+	APIFormat string
 }
 
 func NewSpecifiedChannelSelector(channelService *biz.ChannelService, channelID objects.GUID) *SpecifiedChannelSelector {
@@ -997,7 +1009,36 @@ func (s *SpecifiedChannelSelector) Select(ctx context.Context, req *llm.Request)
 	}
 
 	endpoints := channel.ResolveEndpoints()
-	apiFormat := SelectAPIFormat(endpoints, req)
+
+	// An explicitly requested API format overrides the per-model policy: the
+	// tester picked the endpoint to probe, so policy filtering must neither
+	// reroute nor starve the request. Only the endpoint's existence is
+	// enforced — a channel without the endpoint fails the test with a clear
+	// error instead of probing something else.
+	if s.APIFormat != "" {
+		if !hasAPIFormat(endpoints, s.APIFormat) {
+			return nil, fmt.Errorf("channel %s has no %s endpoint", channel.Name, s.APIFormat)
+		}
+
+		// Strip the entry policy so the outbound keeps the requested format
+		// instead of re-applying policy filtering at request time.
+		entry.Policy = nil
+
+		return []*ChannelModelsCandidate{{
+			Channel:   channel,
+			Priority:  0,
+			Models:    []biz.ChannelModelEntry{entry},
+			APIFormat: s.APIFormat,
+		}}, nil
+	}
+
+	if entry.Policy != nil && PolicyStarvesRequest(endpoints, req, entry.Policy) {
+		// The channel's per-model policy leaves no endpoint that can serve
+		// this request: fail the test with a clear error instead of silently
+		// probing an endpoint the policy forbids.
+		return nil, fmt.Errorf("model %s has no usable endpoint on channel %s after per-model policy filtering", req.Model, channel.Name)
+	}
+	apiFormat := SelectAPIFormatForModel(endpoints, req, entry.Policy)
 
 	candidate := &ChannelModelsCandidate{
 		Channel:   channel,

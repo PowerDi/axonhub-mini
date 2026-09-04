@@ -103,6 +103,12 @@ models:
   ModelMappingInput:
     model:
       - github.com/looplj/axonhub/internal/objects.ModelMapping
+  ModelAPIFormatPolicy:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelAPIFormatPolicy
+  ModelAPIFormatPolicyInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ModelAPIFormatPolicy
   ReasoningEffortMapping:
     model:
       - github.com/looplj/axonhub/llm.ReasoningEffortMapping

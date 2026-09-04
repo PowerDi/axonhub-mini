@@ -40,6 +40,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DataTableColumnHeader } from '@/components/data-table-column-header';
@@ -164,6 +166,15 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
           >
             <IconRoute size={16} className='mr-2' />
             {t('channels.dialogs.settings.modelMapping.title')}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              setCurrentRow(channel);
+              setOpen('modelApiFormatPolicy');
+            }}
+          >
+            <IconTransform size={16} className='mr-2' />
+            {t('channels.dialogs.modelApiFormatPolicy.action')}
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => {
@@ -496,37 +507,97 @@ const ProxyCell = memo(({ row }: { row: Row<Channel> }) => {
 
 ProxyCell.displayName = 'ProxyCell';
 
+// How many model badges fit in the max-w-64 column without truncating into
+// unreadable fragments: 2 badges get ~100px each (shows e.g. "claude-sonnet-4"),
+// 3 badges get ~60px each (almost every model name becomes gibberish).
+const MODELS_SUMMARY_COUNT = 2;
+
 const SupportedModelsCell = memo(({ row }: { row: Row<Channel> }) => {
   const { t } = useTranslation();
-  const channel = row.original;
-  const models = row.getValue('supportedModels') as string[];
-  const { setOpen, setCurrentRow } = useChannels();
+  const models = (row.getValue('supportedModels') as string[]) || [];
+  const [open, setOpen] = useState(false);
+  const openTimer = useRef<number | undefined>(undefined);
+  const closeTimer = useRef<number | undefined>(undefined);
 
-  const handleOpenModelsDialog = useCallback(() => {
-    setCurrentRow(channel);
-    setOpen('viewModels');
-  }, [channel, setCurrentRow, setOpen]);
+  const cancelClose = () => window.clearTimeout(closeTimer.current);
+
+  const handleMouseEnter = () => {
+    cancelClose();
+    window.clearTimeout(openTimer.current);
+    openTimer.current = window.setTimeout(() => setOpen(true), 150);
+  };
+
+  const handleMouseLeave = () => {
+    window.clearTimeout(openTimer.current);
+    closeTimer.current = window.setTimeout(() => setOpen(false), 200);
+  };
+
+  // Clear pending hover timers when the row unmounts (e.g. pagination)
+  useEffect(
+    () => () => {
+      window.clearTimeout(openTimer.current);
+      window.clearTimeout(closeTimer.current);
+    },
+    []
+  );
+
+  if (models.length === 0) {
+    return (
+      <div className='flex justify-center'>
+        <span className='text-muted-foreground text-xs'>-</span>
+      </div>
+    );
+  }
+
+  const visibleModels = models.slice(0, MODELS_SUMMARY_COUNT);
+  const remainingCount = models.length - visibleModels.length;
 
   return (
-    <div className='flex items-center justify-center gap-2'>
-      <div className='flex flex-wrap justify-center gap-1 overflow-hidden'>
-        {models.slice(0, 5).map((model) => (
-          <Badge key={model} variant='secondary' className='block max-w-48 truncate text-left text-xs'>
-            {model}
-          </Badge>
-        ))}
-        {models.length > 5 && (
-          <Badge
-            variant='secondary'
-            className='hover:bg-primary hover:text-primary-foreground cursor-pointer text-xs transition-colors'
-            onClick={handleOpenModelsDialog}
-            title={t('channels.actions.viewModels')}
-          >
-            +{models.length - 5}
-          </Badge>
-        )}
-      </div>
-    </div>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        {/* Click (Radix trigger) is the touch fallback for the hover behavior */}
+        <div
+          className='flex h-6 w-full cursor-default items-center justify-center gap-1 overflow-hidden'
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          data-testid='supported-models-cell'
+        >
+          {visibleModels.map((model) => (
+            <Badge key={model} variant='secondary' className='min-w-0 shrink truncate text-xs'>
+              {model}
+            </Badge>
+          ))}
+          {remainingCount > 0 && (
+            <Badge variant='secondary' className='shrink-0 text-xs'>
+              +{remainingCount}
+            </Badge>
+          )}
+        </div>
+      </PopoverTrigger>
+      <PopoverContent
+        className='w-72 p-3'
+        onMouseEnter={cancelClose}
+        onMouseLeave={handleMouseLeave}
+      >
+        <div className='text-muted-foreground mb-2 text-xs font-medium'>
+          {t('channels.columns.modelsPopover.title', { count: models.length })}
+        </div>
+        <ScrollArea className='max-h-[280px]'>
+          <div className='flex flex-wrap gap-1 pr-3'>
+            {models.map((model) => (
+              <Badge
+                key={model}
+                variant='secondary'
+                className='max-w-full truncate font-mono text-xs'
+                title={model}
+              >
+                {model}
+              </Badge>
+            ))}
+          </div>
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
   );
 });
 

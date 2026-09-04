@@ -60,6 +60,7 @@ export type ChannelEndpoint = z.infer<typeof channelEndpointSchema>;
 export const channelTypeSchema = z.enum([
   'openai',
   'openai_responses',
+  'openai_multiprotocol',
   'atlascloud',
   'qiniu',
   'qiniu_anthropic',
@@ -179,6 +180,14 @@ export const modelMappingSchema = z.object({
 });
 export type ModelMapping = z.infer<typeof modelMappingSchema>;
 
+// Model API Format Policy
+export const modelApiFormatPolicySchema = z.object({
+  model: z.string().min(1),
+  exclude: z.array(z.string()).optional().nullable(),
+  allow: z.array(z.string()).optional().nullable(),
+});
+export type ModelAPIFormatPolicy = z.infer<typeof modelApiFormatPolicySchema>;
+
 // Header Entry
 export const headerEntrySchema = z.object({
   key: z.string().min(1, 'Header key is required'),
@@ -281,6 +290,7 @@ export type RetryableErrorPattern = z.infer<typeof retryableErrorPatternSchema>;
 export const channelSettingsSchema = z.object({
   extraModelPrefix: z.string().optional(),
   modelMappings: z.array(modelMappingSchema).optional().nullable(),
+  modelApiFormatPolicies: z.array(modelApiFormatPolicySchema).optional().nullable(),
   autoTrimedModelPrefixes: z.array(z.string()).optional().nullable(),
   hideOriginalModels: z.boolean().optional(),
   hideMappedModels: z.boolean().optional(),

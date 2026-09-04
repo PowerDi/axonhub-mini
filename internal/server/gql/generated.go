@@ -567,6 +567,7 @@ type ComplexityRoot struct {
 		HideMappedModels         func(childComplexity int) int
 		HideOriginalModels       func(childComplexity int) int
 		LowercaseModelID         func(childComplexity int) int
+		ModelAPIFormatPolicies   func(childComplexity int) int
 		ModelMappings            func(childComplexity int) int
 		PassThroughBody          func(childComplexity int) int
 		PassThroughUserAgent     func(childComplexity int) int
@@ -822,6 +823,12 @@ type ComplexityRoot struct {
 		Status                 func(childComplexity int) int
 		Type                   func(childComplexity int) int
 		UpdatedAt              func(childComplexity int) int
+	}
+
+	ModelAPIFormatPolicy struct {
+		Allow   func(childComplexity int) int
+		Exclude func(childComplexity int) int
+		Model   func(childComplexity int) int
 	}
 
 	ModelAssociation struct {
@@ -4338,6 +4345,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSettings.LowercaseModelID(childComplexity), true
+	case "ChannelSettings.modelApiFormatPolicies":
+		if e.complexity.ChannelSettings.ModelAPIFormatPolicies == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.ModelAPIFormatPolicies(childComplexity), true
 	case "ChannelSettings.modelMappings":
 		if e.complexity.ChannelSettings.ModelMappings == nil {
 			break
@@ -5266,6 +5279,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Model.UpdatedAt(childComplexity), true
+
+	case "ModelAPIFormatPolicy.allow":
+		if e.complexity.ModelAPIFormatPolicy.Allow == nil {
+			break
+		}
+
+		return e.complexity.ModelAPIFormatPolicy.Allow(childComplexity), true
+	case "ModelAPIFormatPolicy.exclude":
+		if e.complexity.ModelAPIFormatPolicy.Exclude == nil {
+			break
+		}
+
+		return e.complexity.ModelAPIFormatPolicy.Exclude(childComplexity), true
+	case "ModelAPIFormatPolicy.model":
+		if e.complexity.ModelAPIFormatPolicy.Model == nil {
+			break
+		}
+
+		return e.complexity.ModelAPIFormatPolicy.Model(childComplexity), true
 
 	case "ModelAssociation.channelModel":
 		if e.complexity.ModelAssociation.ChannelModel == nil {
@@ -11665,6 +11697,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputImportUnassociatedModelItem,
 		ec.unmarshalInputInitializeSystemInput,
 		ec.unmarshalInputLoadApiKeyProfileTemplateInput,
+		ec.unmarshalInputModelAPIFormatPolicyInput,
 		ec.unmarshalInputModelAssociationInput,
 		ec.unmarshalInputModelAssociationWhenInput,
 		ec.unmarshalInputModelCardCostInput,
@@ -20539,6 +20572,8 @@ func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, fie
 				return ec.fieldContext_ChannelSettings_extraModelPrefix(ctx, field)
 			case "modelMappings":
 				return ec.fieldContext_ChannelSettings_modelMappings(ctx, field)
+			case "modelApiFormatPolicies":
+				return ec.fieldContext_ChannelSettings_modelApiFormatPolicies(ctx, field)
 			case "autoTrimedModelPrefixes":
 				return ec.fieldContext_ChannelSettings_autoTrimedModelPrefixes(ctx, field)
 			case "hideOriginalModels":
@@ -24753,6 +24788,43 @@ func (ec *executionContext) fieldContext_ChannelSettings_modelMappings(_ context
 				return ec.fieldContext_ModelMapping_to(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ModelMapping", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_modelApiFormatPolicies(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSettings_modelApiFormatPolicies,
+		func(ctx context.Context) (any, error) {
+			return obj.ModelAPIFormatPolicies, nil
+		},
+		nil,
+		ec.marshalOModelAPIFormatPolicy2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelAPIFormatPolicyᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_modelApiFormatPolicies(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "model":
+				return ec.fieldContext_ModelAPIFormatPolicy_model(ctx, field)
+			case "exclude":
+				return ec.fieldContext_ModelAPIFormatPolicy_exclude(ctx, field)
+			case "allow":
+				return ec.fieldContext_ModelAPIFormatPolicy_allow(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ModelAPIFormatPolicy", field.Name)
 		},
 	}
 	return fc, nil
@@ -29581,6 +29653,93 @@ func (ec *executionContext) fieldContext_Model_associatedChannelCount(_ context.
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelAPIFormatPolicy_model(ctx context.Context, field graphql.CollectedField, obj *objects.ModelAPIFormatPolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelAPIFormatPolicy_model,
+		func(ctx context.Context) (any, error) {
+			return obj.Model, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelAPIFormatPolicy_model(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelAPIFormatPolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelAPIFormatPolicy_exclude(ctx context.Context, field graphql.CollectedField, obj *objects.ModelAPIFormatPolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelAPIFormatPolicy_exclude,
+		func(ctx context.Context) (any, error) {
+			return obj.Exclude, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelAPIFormatPolicy_exclude(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelAPIFormatPolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ModelAPIFormatPolicy_allow(ctx context.Context, field graphql.CollectedField, obj *objects.ModelAPIFormatPolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ModelAPIFormatPolicy_allow,
+		func(ctx context.Context) (any, error) {
+			return obj.Allow, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ModelAPIFormatPolicy_allow(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ModelAPIFormatPolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -68282,7 +68441,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns"}
+	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "modelApiFormatPolicies", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -68303,6 +68462,13 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.ModelMappings = data
+		case "modelApiFormatPolicies":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelApiFormatPolicies"))
+			data, err := ec.unmarshalOModelAPIFormatPolicyInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelAPIFormatPolicyᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ModelAPIFormatPolicies = data
 		case "autoTrimedModelPrefixes":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("autoTrimedModelPrefixes"))
 			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
@@ -72488,6 +72654,47 @@ func (ec *executionContext) unmarshalInputLoadApiKeyProfileTemplateInput(ctx con
 				return it, err
 			}
 			it.APIKeyID = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputModelAPIFormatPolicyInput(ctx context.Context, obj any) (objects.ModelAPIFormatPolicy, error) {
+	var it objects.ModelAPIFormatPolicy
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"model", "exclude", "allow"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "model":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("model"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Model = data
+		case "exclude":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("exclude"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Exclude = data
+		case "allow":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("allow"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Allow = data
 		}
 	}
 
@@ -82741,7 +82948,7 @@ func (ec *executionContext) unmarshalInputTestChannelInput(ctx context.Context, 
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"channelID", "modelID", "proxy"}
+	fieldsInOrder := [...]string{"channelID", "modelID", "proxy", "apiFormat"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -82769,6 +82976,13 @@ func (ec *executionContext) unmarshalInputTestChannelInput(ctx context.Context, 
 				return it, err
 			}
 			it.Proxy = data
+		case "apiFormat":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiFormat"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.APIFormat = data
 		}
 	}
 
@@ -94499,6 +94713,8 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelSettings_extraModelPrefix(ctx, field, obj)
 		case "modelMappings":
 			out.Values[i] = ec._ChannelSettings_modelMappings(ctx, field, obj)
+		case "modelApiFormatPolicies":
+			out.Values[i] = ec._ChannelSettings_modelApiFormatPolicies(ctx, field, obj)
 		case "autoTrimedModelPrefixes":
 			out.Values[i] = ec._ChannelSettings_autoTrimedModelPrefixes(ctx, field, obj)
 		case "hideOriginalModels":
@@ -96595,6 +96811,49 @@ func (ec *executionContext) _Model(ctx context.Context, sel ast.SelectionSet, ob
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var modelAPIFormatPolicyImplementors = []string{"ModelAPIFormatPolicy"}
+
+func (ec *executionContext) _ModelAPIFormatPolicy(ctx context.Context, sel ast.SelectionSet, obj *objects.ModelAPIFormatPolicy) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, modelAPIFormatPolicyImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ModelAPIFormatPolicy")
+		case "model":
+			out.Values[i] = ec._ModelAPIFormatPolicy_model(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "exclude":
+			out.Values[i] = ec._ModelAPIFormatPolicy_exclude(ctx, field, obj)
+		case "allow":
+			out.Values[i] = ec._ModelAPIFormatPolicy_allow(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -113258,6 +113517,15 @@ func (ec *executionContext) marshalNModel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋi
 	return ec._Model(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNModelAPIFormatPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelAPIFormatPolicy(ctx context.Context, sel ast.SelectionSet, v objects.ModelAPIFormatPolicy) graphql.Marshaler {
+	return ec._ModelAPIFormatPolicy(ctx, sel, &v)
+}
+
+func (ec *executionContext) unmarshalNModelAPIFormatPolicyInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelAPIFormatPolicy(ctx context.Context, v any) (objects.ModelAPIFormatPolicy, error) {
+	res, err := ec.unmarshalInputModelAPIFormatPolicyInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNModelAssociation2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelAssociationᚄ(ctx context.Context, sel ast.SelectionSet, v []*objects.ModelAssociation) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -119763,6 +120031,71 @@ func (ec *executionContext) marshalOModel2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋi
 		return graphql.Null
 	}
 	return ec._Model(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOModelAPIFormatPolicy2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelAPIFormatPolicyᚄ(ctx context.Context, sel ast.SelectionSet, v []objects.ModelAPIFormatPolicy) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNModelAPIFormatPolicy2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelAPIFormatPolicy(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOModelAPIFormatPolicyInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelAPIFormatPolicyᚄ(ctx context.Context, v any) ([]objects.ModelAPIFormatPolicy, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]objects.ModelAPIFormatPolicy, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNModelAPIFormatPolicyInput2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelAPIFormatPolicy(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalOModelAssociationWhen2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelAssociationWhen(ctx context.Context, sel ast.SelectionSet, v *objects.ModelAssociationWhen) graphql.Marshaler {
