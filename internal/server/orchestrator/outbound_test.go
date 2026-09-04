@@ -61,7 +61,7 @@ func (m *mockTransformer) TransformRequest(ctx context.Context, req *llm.Request
 	}, nil
 }
 
-func TestPersistentOutboundTransformer_TransformRequest_ClaudeCodeOpenAICompatibility(t *testing.T) {
+func TestPersistentOutboundTransformer_TransformRequest_ReasoningEffortMapping(t *testing.T) {
 	tests := []struct {
 		name           string
 		channelType    entchannel.Type
@@ -84,10 +84,10 @@ func TestPersistentOutboundTransformer_TransformRequest_ClaudeCodeOpenAICompatib
 			wantSecondRole: "user",
 		},
 		{
-			name:           "non Claude Code DeepSeek keeps transformer behavior",
+			name:           "non Claude Code client gets the channel mapping too",
 			channelType:    entchannel.TypeDeepseek,
 			userAgent:      "codex_cli_rs/1.0",
-			wantEffort:     "xhigh",
+			wantEffort:     "max",
 			wantSecondRole: "system",
 		},
 	}

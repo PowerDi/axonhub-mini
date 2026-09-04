@@ -16,7 +16,6 @@ import (
 	"github.com/looplj/axonhub/llm"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/pipeline"
-	"github.com/looplj/axonhub/llm/pipeline/cc"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
 	"github.com/looplj/axonhub/llm/transformer/shared"
@@ -498,6 +497,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 
 	// Apply channel transform options to create a new request
 	llmRequest = applyTransformOptions(llmRequest, candidate.Channel.Settings)
+	llmRequest = applyReasoningEffortMapping(llmRequest, candidate.Channel.Settings)
 	for _, middleware := range p.outboundLlmRequestMiddlewares {
 		transformedRequest, err := middleware.OnOutboundLlmRequest(ctx, llmRequest, outboundFormat)
 		if err != nil {
@@ -523,8 +523,6 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		}
 	}
 
-	isClaudeCodeClient := cc.IsClaudeCodeRequest(llmRequest)
-	originalReasoningEffort := llmRequest.ReasoningEffort
 	httpRequest, err := p.wrapped.TransformRequest(ctx, llmRequest)
 	if err != nil {
 		return nil, err
@@ -534,13 +532,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		outboundFormat = llm.APIFormat(httpRequest.APIFormat)
 	}
 
-	return applyClaudeCodeOpenAIReasoningEffortMapping(
-		httpRequest,
-		candidate.Channel.Settings,
-		outboundFormat,
-		isClaudeCodeClient,
-		originalReasoningEffort,
-	)
+	return httpRequest, nil
 }
 
 func filterResponseCustomToolMessagesForNonResponsesOutbound(
