@@ -1915,6 +1915,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 </label>
                               </div>
                             )}
+                            {selectedProvider === 'openai_multiprotocol' && (
+                              <p className='text-muted-foreground mt-1 text-xs'>
+                                {t('channels.dialogs.fields.apiFormat.openaiMultiprotocol.description')}
+                              </p>
+                            )}
                           </div>
                         </FormItem>
                       )}
