@@ -80,3 +80,4 @@ All detailed rules are in `.agent/rules/`:
 | [e2e.md](.agent/rules/e2e.md) | `frontend/tests/**/*.ts` | E2E testing rules |
 | [docs.md](.agent/rules/docs.md) | `docs/**/*.md` | Documentation rules |
 | [workflows/add-channel.md](.agent/rules/workflows/add-channel.md) | Manual | Workflow for adding a new channel |
+| [release.md](.agent/rules/release.md) | Manual | Docker 镜像发布流程：mini 计数器 bump、触发 workflow、tag 规则 |
