@@ -575,20 +575,24 @@ const SupportedModelsCell = memo(({ row }: { row: Row<Channel> }) => {
         </div>
       </PopoverTrigger>
       <PopoverContent
-        className='w-72 p-3'
+        className='flex max-h-[320px] w-72 flex-col p-3'
+        collisionPadding={8}
         onMouseEnter={cancelClose}
         onMouseLeave={handleMouseLeave}
       >
-        <div className='text-muted-foreground mb-2 text-xs font-medium'>
+        <div className='text-muted-foreground mb-2 shrink-0 text-xs font-medium'>
           {t('channels.columns.modelsPopover.title', { count: models.length })}
         </div>
-        <ScrollArea className='max-h-[280px]'>
-          <div className='flex flex-wrap gap-1 pr-3'>
+        {/* The viewport is size-full, so max-h on ScrollArea alone cannot
+            constrain it: the height cap must live on a flex parent and the
+            ScrollArea must be allowed to shrink below its content (min-h-0). */}
+        <ScrollArea className='min-h-0'>
+          <div className='grid grid-cols-2 gap-1 pr-3'>
             {models.map((model) => (
               <Badge
                 key={model}
                 variant='secondary'
-                className='max-w-full truncate font-mono text-xs'
+                className='w-full min-w-0 truncate font-mono text-xs'
                 title={model}
               >
                 {model}
