@@ -5,6 +5,7 @@ import { IconCheck, IconX, IconLink, IconChevronDown, IconChevronRight } from '@
 import { useTranslation } from 'react-i18next';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Badge } from '@/components/ui/badge';
+import { CopyButton } from '@/components/ui/copy-button';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
@@ -163,6 +164,7 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
           <div className='flex items-center gap-2'>
             <ModelFamilyLogo model={model} />
             <span className='font-mono text-xs'>{model.modelID}</span>
+            <CopyButton content={model.modelID} />
           </div>
         );
       },
