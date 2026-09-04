@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useChannels } from '../context/channels-context';
 import { useBulkRecoverChannels, useTestChannel } from '../data/channels';
 import { Channel } from '../data/schema';
+import { TestResponseSummary } from './test-response-summary';
 import { ErrorDisplay } from '../utils/error-formatter';
 
 type BulkTestStatus = 'idle' | 'testing' | 'success' | 'failed' | 'skipped';
@@ -21,6 +22,7 @@ interface BulkTestResult {
   status: BulkTestStatus;
   latency?: number;
   error?: string;
+  message?: string;
 }
 
 const MAX_CONCURRENT_TESTS = 4;
@@ -120,7 +122,7 @@ export function ChannelsBulkTestDialog() {
         return;
       }
 
-      setResultStatus(channel, 'testing', { error: undefined, latency: undefined, modelID });
+      setResultStatus(channel, 'testing', { error: undefined, latency: undefined, message: undefined, modelID });
 
       try {
         const result = await testChannel.mutateAsync({
@@ -132,6 +134,7 @@ export function ChannelsBulkTestDialog() {
           modelID,
           latency: result.success ? result.latency : undefined,
           error: result.success ? undefined : (result.error || t('common.errors.internalServerError')),
+          message: result.message || undefined,
         });
       } catch (error) {
         setResultStatus(channel, 'failed', {
@@ -190,7 +193,7 @@ export function ChannelsBulkTestDialog() {
     }
 
     failedChannels.forEach((channel) => {
-      setResultStatus(channel, 'idle', { error: undefined, latency: undefined });
+      setResultStatus(channel, 'idle', { error: undefined, latency: undefined, message: undefined });
     });
 
     setIsTesting(true);
@@ -332,7 +335,10 @@ export function ChannelsBulkTestDialog() {
                           ) : result?.error ? (
                             <div className='max-w-full overflow-hidden'>
                               <ErrorDisplay error={result.error} messageClassName='block max-w-full break-all text-xs font-medium text-(--destructive-soft-fg) whitespace-pre-wrap' />
+                              {result.message && <TestResponseSummary message={result.message} className='mt-1 max-w-full' />}
                             </div>
+                          ) : result?.message ? (
+                            <TestResponseSummary message={result.message} className='max-w-full' />
                           ) : result?.status === 'success' ? (
                             <span className='block truncate text-xs text-(--success-soft-fg)'>{t('channels.dialogs.bulkTest.success')}</span>
                           ) : (

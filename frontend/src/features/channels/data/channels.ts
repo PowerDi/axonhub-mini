@@ -32,6 +32,7 @@ import {
   TestAPIKeyResult,
   testAPIKeyResultSchema,
 } from './schema';
+import { summarizeTestResponse } from '../utils/test-response';
 
 const QUERY_CHANNEL_NAMES_QUERY = `
   query QueryChannelNames($input: QueryChannelInput!) {
@@ -90,6 +91,11 @@ const CREATE_CHANNEL_MUTATION = `
         modelMappings {
           from
           to
+        }
+        modelApiFormatPolicies {
+          model
+          exclude
+          allow
         }
         autoTrimedModelPrefixes
         hideOriginalModels
@@ -160,6 +166,11 @@ const DUPLICATE_CHANNEL_MUTATION = `
           from
           to
         }
+        modelApiFormatPolicies {
+          model
+          exclude
+          allow
+        }
         autoTrimedModelPrefixes
         hideOriginalModels
         hideMappedModels
@@ -229,6 +240,11 @@ const BULK_CREATE_CHANNELS_MUTATION = `
           from
           to
         }
+        modelApiFormatPolicies {
+          model
+          exclude
+          allow
+        }
         autoTrimedModelPrefixes
         hideOriginalModels
         hideMappedModels
@@ -297,6 +313,11 @@ const UPDATE_CHANNEL_MUTATION = `
         modelMappings {
           from
           to
+        }
+        modelApiFormatPolicies {
+          model
+          exclude
+          allow
         }
         autoTrimedModelPrefixes
         hideOriginalModels
@@ -488,6 +509,11 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           modelMappings {
             from
             to
+          }
+          modelApiFormatPolicies {
+            model
+            exclude
+            allow
           }
           autoTrimedModelPrefixes
           hideOriginalModels
@@ -714,6 +740,11 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
             from
             to
           }
+          modelApiFormatPolicies {
+            model
+            exclude
+            allow
+          }
           autoTrimedModelPrefixes
           hideOriginalModels
           hideMappedModels
@@ -824,6 +855,11 @@ const QUERY_CHANNELS_QUERY = `
             modelMappings {
               from
               to
+            }
+            modelApiFormatPolicies {
+              model
+              exclude
+              allow
             }
             autoTrimedModelPrefixes
             hideOriginalModels
@@ -1403,10 +1439,12 @@ export function useTestChannel(options?: { silent?: boolean }) {
       channelID,
       modelID,
       proxy,
+      apiFormat,
     }: {
       channelID: string;
       modelID?: string;
       proxy?: ProxyConfig;
+      apiFormat?: string;
     }) => {
       try {
         const data = await graphqlRequest<{
@@ -1416,7 +1454,7 @@ export function useTestChannel(options?: { silent?: boolean }) {
             message?: string | null;
             error?: string | null;
           };
-        }>(TEST_CHANNEL_MUTATION, { input: { channelID, modelID, proxy } });
+        }>(TEST_CHANNEL_MUTATION, { input: { channelID, modelID, proxy, apiFormat: apiFormat || undefined } });
         return data.testChannel;
       } catch (error) {
         if (!silent) {
@@ -1431,7 +1469,8 @@ export function useTestChannel(options?: { silent?: boolean }) {
       }
 
       if (data.success) {
-        toast.success(t('channels.messages.testSuccess', { latency: data.latency.toFixed(2) }));
+        const options = data.message ? { description: summarizeTestResponse(data.message).summary } : undefined;
+        toast.success(t('channels.messages.testSuccess', { latency: data.latency.toFixed(2) }), options);
       } else {
         // Handle case where GraphQL request succeeds but test fails
         const errorMsg = data.error || t('common.errors.internalServerError');

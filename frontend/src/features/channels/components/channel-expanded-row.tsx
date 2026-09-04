@@ -83,18 +83,18 @@ export const ChannelExpandedRow = memo(({ channel, columnsLength, getApiFormatLa
 
         {channel.supportedModels && channel.supportedModels.length > 0 && (
           <div className='space-y-3'>
-            <h4 className='text-sm font-medium'>{t('channels.expandedRow.supportedModels')}</h4>
+            <h4 className='text-sm font-medium'>
+              {t('channels.expandedRow.supportedModels')}
+              <span className='text-muted-foreground ml-1.5 text-xs font-normal'>
+                ({channel.supportedModels.length})
+              </span>
+            </h4>
             <div className='flex flex-wrap gap-2'>
-              {channel.supportedModels.slice(0, 5).map((model) => (
+              {channel.supportedModels.map((model) => (
                 <Badge key={model} variant='secondary' className='font-mono text-xs'>
                   {model}
                 </Badge>
               ))}
-              {channel.supportedModels.length > 5 && (
-                <span className='text-muted-foreground flex items-center text-xs italic'>
-                  {t('channels.expandedRow.moreModels', { count: channel.supportedModels.length - 5 })}
-                </span>
-              )}
             </div>
           </div>
         )}

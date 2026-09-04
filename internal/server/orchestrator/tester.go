@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -26,6 +27,27 @@ import (
 )
 
 const testChannelAPIKeysMaxConcurrency = 8
+
+// prefixTestErrorWithStatus prepends the upstream HTTP status code to the error
+// text (e.g. "[429] Insufficient credits") when it is available on the error.
+// Errors without a usable status code are returned unchanged.
+func prefixTestErrorWithStatus(err error, message string) string {
+	if message == "" {
+		return message
+	}
+
+	var httpErr *httpclient.Error
+	if errors.As(err, &httpErr) && httpErr.StatusCode > 0 {
+		return fmt.Sprintf("[%d] %s", httpErr.StatusCode, message)
+	}
+
+	var llmErr *llm.ResponseError
+	if errors.As(err, &llmErr) && llmErr.StatusCode > 0 {
+		return fmt.Sprintf("[%d] %s", llmErr.StatusCode, message)
+	}
+
+	return message
+}
 
 const responsesWebSocketTestPrompt = "ping"
 
@@ -144,16 +166,23 @@ type TestChannelResult struct {
 }
 
 // TestChannel tests a specific channel with a simple request.
+// apiFormat, when non-nil, forces the test through the channel's endpoint
+// with that API format, overriding per-model endpoint policies.
 func (processor *TestChannelOrchestrator) TestChannel(
 	ctx context.Context,
 	channelID objects.GUID,
 	modelID *string,
 	proxy *httpclient.ProxyConfig,
+	apiFormat *string,
 ) (*TestChannelResult, error) {
 	inbound := openai.NewInboundTransformer()
 	// Create ChatCompletionOrchestrator for this test request
 	chatProcessor := &ChatCompletionOrchestrator{
-		channelSelector: NewSpecifiedChannelSelector(processor.channelService, channelID),
+		channelSelector: &SpecifiedChannelSelector{
+			ChannelService: processor.channelService,
+			ChannelID:      channelID,
+			APIFormat:      lo.FromPtr(apiFormat),
+		},
 		RequestService:  processor.requestService,
 		ChannelService:  processor.channelService,
 		PromptProvider:  &stubPromptProvider{},
@@ -215,7 +244,7 @@ func (processor *TestChannelOrchestrator) TestChannel(
 			Latency: time.Since(startTime).Seconds(),
 			Success: false,
 			Message: new(""),
-			Error:   new(message),
+			Error:   new(prefixTestErrorWithStatus(err, message)),
 		}, nil
 	}
 
@@ -572,7 +601,7 @@ func (processor *TestChannelOrchestrator) testSingleKey(
 			KeyPrefix: keyPrefix,
 			Success:   false,
 			Latency:   time.Since(startTime).Seconds(),
-			Error:     new(message),
+			Error:     new(prefixTestErrorWithStatus(err, message)),
 		}
 	}
 

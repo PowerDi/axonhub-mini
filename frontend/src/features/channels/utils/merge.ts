@@ -1,6 +1,37 @@
 // Utility functions for merging channel override configurations
 // Mirrors backend merge logic in internal/server/biz/channel_merge.go
-import type { ChannelSettings, OverrideOperation } from '../data/schema';
+import type { ChannelEndpoint, ChannelSettings, OverrideOperation } from '../data/schema';
+
+/**
+ * Resolves the runtime-effective endpoints of a channel: user-configured
+ * endpoints override built-in defaults with the same apiFormat, the rest are
+ * appended. Mirrors backend mergeEndpoints in channel_endpoint.go.
+ */
+export function resolveChannelEndpoints(
+  defaultEndpoints: ChannelEndpoint[] | null | undefined,
+  endpoints: ChannelEndpoint[] | null | undefined
+): ChannelEndpoint[] {
+  const defaults = (defaultEndpoints ?? []).filter((ep) => ep.apiFormat);
+  const overrides = new Map((endpoints ?? []).filter((ep) => ep.apiFormat).map((ep) => [ep.apiFormat, ep]));
+
+  const merged: ChannelEndpoint[] = [];
+  for (const ep of defaults) {
+    const override = overrides.get(ep.apiFormat);
+    if (override) {
+      merged.push(override);
+      overrides.delete(ep.apiFormat);
+    } else {
+      merged.push(ep);
+    }
+  }
+  for (const ep of endpoints ?? []) {
+    if (ep.apiFormat && overrides.has(ep.apiFormat)) {
+      merged.push(ep);
+    }
+  }
+
+  return merged;
+}
 
 /**
  * Normalizes empty or whitespace-only parameter strings to "[]".
@@ -120,6 +151,7 @@ export function mergeChannelSettingsForUpdate(
   return {
     extraModelPrefix: pick('extraModelPrefix', existing?.extraModelPrefix ?? ''),
     modelMappings: pick('modelMappings', existing?.modelMappings ?? []),
+    modelApiFormatPolicies: pick('modelApiFormatPolicies', existing?.modelApiFormatPolicies ?? []),
     autoTrimedModelPrefixes: pick('autoTrimedModelPrefixes', existing?.autoTrimedModelPrefixes ?? []),
     hideOriginalModels: pick('hideOriginalModels', existing?.hideOriginalModels ?? false),
     hideMappedModels: pick('hideMappedModels', existing?.hideMappedModels ?? false),
