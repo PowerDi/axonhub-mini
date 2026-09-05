@@ -588,6 +588,103 @@ func TestFetchModelsWithChannelIDUsesStoredCredentialsOnlyForStoredEndpoint(t *t
 	}
 }
 
+// TestFetchModelsInputProxyOverridesStoredProxy covers the channel edit form
+// sending its current proxy selection: the form value must win so that proxy
+// edits apply before the channel is saved.
+func TestFetchModelsInputProxyOverridesStoredProxy(t *testing.T) {
+	var inputProxyCalls atomic.Int32
+
+	inputProxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		inputProxyCalls.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"via-input-proxy"}]}`))
+	}))
+	defer inputProxy.Close()
+
+	var storedProxyCalls atomic.Int32
+
+	storedProxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		storedProxyCalls.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"via-stored-proxy"}]}`))
+	}))
+	defer storedProxy.Close()
+
+	client := enttest.NewEntClient(t, "sqlite3", "file:fetch_models_input_proxy?mode=memory&_fk=0")
+	defer client.Close()
+
+	ctx := authz.WithSystemBypass(context.Background(), "test")
+	ch, err := client.Channel.Create().
+		SetName("input-proxy").
+		SetType(channel.TypeOpenai).
+		SetBaseURL("http://upstream.invalid").
+		SetCredentials(objects.ChannelCredentials{APIKey: "stored-secret"}).
+		SetSupportedModels([]string{"stored-model"}).
+		SetDefaultTestModel("stored-model").
+		SetSettings(&objects.ChannelSettings{Proxy: &httpclient.ProxyConfig{
+			Type: httpclient.ProxyTypeURL,
+			URL:  storedProxy.URL,
+		}}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	fetcher := NewModelFetcher(
+		httpclient.NewHttpClientWithProxy(&httpclient.ProxyConfig{Type: httpclient.ProxyTypeDisabled}),
+		&ChannelService{AbstractService: &AbstractService{db: client}},
+	)
+
+	result, err := fetcher.FetchModels(ctx, FetchModelsInput{
+		ChannelType: channel.TypeOpenai.String(),
+		BaseURL:     ch.BaseURL,
+		ChannelID:   &ch.ID,
+		Proxy: &httpclient.ProxyConfig{
+			Type: httpclient.ProxyTypeURL,
+			URL:  inputProxy.URL,
+		},
+	})
+	require.NoError(t, err)
+	require.Nil(t, result.Error)
+	assert.Equal(t, []ModelIdentify{{ID: "via-input-proxy"}}, result.Models)
+	assert.Equal(t, int32(1), inputProxyCalls.Load())
+	assert.Equal(t, int32(0), storedProxyCalls.Load(), "stored proxy must not be used when input proxy is set")
+}
+
+// TestFetchModelsInputProxyWithoutChannelID covers fetching models for an
+// unsaved channel: there is no stored config to fall back to, so the form's
+// proxy is the only way for the request to reach the upstream at all.
+func TestFetchModelsInputProxyWithoutChannelID(t *testing.T) {
+	var proxyCalls atomic.Int32
+
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxyCalls.Add(1)
+
+		assert.Equal(t, "Bearer input-secret", r.Header.Get("Authorization"))
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"data":[{"id":"unsaved-model"}]}`))
+	}))
+	defer proxy.Close()
+
+	fetcher := NewModelFetcher(
+		httpclient.NewHttpClientWithProxy(&httpclient.ProxyConfig{Type: httpclient.ProxyTypeDisabled}),
+		nil,
+	)
+	inputKey := "input-secret"
+
+	result, err := fetcher.FetchModels(context.Background(), FetchModelsInput{
+		ChannelType: channel.TypeOpenai.String(),
+		BaseURL:     "http://upstream.invalid",
+		APIKey:      &inputKey,
+		Proxy: &httpclient.ProxyConfig{
+			Type: httpclient.ProxyTypeURL,
+			URL:  proxy.URL,
+		},
+	})
+	require.NoError(t, err)
+	require.Nil(t, result.Error)
+	assert.Equal(t, []ModelIdentify{{ID: "unsaved-model"}}, result.Models)
+	assert.Equal(t, int32(1), proxyCalls.Load())
+}
+
 func TestFetchModelsClineWithChannelIDUsesStoredProxyWithoutCredentials(t *testing.T) {
 	const catalogURL = "http://127.0.0.1:1/api/v1/ai/cline/recommended-models"
 

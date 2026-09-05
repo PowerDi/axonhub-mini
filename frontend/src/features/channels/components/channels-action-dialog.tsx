@@ -410,6 +410,25 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     return undefined;
   }, [proxyType, proxyUrl, proxyUsername, proxyPassword]);
 
+  // Proxy config reflecting the current form selection, for requests that must
+  // honor proxy edits before the channel is saved (e.g. fetching models).
+  // Unlike proxyConfig above this also carries "disabled"/"environment", so
+  // switching away from a URL proxy takes effect immediately too.
+  const requestProxyConfig: ProxyConfig | undefined = useMemo(() => {
+    if (proxyType === ProxyType.URL) {
+      // An empty URL would be rejected by the backend; fall back to the stored config.
+      if (!proxyUrl) return undefined;
+      return {
+        type: proxyType,
+        url: proxyUrl,
+        ...(proxyUsername && { username: proxyUsername }),
+        ...(proxyPassword && { password: proxyPassword }),
+        ...(initialRow?.settings?.proxy?.disableConnectionReuse && { disableConnectionReuse: true }),
+      };
+    }
+    return { type: proxyType };
+  }, [proxyType, proxyUrl, proxyUsername, proxyPassword, initialRow]);
+
   const handleProxyPresetSelect = (presetUrl: string) => {
     const preset = proxyPresets.find((p) => p.url === presetUrl);
     if (preset) {
@@ -1490,6 +1509,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         baseURL,
         apiKey: firstApiKey || undefined,
         channelID: isEdit ? currentRow?.id : undefined,
+        proxy: requestProxyConfig,
       });
 
       if (result.error) {
@@ -1512,7 +1532,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     } catch (_error) {
       // Error is already handled by the mutation
     }
-  }, [fetchModels, form, isEdit, currentRow]);
+  }, [fetchModels, form, isEdit, currentRow, requestProxyConfig]);
 
   const handleSyncNow = useCallback(async () => {
     if (!currentRow) return [];

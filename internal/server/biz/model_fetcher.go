@@ -17,6 +17,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer/anthropic/claudecode"
 	"github.com/looplj/axonhub/llm/transformer/antigravity"
@@ -164,6 +165,12 @@ type FetchModelsInput struct {
 	//nolint:gosec // G117: Field name contains "APIKey" but this is input data, not a hardcoded secret
 	APIKey    *string
 	ChannelID *int
+
+	// Proxy overrides the channel's stored proxy configuration. The channel edit
+	// form sends its current selection so that proxy edits take effect before the
+	// channel is saved, and so that unsaved channels can fetch through a proxy at
+	// all. Falls back to the stored configuration when nil.
+	Proxy *objects.ProxyConfig
 }
 
 // FetchModelsResult represents the result of fetching models.
@@ -343,7 +350,9 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 
 	if input.ChannelType == channel.TypeCline.String() {
 		httpClient := f.httpClient
-		if input.ChannelID != nil {
+		if input.Proxy != nil {
+			httpClient = f.httpClient.WithProxy(input.Proxy)
+		} else if input.ChannelID != nil {
 			ch, err := f.channelService.entFromContext(ctx).Channel.Get(ctx, *input.ChannelID)
 			if err != nil {
 				return &FetchModelsResult{
@@ -357,6 +366,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		}
 
 		models, fallback := f.fetchClineRecommendedModels(ctx, httpClient)
+
 		return &FetchModelsResult{Models: models, Fallback: fallback}, nil
 	}
 
@@ -364,10 +374,11 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 		return result, nil
 	}
 
-	var (
-		apiKey      string
-		proxyConfig *httpclient.ProxyConfig
-	)
+	var apiKey string
+
+	// The form's current proxy selection wins over the stored one so edits apply
+	// immediately; the stored value is only a fallback.
+	proxyConfig := input.Proxy
 
 	if input.APIKey != nil && *input.APIKey != "" {
 		apiKey = *input.APIKey
@@ -404,7 +415,7 @@ func (f *ModelFetcher) FetchModels(ctx context.Context, input FetchModelsInput) 
 			input.BaseURL = ch.BaseURL
 		}
 
-		if ch.Settings != nil {
+		if proxyConfig == nil && ch.Settings != nil {
 			proxyConfig = ch.Settings.Proxy
 		}
 	}

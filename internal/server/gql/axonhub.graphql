@@ -560,6 +560,7 @@ input FetchModelsInput {
   baseURL: String!
   apiKey: String
   channelID: ID
+  proxy: ProxyConfigInput
 }
 
 type FetchModelsPayload {
