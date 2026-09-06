@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSaveChannelEndpoints } from '../data/channels';
+import { getConfigurableApiFormatsForChannelType } from '../data/protocol-options';
 import {
   Channel,
   ChannelEndpoint,
@@ -105,7 +106,10 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
 
   const usedApiFormats = useMemo(() => new Set(endpoints.map((ep) => ep.apiFormat)), [endpoints]);
 
-  const availableApiFormats = useMemo(() => configurableChannelEndpointApiFormats.filter((f) => !usedApiFormats.has(f)), [usedApiFormats]);
+  const availableApiFormats = useMemo(
+    () => getConfigurableApiFormatsForChannelType(channel.type, configurableChannelEndpointApiFormats).filter((f) => !usedApiFormats.has(f)),
+    [usedApiFormats, channel.type]
+  );
 
   const handleAddEndpoint = useCallback(() => {
     setError(null);
