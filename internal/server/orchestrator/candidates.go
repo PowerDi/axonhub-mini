@@ -620,18 +620,32 @@ func (s *DefaultSelector) getLatestChannelUpdateTime(channels []*biz.Channel) ti
 	return latest
 }
 
-// SelectedChannelsSelector is a decorator that filters candidates by allowed channel IDs.
+// SelectedChannelsSelector is a decorator that filters candidates by channel IDs.
+// When exclude is false it keeps only the listed channels (allowlist); when
+// exclude is true it removes the listed channels (denylist).
 type SelectedChannelsSelector struct {
-	wrapped           CandidateSelector
-	allowedChannelIDs []int
+	wrapped    CandidateSelector
+	channelIDs []int
+	exclude    bool
 }
 
 // WithSelectedChannelsSelector creates a selector that filters by allowed channel IDs.
 // If allowedChannelIDs is nil or empty, all candidates from the wrapped selector are returned.
 func WithSelectedChannelsSelector(wrapped CandidateSelector, allowedChannelIDs []int) *SelectedChannelsSelector {
 	return &SelectedChannelsSelector{
-		wrapped:           wrapped,
-		allowedChannelIDs: allowedChannelIDs,
+		wrapped:    wrapped,
+		channelIDs: allowedChannelIDs,
+	}
+}
+
+// WithExcludedChannelsSelector creates a selector that removes the given channel IDs
+// from the candidate set (denylist). If excludedChannelIDs is nil or empty, all
+// candidates from the wrapped selector are returned.
+func WithExcludedChannelsSelector(wrapped CandidateSelector, excludedChannelIDs []int) *SelectedChannelsSelector {
+	return &SelectedChannelsSelector{
+		wrapped:    wrapped,
+		channelIDs: excludedChannelIDs,
+		exclude:    true,
 	}
 }
 
@@ -641,19 +655,23 @@ func (s *SelectedChannelsSelector) Select(ctx context.Context, req *llm.Request)
 		return nil, err
 	}
 
-	// If no allowed IDs specified, return all candidates
-	if len(s.allowedChannelIDs) == 0 {
+	// If no IDs specified, return all candidates
+	if len(s.channelIDs) == 0 {
 		return candidates, nil
 	}
 
-	// Build allowed set for O(1) lookup
-	allowedSet := lo.SliceToMap(s.allowedChannelIDs, func(id int) (int, struct{}) {
+	// Build the ID set for O(1) lookup
+	idSet := lo.SliceToMap(s.channelIDs, func(id int) (int, struct{}) {
 		return id, struct{}{}
 	})
 
-	// Filter candidates by allowed channel IDs
+	// Keep (include) or drop (exclude) candidates whose channel ID is in the set
 	filtered := lo.Filter(candidates, func(c *ChannelModelsCandidate, _ int) bool {
-		_, ok := allowedSet[c.Channel.ID]
+		_, ok := idSet[c.Channel.ID]
+		if s.exclude {
+			return !ok
+		}
+
 		return ok
 	})
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/looplj/axonhub/internal/ent/providerquotastatus"
 	"github.com/looplj/axonhub/internal/log"
+	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
 	"github.com/looplj/axonhub/llm"
@@ -44,7 +45,11 @@ func selectCandidates(inbound *PersistentInboundTransformer, quotaProvider Provi
 		// Key-level profile filtering (narrows further within project scope)
 		if profile := inbound.state.APIKey.GetActiveProfile(); profile != nil {
 			if len(profile.ChannelIDs) > 0 {
-				selector = WithSelectedChannelsSelector(selector, profile.ChannelIDs)
+				if profile.ChannelIDsMatchMode.OrDefault() == objects.ChannelIDsMatchModeExclude {
+					selector = WithExcludedChannelsSelector(selector, profile.ChannelIDs)
+				} else {
+					selector = WithSelectedChannelsSelector(selector, profile.ChannelIDs)
+				}
 			}
 
 			if len(profile.ChannelTags) > 0 {

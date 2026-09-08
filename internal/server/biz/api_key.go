@@ -700,6 +700,7 @@ func normalizeProfileForComparison(profile *objects.APIKeyProfile) *objects.APIK
 	if result.ModelIDs == nil {
 		result.ModelIDs = []string{}
 	}
+	result.ChannelIDsMatchMode = result.ChannelIDsMatchMode.OrDefault()
 	result.ChannelTagsMatchMode = result.ChannelTagsMatchMode.OrDefault()
 	loadBalanceStrategy := objects.RoutingPolicyDefault
 	if result.LoadBalanceStrategy != nil {
@@ -748,6 +749,10 @@ func validateActiveProfile(activeProfile string, profiles []objects.APIKeyProfil
 
 func validateProfileFilters(profiles []objects.APIKeyProfile) error {
 	for _, profile := range profiles {
+		if !profile.ChannelIDsMatchMode.IsValid() {
+			return fmt.Errorf("profile '%s' channelIDsMatchMode is invalid", profile.Name)
+		}
+
 		if !profile.ChannelTagsMatchMode.IsValid() {
 			return fmt.Errorf("profile '%s' channelTagsMatchMode is invalid", profile.Name)
 		}

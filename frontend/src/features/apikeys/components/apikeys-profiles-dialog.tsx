@@ -514,6 +514,8 @@ function ProfileCard({
   const templateName = form.watch(`profiles.${profileIndex}.templateName`);
   const channelTagsMatchMode = form.watch(`profiles.${profileIndex}.channelTagsMatchMode`);
   const isExcludeMode = channelTagsMatchMode === 'none';
+  const channelIDsMatchMode = form.watch(`profiles.${profileIndex}.channelIDsMatchMode`);
+  const isChannelExcludeMode = channelIDsMatchMode === 'exclude';
   const quotaUsage = profileName ? quotaUsageByProfileName.get(profileName) : undefined;
   const currentQuota = form.watch(`profiles.${profileIndex}.quota`);
   const quotaUsagePeriod = (currentQuota?.period ?? quotaUsage?.quota?.period) as ApiKeyQuotaPeriod | null | undefined;
@@ -1042,8 +1044,37 @@ function ProfileCard({
 
           {/* Channel Restrictions Section */}
           <div className='border-t pt-6'>
-            <h4 className='mb-3 text-sm font-medium'>{t('apikeys.profiles.allowedChannels')}</h4>
-            <p className='text-muted-foreground mb-3 text-xs'>{t('apikeys.profiles.allowedChannelsDescription')}</p>
+            <div className='mb-3 flex items-start justify-between gap-3'>
+              <div>
+                <h4 className='text-sm font-medium'>
+                  {t(isChannelExcludeMode ? 'apikeys.profiles.excludedChannels' : 'apikeys.profiles.allowedChannels')}
+                </h4>
+                <p className='text-muted-foreground mt-1 text-xs'>
+                  {t(isChannelExcludeMode ? 'apikeys.profiles.excludedChannelsDescription' : 'apikeys.profiles.allowedChannelsDescription')}
+                </p>
+              </div>
+              <FormField
+                control={form.control}
+                name={`profiles.${profileIndex}.channelIDsMatchMode`}
+                render={({ field }) => (
+                  <FormItem className='w-[180px]'>
+                    <FormLabel>{t('apikeys.profiles.channelIDsMatchMode')}</FormLabel>
+                    <FormControl>
+                      <Select value={field.value || 'include'} onValueChange={field.onChange}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value='include'>{t('apikeys.profiles.channelIDsMatchModeInclude')}</SelectItem>
+                          <SelectItem value='exclude'>{t('apikeys.profiles.channelIDsMatchModeExclude')}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <FormField
               control={form.control}
               name={`profiles.${profileIndex}.channelIDs`}
@@ -1064,7 +1095,7 @@ function ProfileCard({
                           .filter((id) => !isNaN(id));
                         field.onChange(ids);
                       }}
-                      placeholder={t('apikeys.profiles.allowedChannels')}
+                      placeholder={t(isChannelExcludeMode ? 'apikeys.profiles.excludedChannels' : 'apikeys.profiles.allowedChannels')}
                       suggestions={channelsData?.edges?.map((edge) => edge.node.name) || []}
                       className='h-auto min-h-9 py-1'
                     />

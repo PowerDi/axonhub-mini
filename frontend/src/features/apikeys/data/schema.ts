@@ -21,6 +21,17 @@ const channelTagsMatchModeFieldSchema = z.preprocess((value) => {
   return value;
 }, channelTagsMatchModeSchema);
 
+export const channelIDsMatchModeSchema = z.enum(['include', 'exclude']);
+export type ChannelIDsMatchMode = z.infer<typeof channelIDsMatchModeSchema>;
+
+const channelIDsMatchModeFieldSchema = z.preprocess((value) => {
+  if (value == null || value === '') {
+    return 'include';
+  }
+
+  return value;
+}, channelIDsMatchModeSchema);
+
 /** Normalize legacy/empty routing policy values to the canonical "default". */
 export function normalizeRoutingPolicyValue(value?: string | null): string {
   if (!value || value === 'system_default') {
@@ -71,6 +82,7 @@ export const apiKeySchema = z.object({
               )
               .default([]),
             channelIDs: z.array(z.number()).optional().nullable(),
+            channelIDsMatchMode: channelIDsMatchModeFieldSchema,
             channelTags: z.array(z.string()).optional().nullable(),
             channelTagsMatchMode: channelTagsMatchModeFieldSchema,
             modelIDs: z.array(z.string()).optional().nullable(),
@@ -173,6 +185,7 @@ export const apiKeyProfileSchema = z.object({
   templateName: z.string().optional().nullable(),
   modelMappings: z.array(modelMappingSchema),
   channelIDs: z.array(z.number()).optional().nullable(),
+  channelIDsMatchMode: channelIDsMatchModeFieldSchema,
   channelTags: z.array(z.string()).optional().nullable(),
   channelTagsMatchMode: channelTagsMatchModeFieldSchema,
   modelIDs: z.array(z.string()).optional().nullable(),
@@ -260,6 +273,7 @@ export const updateApiKeyProfilesInputSchemaFactory = (t: (key: string) => strin
               })
             ),
             channelIDs: z.array(z.number()).optional().nullable(),
+            channelIDsMatchMode: channelIDsMatchModeFieldSchema,
             channelTags: z.array(z.string()).optional().nullable(),
             channelTagsMatchMode: channelTagsMatchModeFieldSchema,
             modelIDs: z.array(z.string()).optional().nullable(),
@@ -361,6 +375,7 @@ export const updateApiKeyProfilesInputSchema = z.object({
         })
       ),
       channelIDs: z.array(z.number()).optional().nullable(),
+      channelIDsMatchMode: channelIDsMatchModeFieldSchema,
       channelTags: z.array(z.string()).optional().nullable(),
       channelTagsMatchMode: channelTagsMatchModeFieldSchema,
       modelIDs: z.array(z.string()).optional().nullable(),

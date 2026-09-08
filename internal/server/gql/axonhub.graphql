@@ -403,6 +403,7 @@ input APIKeyProfileInput {
   templateName: String
   modelMappings: [ModelMappingInput!]
   channelIDs: [Int!]
+  channelIDsMatchMode: ChannelIDsMatchMode
   channelTags: [String!]
   channelTagsMatchMode: ChannelTagsMatchMode
   modelIDs: [String!]
@@ -450,6 +451,7 @@ type APIKeyProfile {
   templateName: String
   modelMappings: [ModelMapping!]
   channelIDs: [Int!]
+  channelIDsMatchMode: ChannelIDsMatchMode
   channelTags: [String!]
   channelTagsMatchMode: ChannelTagsMatchMode
   modelIDs: [String!]
@@ -462,6 +464,11 @@ enum ChannelTagsMatchMode {
   any
   all
   none
+}
+
+enum ChannelIDsMatchMode {
+  include
+  exclude
 }
 
 # ApiKeyProfileTemplate uses the Ent-generated type and input types from ent.graphql

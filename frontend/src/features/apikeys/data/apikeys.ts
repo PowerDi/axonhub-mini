@@ -106,6 +106,7 @@ function buildApiKeyQuery(permissions: { canViewUsers: boolean }) {
             templateName
             modelMappings { from to }
             channelIDs
+            channelIDsMatchMode
             channelTags
             channelTagsMatchMode
             modelIDs
@@ -209,6 +210,7 @@ const UPDATE_APIKEY_PROFILES_MUTATION = `
             to
           }
           channelIDs
+          channelIDsMatchMode
           channelTags
           channelTagsMatchMode
           modelIDs
@@ -318,6 +320,7 @@ const APIKEY_PROFILE_TEMPLATES_QUERY = `
             name
             modelMappings { from to }
             channelIDs
+            channelIDsMatchMode
             channelTags
             channelTagsMatchMode
             modelIDs
@@ -396,6 +399,7 @@ const LOAD_APIKEY_PROFILE_TEMPLATE_MUTATION = `
           templateName
           modelMappings { from to }
           channelIDs
+          channelIDsMatchMode
           channelTags
           channelTagsMatchMode
           modelIDs

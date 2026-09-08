@@ -24,6 +24,7 @@ type APIKeyProfile struct {
 	TraceStickyMode     *string        `json:"traceStickyMode,omitempty"`
 
 	ChannelIDs           []int                `json:"channelIDs,omitempty"`
+	ChannelIDsMatchMode  ChannelIDsMatchMode  `json:"channelIDsMatchMode,omitempty"`
 	ChannelTags          []string             `json:"channelTags,omitempty"`
 	ChannelTagsMatchMode ChannelTagsMatchMode `json:"channelTagsMatchMode,omitempty"`
 	ModelIDs             []string             `json:"modelIDs,omitempty"`
@@ -91,6 +92,28 @@ func MatchChannelTags(allowedTags []string, matchMode ChannelTagsMatchMode, chan
 
 		return false
 	}
+}
+
+// ChannelIDsMatchMode controls how profile channel IDs are matched.
+// "include" (the default) treats ChannelIDs as an allowlist; "exclude" treats
+// it as a denylist (channels in the list are removed from the candidate set).
+type ChannelIDsMatchMode string
+
+const (
+	ChannelIDsMatchModeInclude ChannelIDsMatchMode = "include"
+	ChannelIDsMatchModeExclude ChannelIDsMatchMode = "exclude"
+)
+
+func (m ChannelIDsMatchMode) IsValid() bool {
+	return m == "" || m == ChannelIDsMatchModeInclude || m == ChannelIDsMatchModeExclude
+}
+
+func (m ChannelIDsMatchMode) OrDefault() ChannelIDsMatchMode {
+	if m == ChannelIDsMatchModeExclude {
+		return ChannelIDsMatchModeExclude
+	}
+
+	return ChannelIDsMatchModeInclude
 }
 
 func (p *APIKeyProfile) Clone() *APIKeyProfile {

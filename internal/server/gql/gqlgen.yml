@@ -268,6 +268,9 @@ models:
   ChannelTagsMatchMode:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelTagsMatchMode
+  ChannelIDsMatchMode:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelIDsMatchMode
   APIKeyQuotaInput:
     model:
       - github.com/looplj/axonhub/internal/objects.APIKeyQuota
