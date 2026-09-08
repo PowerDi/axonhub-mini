@@ -1274,8 +1274,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
       const dataWithModels = {
         ...valuesForSubmit,
-        supportedModels,
-        manualModels,
+        // Drop blank/whitespace-only entries so they don't persist and re-crash the editor.
+        supportedModels: supportedModels.map((m) => m.trim()).filter((m) => m.length > 0),
+        manualModels: manualModels.map((m) => m.trim()).filter((m) => m.length > 0),
         credentials: valuesForSubmit.credentials,
       };
       const settingsForSubmit = values.settings;

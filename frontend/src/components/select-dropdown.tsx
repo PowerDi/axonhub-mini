@@ -44,11 +44,15 @@ export function SelectDropdown({
             </div>
           </SelectItem>
         ) : (
-          items?.map(({ label, value, disabled }) => (
-            <SelectItem key={value} value={value} disabled={disabled}>
-              {label}
-            </SelectItem>
-          ))
+          items
+            // Radix <Select.Item /> throws on an empty-string value, which would crash the
+            // whole page via the router error boundary (shows the 500 screen). Skip blanks.
+            ?.filter(({ value }) => value !== '')
+            .map(({ label, value, disabled }) => (
+              <SelectItem key={value} value={value} disabled={disabled}>
+                {label}
+              </SelectItem>
+            ))
         )}
       </SelectContent>
     </Select>
