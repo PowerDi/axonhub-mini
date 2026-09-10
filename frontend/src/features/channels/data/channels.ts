@@ -1416,6 +1416,21 @@ export function useBulkCreateChannels() {
   });
 }
 
+async function fetchLatestChannel(channelID: string): Promise<Channel> {
+  const data = await graphqlRequest<{ queryChannels: ChannelConnection }>(QUERY_CHANNELS_QUERY, {
+    input: {
+      first: 1,
+      where: { id: channelID },
+    },
+  });
+  const channels = channelConnectionSchema.parse(data.queryChannels);
+  const channel = channels.edges[0]?.node;
+  if (!channel) {
+    throw new Error(`Channel ${channelID} was not found`);
+  }
+  return channel;
+}
+
 export function useUpdateChannel() {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
