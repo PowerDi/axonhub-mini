@@ -15,6 +15,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+
+func hammerIntPtr(v int) *int { return &v }
+
 func newUpstream429() error {
 	return &httpclient.Error{
 		StatusCode: http.StatusTooManyRequests,
@@ -93,10 +96,10 @@ func TestHammerDefaults(t *testing.T) {
 
 	// Explicit values win over defaults.
 	custom := &objects.ChannelHammerRetry{
-		RetryDelayMs:                250,
-		MaxRetries:                  10,
-		MaxDurationMs:               30_000,
-		ConsecutiveHardFailureLimit: 5,
+		RetryDelayMs:                hammerIntPtr(250),
+		MaxRetries:                  hammerIntPtr(10),
+		MaxDurationMs:               hammerIntPtr(30_000),
+		ConsecutiveHardFailureLimit: hammerIntPtr(5),
 	}
 	assert.Equal(t, 250, custom.EffectiveDelayMs())
 	assert.Equal(t, 10, custom.EffectiveMaxRetries())
@@ -121,7 +124,7 @@ func newHammerOutbound(hammer *objects.ChannelHammerRetry) *PersistentOutboundTr
 
 func TestHammerCanRetryBudget(t *testing.T) {
 	t.Run("hammerable error retries on same channel", func(t *testing.T) {
-		outbound := newHammerOutbound(&objects.ChannelHammerRetry{MaxRetries: 5})
+		outbound := newHammerOutbound(&objects.ChannelHammerRetry{MaxRetries: hammerIntPtr(5)})
 		allow, handled := outbound.hammerCanRetry(newUpstream429())
 		assert.True(t, allow)
 		assert.True(t, handled)
@@ -129,7 +132,7 @@ func TestHammerCanRetryBudget(t *testing.T) {
 	})
 
 	t.Run("attempts budget stops hammering", func(t *testing.T) {
-		outbound := newHammerOutbound(&objects.ChannelHammerRetry{MaxRetries: 3})
+		outbound := newHammerOutbound(&objects.ChannelHammerRetry{MaxRetries: hammerIntPtr(3)})
 		for i := 0; i < 3; i++ {
 			_, handled := outbound.hammerCanRetry(newUpstream429())
 			assert.True(t, handled)
@@ -141,8 +144,8 @@ func TestHammerCanRetryBudget(t *testing.T) {
 
 	t.Run("consecutive hard failures trip the fuse", func(t *testing.T) {
 		outbound := newHammerOutbound(&objects.ChannelHammerRetry{
-			MaxRetries:                  100,
-			ConsecutiveHardFailureLimit: 2,
+			MaxRetries:                  hammerIntPtr(100),
+			ConsecutiveHardFailureLimit: hammerIntPtr(2),
 			ErrorPatterns:               []objects.RetryableErrorPattern{{Pattern: "负载已经达到上限"}},
 		})
 
@@ -165,7 +168,7 @@ func TestHammerCanRetryBudget(t *testing.T) {
 	})
 
 	t.Run("non-hammerable error is not handled", func(t *testing.T) {
-		outbound := newHammerOutbound(&objects.ChannelHammerRetry{MaxRetries: 5})
+		outbound := newHammerOutbound(&objects.ChannelHammerRetry{MaxRetries: hammerIntPtr(5)})
 		allow, handled := outbound.hammerCanRetry(errors.New("boom"))
 		assert.False(t, allow)
 		assert.False(t, handled)
@@ -182,7 +185,7 @@ func TestHammerCanRetryBudget(t *testing.T) {
 func TestHammerCanRetryInCanRetry(t *testing.T) {
 	// The full CanRetry path: a hammer channel must retry an upstream 429 on
 	// the same channel even though the default policy switches channels.
-	outbound := newHammerOutbound(&objects.ChannelHammerRetry{MaxRetries: 5})
+	outbound := newHammerOutbound(&objects.ChannelHammerRetry{MaxRetries: hammerIntPtr(5)})
 	assert.True(t, outbound.CanRetry(newUpstream429()))
 
 	// A channel without hammer retry keeps the default 429 switch behaviour.
@@ -191,7 +194,7 @@ func TestHammerCanRetryInCanRetry(t *testing.T) {
 }
 
 func TestHammerSameChannelBudgetInterface(t *testing.T) {
-	outbound := newHammerOutbound(&objects.ChannelHammerRetry{RetryDelayMs: 250})
+	outbound := newHammerOutbound(&objects.ChannelHammerRetry{RetryDelayMs: hammerIntPtr(250)})
 	assert.True(t, outbound.OverridesSameChannelLimit())
 	assert.Equal(t, 250*time.Millisecond, outbound.SameChannelRetryDelay())
 
@@ -201,7 +204,7 @@ func TestHammerSameChannelBudgetInterface(t *testing.T) {
 }
 
 func TestHammerStateResetsOnChannelSwitch(t *testing.T) {
-	outbound := newHammerOutbound(&objects.ChannelHammerRetry{MaxRetries: 5})
+	outbound := newHammerOutbound(&objects.ChannelHammerRetry{MaxRetries: hammerIntPtr(5)})
 
 	// Burn most of the budget on channel A.
 	for i := 0; i < 4; i++ {
@@ -216,7 +219,7 @@ func TestHammerStateResetsOnChannelSwitch(t *testing.T) {
 	// switch — the hammer budget must reset.
 	outbound.state.ChannelModelsCandidates = []*ChannelModelsCandidate{
 		outbound.state.CurrentCandidate,
-		newHammerOutbound(&objects.ChannelHammerRetry{MaxRetries: 5}).state.CurrentCandidate,
+		newHammerOutbound(&objects.ChannelHammerRetry{MaxRetries: hammerIntPtr(5)}).state.CurrentCandidate,
 	}
 	err := outbound.NextChannel(context.Background())
 	require.NoError(t, err)

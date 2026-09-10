@@ -297,13 +297,15 @@ export type RetryableErrorPattern = z.infer<typeof retryableErrorPatternSchema>;
 // Contended-channel ("挤模式") hammer retry. Mirrors objects.ChannelHammerRetry:
 // rate-limit-shaped failures are retried on the same channel at high frequency
 // to grab a concurrency slot. All fields optional — the backend applies
-// defaults (500ms / 50 attempts / 120s / 3 hard failures).
+// defaults (500ms / 50 attempts / 120s / 3 hard failures). Numeric fields
+// accept 0 defensively: the backend marshals unconfigured pointer fields as
+// null, but a stale server may still return the Go zero value.
 export const channelHammerRetrySchema = z.object({
-  retryDelayMs: z.number().int().positive().optional().nullable(),
-  maxRetries: z.number().int().positive().optional().nullable(),
-  maxDurationMs: z.number().int().positive().optional().nullable(),
+  retryDelayMs: z.number().int().nonnegative().optional().nullable(),
+  maxRetries: z.number().int().nonnegative().optional().nullable(),
+  maxDurationMs: z.number().int().nonnegative().optional().nullable(),
   errorPatterns: z.array(retryableErrorPatternSchema).optional().nullable(),
-  consecutiveHardFailureLimit: z.number().int().positive().optional().nullable(),
+  consecutiveHardFailureLimit: z.number().int().nonnegative().optional().nullable(),
 });
 export type ChannelHammerRetry = z.infer<typeof channelHammerRetrySchema>;
 

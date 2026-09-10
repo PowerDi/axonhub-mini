@@ -328,18 +328,20 @@ type RetryableErrorPattern struct {
 // settings.
 type ChannelHammerRetry struct {
 	// RetryDelayMs is the delay between same-channel hammer attempts in
-	// milliseconds. Defaults to DefaultHammerRetryDelayMs when unset or <= 0.
-	RetryDelayMs int `json:"retryDelayMs,omitempty"`
+	// milliseconds. Defaults to DefaultHammerRetryDelayMs when nil or <= 0.
+	// Pointer so an unconfigured channel marshals as null (not the misleading
+	// zero) through GraphQL.
+	RetryDelayMs *int `json:"retryDelayMs,omitempty"`
 
 	// MaxRetries is the maximum number of same-channel hammer attempts for a
-	// single request. Defaults to DefaultHammerMaxRetries when unset or <= 0.
-	MaxRetries int `json:"maxRetries,omitempty"`
+	// single request. Defaults to DefaultHammerMaxRetries when nil or <= 0.
+	MaxRetries *int `json:"maxRetries,omitempty"`
 
 	// MaxDurationMs caps the total time spent hammering for a single request.
 	// When exceeded, the last error is returned immediately. Defaults to
-	// DefaultHammerMaxDurationMs when unset or <= 0. The request context still
+	// DefaultHammerMaxDurationMs when nil or <= 0. The request context still
 	// applies (client cancellation wins).
-	MaxDurationMs int `json:"maxDurationMs,omitempty"`
+	MaxDurationMs *int `json:"maxDurationMs,omitempty"`
 
 	// ErrorPatterns matches rate-limit-shaped errors that do not arrive as a
 	// standard 429 (e.g. relays wrapping upstream rate limits as 500 with a
@@ -352,7 +354,7 @@ type ChannelHammerRetry struct {
 	// non-429 error usually means the channel is genuinely broken rather than
 	// merely contended. 429 never counts towards this limit. Defaults to
 	// DefaultHammerConsecutiveHardFailures when unset or <= 0.
-	ConsecutiveHardFailureLimit int `json:"consecutiveHardFailureLimit,omitempty"`
+	ConsecutiveHardFailureLimit *int `json:"consecutiveHardFailureLimit,omitempty"`
 }
 
 const (
@@ -374,34 +376,34 @@ func (h *ChannelHammerRetry) Enabled() bool {
 
 // EffectiveDelayMs returns the hammer retry delay after defaulting.
 func (h *ChannelHammerRetry) EffectiveDelayMs() int {
-	if h == nil || h.RetryDelayMs <= 0 {
+	if h == nil || h.RetryDelayMs == nil || *h.RetryDelayMs <= 0 {
 		return DefaultHammerRetryDelayMs
 	}
-	return h.RetryDelayMs
+	return *h.RetryDelayMs
 }
 
 // EffectiveMaxRetries returns the hammer max attempts after defaulting.
 func (h *ChannelHammerRetry) EffectiveMaxRetries() int {
-	if h == nil || h.MaxRetries <= 0 {
+	if h == nil || h.MaxRetries == nil || *h.MaxRetries <= 0 {
 		return DefaultHammerMaxRetries
 	}
-	return h.MaxRetries
+	return *h.MaxRetries
 }
 
 // EffectiveMaxDurationMs returns the hammer time budget after defaulting.
 func (h *ChannelHammerRetry) EffectiveMaxDurationMs() int {
-	if h == nil || h.MaxDurationMs <= 0 {
+	if h == nil || h.MaxDurationMs == nil || *h.MaxDurationMs <= 0 {
 		return DefaultHammerMaxDurationMs
 	}
-	return h.MaxDurationMs
+	return *h.MaxDurationMs
 }
 
 // EffectiveConsecutiveHardFailureLimit returns the hard-failure fuse after defaulting.
 func (h *ChannelHammerRetry) EffectiveConsecutiveHardFailureLimit() int {
-	if h == nil || h.ConsecutiveHardFailureLimit <= 0 {
+	if h == nil || h.ConsecutiveHardFailureLimit == nil || *h.ConsecutiveHardFailureLimit <= 0 {
 		return DefaultHammerConsecutiveHardFailures
 	}
-	return h.ConsecutiveHardFailureLimit
+	return *h.ConsecutiveHardFailureLimit
 }
 
 // MatchesHardFailure reports whether err is a hammerable non-429 error:

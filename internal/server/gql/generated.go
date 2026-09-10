@@ -21876,7 +21876,7 @@ func (ec *executionContext) _ChannelHammerRetry_retryDelayMs(ctx context.Context
 			return obj.RetryDelayMs, nil
 		},
 		nil,
-		ec.marshalOInt2int,
+		ec.marshalOInt2ᚖint,
 		true,
 		false,
 	)
@@ -21905,7 +21905,7 @@ func (ec *executionContext) _ChannelHammerRetry_maxRetries(ctx context.Context, 
 			return obj.MaxRetries, nil
 		},
 		nil,
-		ec.marshalOInt2int,
+		ec.marshalOInt2ᚖint,
 		true,
 		false,
 	)
@@ -21934,7 +21934,7 @@ func (ec *executionContext) _ChannelHammerRetry_maxDurationMs(ctx context.Contex
 			return obj.MaxDurationMs, nil
 		},
 		nil,
-		ec.marshalOInt2int,
+		ec.marshalOInt2ᚖint,
 		true,
 		false,
 	)
@@ -21998,7 +21998,7 @@ func (ec *executionContext) _ChannelHammerRetry_consecutiveHardFailureLimit(ctx 
 			return obj.ConsecutiveHardFailureLimit, nil
 		},
 		nil,
-		ec.marshalOInt2int,
+		ec.marshalOInt2ᚖint,
 		true,
 		false,
 	)
@@ -66286,21 +66286,21 @@ func (ec *executionContext) unmarshalInputChannelHammerRetryInput(ctx context.Co
 		switch k {
 		case "retryDelayMs":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("retryDelayMs"))
-			data, err := ec.unmarshalOInt2int(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.RetryDelayMs = data
 		case "maxRetries":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxRetries"))
-			data, err := ec.unmarshalOInt2int(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.MaxRetries = data
 		case "maxDurationMs":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxDurationMs"))
-			data, err := ec.unmarshalOInt2int(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -66314,7 +66314,7 @@ func (ec *executionContext) unmarshalInputChannelHammerRetryInput(ctx context.Co
 			it.ErrorPatterns = data
 		case "consecutiveHardFailureLimit":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("consecutiveHardFailureLimit"))
-			data, err := ec.unmarshalOInt2int(ctx, v)
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
 			if err != nil {
 				return it, err
 			}
