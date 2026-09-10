@@ -132,6 +132,27 @@ input RetryableErrorPatternInput {
   regex: Boolean
 }
 
+# HammerRetry ("挤模式") configures contended-channel retry: rate-limit-shaped
+# failures (upstream 429, or errors matching errorPatterns) are retried on the
+# same channel at high frequency to grab a concurrency slot. The channel is
+# exempt from 429 cooldowns and circuit-breaker counting for matched errors.
+# All numeric fields fall back to backend defaults when null.
+type ChannelHammerRetry {
+  retryDelayMs: Int
+  maxRetries: Int
+  maxDurationMs: Int
+  errorPatterns: [RetryableErrorPattern!]
+  consecutiveHardFailureLimit: Int
+}
+
+input ChannelHammerRetryInput {
+  retryDelayMs: Int
+  maxRetries: Int
+  maxDurationMs: Int
+  errorPatterns: [RetryableErrorPatternInput!]
+  consecutiveHardFailureLimit: Int
+}
+
 # ProviderQuota carries credentials used only for provider quota polling
 # (e.g. the Command Code account session cookie). These are sensitive: the
 # output resolver only returns them to operators with write_channels, and the
@@ -169,6 +190,7 @@ type ChannelSettings {
   rateLimit: ChannelRateLimit
   retryableStatusCodes: [Int!]
   retryableErrorPatterns: [RetryableErrorPattern!]
+  hammerRetry: ChannelHammerRetry
   providerQuota: ChannelProviderQuotaSettings @goField(forceResolver: true)
 }
 
@@ -249,6 +271,7 @@ input ChannelSettingsInput {
   rateLimit: ChannelRateLimitInput
   retryableStatusCodes: [Int!]
   retryableErrorPatterns: [RetryableErrorPatternInput!]
+  hammerRetry: ChannelHammerRetryInput
   providerQuota: ChannelProviderQuotaSettingsInput
 }
 

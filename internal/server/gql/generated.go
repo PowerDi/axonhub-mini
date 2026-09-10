@@ -408,6 +408,14 @@ type ComplexityRoot struct {
 		Transport func(childComplexity int) int
 	}
 
+	ChannelHammerRetry struct {
+		ConsecutiveHardFailureLimit func(childComplexity int) int
+		ErrorPatterns               func(childComplexity int) int
+		MaxDurationMs               func(childComplexity int) int
+		MaxRetries                  func(childComplexity int) int
+		RetryDelayMs                func(childComplexity int) int
+	}
+
 	ChannelLimiterStats struct {
 		Capacity  func(childComplexity int) int
 		InFlight  func(childComplexity int) int
@@ -568,6 +576,7 @@ type ComplexityRoot struct {
 		AutoTrimedModelPrefixes  func(childComplexity int) int
 		BodyOverrideOperations   func(childComplexity int) int
 		ExtraModelPrefix         func(childComplexity int) int
+		HammerRetry              func(childComplexity int) int
 		HeaderOverrideOperations func(childComplexity int) int
 		HideMappedModels         func(childComplexity int) int
 		HideOriginalModels       func(childComplexity int) int
@@ -3768,6 +3777,37 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.ChannelEndpoint.Transport(childComplexity), true
 
+	case "ChannelHammerRetry.consecutiveHardFailureLimit":
+		if e.complexity.ChannelHammerRetry.ConsecutiveHardFailureLimit == nil {
+			break
+		}
+
+		return e.complexity.ChannelHammerRetry.ConsecutiveHardFailureLimit(childComplexity), true
+	case "ChannelHammerRetry.errorPatterns":
+		if e.complexity.ChannelHammerRetry.ErrorPatterns == nil {
+			break
+		}
+
+		return e.complexity.ChannelHammerRetry.ErrorPatterns(childComplexity), true
+	case "ChannelHammerRetry.maxDurationMs":
+		if e.complexity.ChannelHammerRetry.MaxDurationMs == nil {
+			break
+		}
+
+		return e.complexity.ChannelHammerRetry.MaxDurationMs(childComplexity), true
+	case "ChannelHammerRetry.maxRetries":
+		if e.complexity.ChannelHammerRetry.MaxRetries == nil {
+			break
+		}
+
+		return e.complexity.ChannelHammerRetry.MaxRetries(childComplexity), true
+	case "ChannelHammerRetry.retryDelayMs":
+		if e.complexity.ChannelHammerRetry.RetryDelayMs == nil {
+			break
+		}
+
+		return e.complexity.ChannelHammerRetry.RetryDelayMs(childComplexity), true
+
 	case "ChannelLimiterStats.capacity":
 		if e.complexity.ChannelLimiterStats.Capacity == nil {
 			break
@@ -4348,6 +4388,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSettings.ExtraModelPrefix(childComplexity), true
+	case "ChannelSettings.hammerRetry":
+		if e.complexity.ChannelSettings.HammerRetry == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.HammerRetry(childComplexity), true
 	case "ChannelSettings.headerOverrideOperations":
 		if e.complexity.ChannelSettings.HeaderOverrideOperations == nil {
 			break
@@ -11681,6 +11727,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputBulkUpdateChannelOrderingInput,
 		ec.unmarshalInputChannelCredentialsInput,
 		ec.unmarshalInputChannelEndpointInput,
+		ec.unmarshalInputChannelHammerRetryInput,
 		ec.unmarshalInputChannelModelAssociationInput,
 		ec.unmarshalInputChannelModelPriceOrder,
 		ec.unmarshalInputChannelModelPriceVersionOrder,
@@ -20681,6 +20728,8 @@ func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, fie
 				return ec.fieldContext_ChannelSettings_retryableStatusCodes(ctx, field)
 			case "retryableErrorPatterns":
 				return ec.fieldContext_ChannelSettings_retryableErrorPatterns(ctx, field)
+			case "hammerRetry":
+				return ec.fieldContext_ChannelSettings_hammerRetry(ctx, field)
 			case "providerQuota":
 				return ec.fieldContext_ChannelSettings_providerQuota(ctx, field)
 			}
@@ -21812,6 +21861,157 @@ func (ec *executionContext) fieldContext_ChannelEndpoint_transport(_ context.Con
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelHammerRetry_retryDelayMs(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelHammerRetry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelHammerRetry_retryDelayMs,
+		func(ctx context.Context) (any, error) {
+			return obj.RetryDelayMs, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelHammerRetry_retryDelayMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelHammerRetry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelHammerRetry_maxRetries(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelHammerRetry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelHammerRetry_maxRetries,
+		func(ctx context.Context) (any, error) {
+			return obj.MaxRetries, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelHammerRetry_maxRetries(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelHammerRetry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelHammerRetry_maxDurationMs(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelHammerRetry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelHammerRetry_maxDurationMs,
+		func(ctx context.Context) (any, error) {
+			return obj.MaxDurationMs, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelHammerRetry_maxDurationMs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelHammerRetry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelHammerRetry_errorPatterns(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelHammerRetry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelHammerRetry_errorPatterns,
+		func(ctx context.Context) (any, error) {
+			return obj.ErrorPatterns, nil
+		},
+		nil,
+		ec.marshalORetryableErrorPattern2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRetryableErrorPatternᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelHammerRetry_errorPatterns(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelHammerRetry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "pattern":
+				return ec.fieldContext_RetryableErrorPattern_pattern(ctx, field)
+			case "regex":
+				return ec.fieldContext_RetryableErrorPattern_regex(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RetryableErrorPattern", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelHammerRetry_consecutiveHardFailureLimit(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelHammerRetry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelHammerRetry_consecutiveHardFailureLimit,
+		func(ctx context.Context) (any, error) {
+			return obj.ConsecutiveHardFailureLimit, nil
+		},
+		nil,
+		ec.marshalOInt2int,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelHammerRetry_consecutiveHardFailureLimit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelHammerRetry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -25400,6 +25600,47 @@ func (ec *executionContext) fieldContext_ChannelSettings_retryableErrorPatterns(
 				return ec.fieldContext_RetryableErrorPattern_regex(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RetryableErrorPattern", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_hammerRetry(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSettings_hammerRetry,
+		func(ctx context.Context) (any, error) {
+			return obj.HammerRetry, nil
+		},
+		nil,
+		ec.marshalOChannelHammerRetry2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelHammerRetry,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_hammerRetry(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "retryDelayMs":
+				return ec.fieldContext_ChannelHammerRetry_retryDelayMs(ctx, field)
+			case "maxRetries":
+				return ec.fieldContext_ChannelHammerRetry_maxRetries(ctx, field)
+			case "maxDurationMs":
+				return ec.fieldContext_ChannelHammerRetry_maxDurationMs(ctx, field)
+			case "errorPatterns":
+				return ec.fieldContext_ChannelHammerRetry_errorPatterns(ctx, field)
+			case "consecutiveHardFailureLimit":
+				return ec.fieldContext_ChannelHammerRetry_consecutiveHardFailureLimit(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChannelHammerRetry", field.Name)
 		},
 	}
 	return fc, nil
@@ -66029,6 +66270,61 @@ func (ec *executionContext) unmarshalInputChannelEndpointInput(ctx context.Conte
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputChannelHammerRetryInput(ctx context.Context, obj any) (objects.ChannelHammerRetry, error) {
+	var it objects.ChannelHammerRetry
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"retryDelayMs", "maxRetries", "maxDurationMs", "errorPatterns", "consecutiveHardFailureLimit"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "retryDelayMs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("retryDelayMs"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RetryDelayMs = data
+		case "maxRetries":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxRetries"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MaxRetries = data
+		case "maxDurationMs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxDurationMs"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MaxDurationMs = data
+		case "errorPatterns":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("errorPatterns"))
+			data, err := ec.unmarshalORetryableErrorPatternInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐRetryableErrorPatternᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ErrorPatterns = data
+		case "consecutiveHardFailureLimit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("consecutiveHardFailureLimit"))
+			data, err := ec.unmarshalOInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ConsecutiveHardFailureLimit = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputChannelModelAssociationInput(ctx context.Context, obj any) (objects.ChannelModelAssociation, error) {
 	var it objects.ChannelModelAssociation
 	asMap := map[string]any{}
@@ -68691,7 +68987,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "modelApiFormatPolicies", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "providerQuota"}
+	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "modelApiFormatPolicies", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "hammerRetry", "providerQuota"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -68810,6 +69106,13 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.RetryableErrorPatterns = data
+		case "hammerRetry":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hammerRetry"))
+			data, err := ec.unmarshalOChannelHammerRetryInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelHammerRetry(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HammerRetry = data
 		case "providerQuota":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("providerQuota"))
 			data, err := ec.unmarshalOChannelProviderQuotaSettingsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelProviderQuotaSettings(ctx, v)
@@ -93550,6 +93853,50 @@ func (ec *executionContext) _ChannelEndpoint(ctx context.Context, sel ast.Select
 	return out
 }
 
+var channelHammerRetryImplementors = []string{"ChannelHammerRetry"}
+
+func (ec *executionContext) _ChannelHammerRetry(ctx context.Context, sel ast.SelectionSet, obj *objects.ChannelHammerRetry) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, channelHammerRetryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ChannelHammerRetry")
+		case "retryDelayMs":
+			out.Values[i] = ec._ChannelHammerRetry_retryDelayMs(ctx, field, obj)
+		case "maxRetries":
+			out.Values[i] = ec._ChannelHammerRetry_maxRetries(ctx, field, obj)
+		case "maxDurationMs":
+			out.Values[i] = ec._ChannelHammerRetry_maxDurationMs(ctx, field, obj)
+		case "errorPatterns":
+			out.Values[i] = ec._ChannelHammerRetry_errorPatterns(ctx, field, obj)
+		case "consecutiveHardFailureLimit":
+			out.Values[i] = ec._ChannelHammerRetry_consecutiveHardFailureLimit(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var channelLimiterStatsImplementors = []string{"ChannelLimiterStats"}
 
 func (ec *executionContext) _ChannelLimiterStats(ctx context.Context, sel ast.SelectionSet, obj *ChannelLimiterStats) graphql.Marshaler {
@@ -95274,6 +95621,8 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelSettings_retryableStatusCodes(ctx, field, obj)
 		case "retryableErrorPatterns":
 			out.Values[i] = ec._ChannelSettings_retryableErrorPatterns(ctx, field, obj)
+		case "hammerRetry":
+			out.Values[i] = ec._ChannelSettings_hammerRetry(ctx, field, obj)
 		case "providerQuota":
 			field := field
 
@@ -118623,6 +118972,21 @@ func (ec *executionContext) unmarshalOChannelEndpointInput2ᚕgithubᚗcomᚋloo
 		}
 	}
 	return res, nil
+}
+
+func (ec *executionContext) marshalOChannelHammerRetry2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelHammerRetry(ctx context.Context, sel ast.SelectionSet, v *objects.ChannelHammerRetry) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ChannelHammerRetry(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOChannelHammerRetryInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelHammerRetry(ctx context.Context, v any) (*objects.ChannelHammerRetry, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputChannelHammerRetryInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOChannelIDsMatchMode2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelIDsMatchMode(ctx context.Context, v any) (objects.ChannelIDsMatchMode, error) {

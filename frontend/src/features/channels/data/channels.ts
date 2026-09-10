@@ -123,6 +123,16 @@ const CREATE_CHANNEL_MUTATION = `
           pattern
           regex
         }
+        hammerRetry {
+          retryDelayMs
+          maxRetries
+          maxDurationMs
+          errorPatterns {
+            pattern
+            regex
+          }
+          consecutiveHardFailureLimit
+        }
         providerQuota {
           commandCode {
             authCookie
@@ -201,6 +211,16 @@ const DUPLICATE_CHANNEL_MUTATION = `
         retryableErrorPatterns {
           pattern
           regex
+        }
+        hammerRetry {
+          retryDelayMs
+          maxRetries
+          maxDurationMs
+          errorPatterns {
+            pattern
+            regex
+          }
+          consecutiveHardFailureLimit
         }
         providerQuota {
           commandCode {
@@ -281,6 +301,16 @@ const BULK_CREATE_CHANNELS_MUTATION = `
           pattern
           regex
         }
+        hammerRetry {
+          retryDelayMs
+          maxRetries
+          maxDurationMs
+          errorPatterns {
+            pattern
+            regex
+          }
+          consecutiveHardFailureLimit
+        }
         providerQuota {
           commandCode {
             authCookie
@@ -359,6 +389,16 @@ const UPDATE_CHANNEL_MUTATION = `
         retryableErrorPatterns {
           pattern
           regex
+        }
+        hammerRetry {
+          retryDelayMs
+          maxRetries
+          maxDurationMs
+          errorPatterns {
+            pattern
+            regex
+          }
+          consecutiveHardFailureLimit
         }
         providerQuota {
           commandCode {
@@ -553,6 +593,16 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
           retryableErrorPatterns {
             pattern
             regex
+          }
+          hammerRetry {
+            retryDelayMs
+            maxRetries
+            maxDurationMs
+            errorPatterns {
+              pattern
+              regex
+            }
+            consecutiveHardFailureLimit
           }
           providerQuota {
             commandCode {
@@ -789,6 +839,16 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
             pattern
             regex
           }
+          hammerRetry {
+            retryDelayMs
+            maxRetries
+            maxDurationMs
+            errorPatterns {
+              pattern
+              regex
+            }
+            consecutiveHardFailureLimit
+          }
           providerQuota {
             commandCode {
               authCookie
@@ -954,6 +1014,16 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
             retryableErrorPatterns {
               pattern
               regex
+            }
+            hammerRetry {
+              retryDelayMs
+              maxRetries
+              maxDurationMs
+              errorPatterns {
+                pattern
+                regex
+              }
+              consecutiveHardFailureLimit
             }
             providerQuota {
               commandCode {

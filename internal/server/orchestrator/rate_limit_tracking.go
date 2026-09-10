@@ -87,6 +87,12 @@ func (m *rateLimitTracking) OnOutboundRawError(ctx context.Context, err error) {
 		return
 	}
 
+	// Hammer ("挤模式") channels expect 429s as part of contention; cooling
+	// the channel down would defeat the whole point of hammer retry.
+	if hammerConfigForChannel(channel) != nil {
+		return
+	}
+
 	// Only cool down a channel when the upstream explicitly provides a cooldown.
 	if !httpclient.HasRetryAfterHeader(err) {
 		return

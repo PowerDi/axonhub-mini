@@ -3,6 +3,7 @@ package objects
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -280,6 +281,13 @@ type ChannelSettings struct {
 	// case-sensitive substring of the error text.
 	RetryableErrorPatterns []RetryableErrorPattern `json:"retryableErrorPatterns,omitempty"`
 
+	// HammerRetry enables contended-channel mode: rate-limit-shaped failures are
+	// retried on the same channel at a high frequency to grab a concurrency slot
+	// ("挤模式"). It overrides the default 429 behaviour of skipping same-channel
+	// retry, and exempts the channel from 429 cooldowns and circuit-breaker
+	// counting for matched errors.
+	HammerRetry *ChannelHammerRetry `json:"hammerRetry,omitempty"`
+
 	// ProviderQuota holds provider-specific quota collection credentials and
 	// options. Fields are sensitive (e.g. auth cookies) and only exposed to
 	// operators holding channel write permission.
@@ -311,6 +319,117 @@ func (s CommandCodeQuotaSettings) String() string {
 type RetryableErrorPattern struct {
 	Pattern string `json:"pattern"`
 	Regex   bool   `json:"regex,omitempty"`
+}
+
+// ChannelHammerRetry configures contended-channel ("挤模式") retry behaviour.
+// Such channels reject most requests with 429 or rate-limit-shaped 5xx errors
+// and only succeed by retrying at high frequency until a concurrency slot
+// opens up. All fields are channel-local; nothing is inherited from system
+// settings.
+type ChannelHammerRetry struct {
+	// RetryDelayMs is the delay between same-channel hammer attempts in
+	// milliseconds. Defaults to DefaultHammerRetryDelayMs when unset or <= 0.
+	RetryDelayMs int `json:"retryDelayMs,omitempty"`
+
+	// MaxRetries is the maximum number of same-channel hammer attempts for a
+	// single request. Defaults to DefaultHammerMaxRetries when unset or <= 0.
+	MaxRetries int `json:"maxRetries,omitempty"`
+
+	// MaxDurationMs caps the total time spent hammering for a single request.
+	// When exceeded, the last error is returned immediately. Defaults to
+	// DefaultHammerMaxDurationMs when unset or <= 0. The request context still
+	// applies (client cancellation wins).
+	MaxDurationMs int `json:"maxDurationMs,omitempty"`
+
+	// ErrorPatterns matches rate-limit-shaped errors that do not arrive as a
+	// standard 429 (e.g. relays wrapping upstream rate limits as 500 with a
+	// "负载已经达到上限" body). 429 is always hammered and never needs a
+	// pattern. Uses the same matching semantics as RetryableErrorPatterns.
+	ErrorPatterns []RetryableErrorPattern `json:"errorPatterns,omitempty"`
+
+	// ConsecutiveHardFailureLimit stops hammering after this many consecutive
+	// non-429 failures (pattern-matched 5xx etc.), because a persistent
+	// non-429 error usually means the channel is genuinely broken rather than
+	// merely contended. 429 never counts towards this limit. Defaults to
+	// DefaultHammerConsecutiveHardFailures when unset or <= 0.
+	ConsecutiveHardFailureLimit int `json:"consecutiveHardFailureLimit,omitempty"`
+}
+
+const (
+	// DefaultHammerRetryDelayMs is the default delay between hammer attempts.
+	DefaultHammerRetryDelayMs = 500
+	// DefaultHammerMaxRetries is the default maximum hammer attempts per request.
+	DefaultHammerMaxRetries = 50
+	// DefaultHammerMaxDurationMs is the default hammering time budget per request.
+	DefaultHammerMaxDurationMs = 120_000
+	// DefaultHammerConsecutiveHardFailures is the default consecutive
+	// non-429 failure fuse.
+	DefaultHammerConsecutiveHardFailures = 3
+)
+
+// Enabled reports whether hammer retry is active for the channel.
+func (h *ChannelHammerRetry) Enabled() bool {
+	return h != nil
+}
+
+// EffectiveDelayMs returns the hammer retry delay after defaulting.
+func (h *ChannelHammerRetry) EffectiveDelayMs() int {
+	if h == nil || h.RetryDelayMs <= 0 {
+		return DefaultHammerRetryDelayMs
+	}
+	return h.RetryDelayMs
+}
+
+// EffectiveMaxRetries returns the hammer max attempts after defaulting.
+func (h *ChannelHammerRetry) EffectiveMaxRetries() int {
+	if h == nil || h.MaxRetries <= 0 {
+		return DefaultHammerMaxRetries
+	}
+	return h.MaxRetries
+}
+
+// EffectiveMaxDurationMs returns the hammer time budget after defaulting.
+func (h *ChannelHammerRetry) EffectiveMaxDurationMs() int {
+	if h == nil || h.MaxDurationMs <= 0 {
+		return DefaultHammerMaxDurationMs
+	}
+	return h.MaxDurationMs
+}
+
+// EffectiveConsecutiveHardFailureLimit returns the hard-failure fuse after defaulting.
+func (h *ChannelHammerRetry) EffectiveConsecutiveHardFailureLimit() int {
+	if h == nil || h.ConsecutiveHardFailureLimit <= 0 {
+		return DefaultHammerConsecutiveHardFailures
+	}
+	return h.ConsecutiveHardFailureLimit
+}
+
+// MatchesHardFailure reports whether err is a hammerable non-429 error:
+// an HTTP error whose text matches one of the configured ErrorPatterns.
+func (h *ChannelHammerRetry) MatchesHardFailure(message string) bool {
+	if h == nil || len(h.ErrorPatterns) == 0 {
+		return false
+	}
+
+	for _, pattern := range h.ErrorPatterns {
+		if pattern.Pattern == "" {
+			continue
+		}
+
+		if pattern.Regex {
+			if matched, regexErr := regexp.MatchString(pattern.Pattern, message); regexErr == nil && matched {
+				return true
+			}
+
+			continue
+		}
+
+		if strings.Contains(message, pattern.Pattern) {
+			return true
+		}
+	}
+
+	return false
 }
 
 type ChannelRateLimit struct {

@@ -109,6 +109,16 @@ func (m *modelCircuitBreakerTracker) OnOutboundRawError(ctx context.Context, err
 	if channel == nil || modelID == "" {
 		return
 	}
+
+	// Hammer ("挤模式") channels expect rate-limit-shaped failures; counting
+	// them as circuit-breaker errors would open the breaker after a handful of
+	// hammer attempts and lock the channel out for minutes.
+	if hammer := hammerConfigForChannel(channel); hammer != nil {
+		if hammerable, _ := classifyHammerError(err, hammer); hammerable {
+			return
+		}
+	}
+
 	m.modelCircuitBreaker.RecordError(ctx, channel.ID, modelID, wasProbe)
 }
 

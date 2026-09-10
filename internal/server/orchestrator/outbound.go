@@ -720,6 +720,15 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 		return false
 	}
 
+	// Hammer retry ("挤模式"): on channels explicitly configured for it,
+	// rate-limit-shaped failures (upstream 429 or configured error patterns)
+	// are retried on the same channel at high frequency to grab a concurrency
+	// slot, overriding the 429 switch-channel default below. The channel's own
+	// MaxRetries/MaxDurationMs/fuse budget governs the attempt limit.
+	if allow, handled := p.hammerCanRetry(err); handled {
+		return allow
+	}
+
 	// Empty response detection: allow same-channel retry so the pipeline can
 	// re-execute the request against the same (or next model in the) channel.
 	if errors.Is(err, pipeline.ErrEmptyResponse) ||
@@ -765,6 +774,7 @@ func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) err
 	// Reset request execution for the same channel.
 	p.state.RequestExec = nil
 	p.state.PassThroughApplied = false
+
 
 	// Cancel any in-flight pass-through stream goroutine from the previous attempt
 	// so it exits promptly and releases its upstream HTTP connection.

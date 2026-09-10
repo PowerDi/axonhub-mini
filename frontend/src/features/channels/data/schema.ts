@@ -294,6 +294,19 @@ export const retryableErrorPatternSchema = z.object({
 });
 export type RetryableErrorPattern = z.infer<typeof retryableErrorPatternSchema>;
 
+// Contended-channel ("挤模式") hammer retry. Mirrors objects.ChannelHammerRetry:
+// rate-limit-shaped failures are retried on the same channel at high frequency
+// to grab a concurrency slot. All fields optional — the backend applies
+// defaults (500ms / 50 attempts / 120s / 3 hard failures).
+export const channelHammerRetrySchema = z.object({
+  retryDelayMs: z.number().int().positive().optional().nullable(),
+  maxRetries: z.number().int().positive().optional().nullable(),
+  maxDurationMs: z.number().int().positive().optional().nullable(),
+  errorPatterns: z.array(retryableErrorPatternSchema).optional().nullable(),
+  consecutiveHardFailureLimit: z.number().int().positive().optional().nullable(),
+});
+export type ChannelHammerRetry = z.infer<typeof channelHammerRetrySchema>;
+
 // Provider quota collection settings stored inside channel settings. Mirrors the
 // GraphQL `CommandCodeQuotaSettings` / `ChannelProviderQuotaSettings` types; it
 // is used for the Command Code billing-quota cookie, kept separate from API
@@ -326,6 +339,7 @@ export const channelSettingsSchema = z.object({
   rateLimit: channelRateLimitSchema.optional().nullable(),
   retryableStatusCodes: z.array(z.number().int().min(400).max(599)).optional().nullable(),
   retryableErrorPatterns: z.array(retryableErrorPatternSchema).optional().nullable(),
+  hammerRetry: channelHammerRetrySchema.optional().nullable(),
   providerQuota: channelProviderQuotaSettingsSchema.optional().nullable(),
 });
 

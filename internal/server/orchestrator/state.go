@@ -2,6 +2,7 @@ package orchestrator
 
 import (
 	"context"
+	"time"
 
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/server/biz"
@@ -82,4 +83,11 @@ type PersistenceState struct {
 
 	// PassThroughApplied records whether the inbound request body was substituted during pass-through.
 	PassThroughApplied bool
+
+	// Hammer retry state ("挤模式"): tracks same-channel hammer attempts for the
+	// current request on channels with Settings.HammerRetry enabled.
+	// HammerStartedAt is zero until the first hammerable failure is seen.
+	HammerStartedAt              time.Time
+	HammerAttempts               int
+	HammerConsecutiveHardFails   int
 }

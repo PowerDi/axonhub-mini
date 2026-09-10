@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { X, RefreshCw, Search, ChevronLeft, ChevronRight, PanelLeft, Plus, Trash2, Eye, EyeOff, Copy, Play, Info, Ban } from 'lucide-react';
+import { X, RefreshCw, Search, ChevronLeft, ChevronRight, PanelLeft, Plus, Trash2, Eye, EyeOff, Copy, Play, Info, Ban, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { copyTextToClipboard } from '@/lib/clipboard';
@@ -20,6 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
 import { Textarea } from '@/components/ui/textarea';
@@ -59,7 +60,7 @@ import {
   getApiFormatsForProvider,
   getChannelTypeForApiFormat,
 } from '../data/config_providers';
-import { Channel, ChannelType, ApiFormat, ChannelSettings, RetryableErrorPattern, createChannelInputSchema, updateChannelInputSchema } from '../data/schema';
+import { Channel, ChannelType, ApiFormat, ChannelSettings, ChannelHammerRetry, RetryableErrorPattern, createChannelInputSchema, updateChannelInputSchema } from '../data/schema';
 import { ProxyConfig, useOAuthFlow } from '../hooks/use-oauth-flow';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
 import { isValidModelPattern, matchesModelPattern } from '../utils/pattern';
@@ -168,8 +169,33 @@ function parseRetryableErrorPatternsInput(value: string): RetryableErrorPattern[
   return patterns;
 }
 
-function getResponsesTransportFromChannel(channel?: Pick<Channel, 'baseURL' | 'endpoints'>): ResponsesTransport {
-  const responsesEndpoint = channel?.endpoints?.find((endpoint) => endpoint.apiFormat === OPENAI_RESPONSES);
+// Reference template for hammer error patterns: matches the rate-limit text
+// shapes seen from contended relays (new-api's "负载已经达到上限" 500 and the
+// Azure rate-limit message often wrapped inside).
+const HAMMER_ERROR_PATTERN_TEMPLATE = [
+  'regex:(?i)负载已经达到上限',
+  'regex:(?i)rate limit exceeded',
+  'regex:(?i)exceeded.{0,20}rate limit',
+  'regex:(?i)too many requests',
+].join('\n');
+
+// parseHammerPositiveInt parses a positive integer input field, returning
+// undefined for empty (backend default) and null for invalid values.
+function parseHammerPositiveInt(value: string): number | undefined | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const parsed = Number.parseInt(trimmed, 10);
+  if (Number.isNaN(parsed) || parsed <= 0) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function getResponsesTransportFromChannel(channel?: Pick<Channel, 'baseURL' | 'endpoints'>): ResponsesTransport {  const responsesEndpoint = channel?.endpoints?.find((endpoint) => endpoint.apiFormat === OPENAI_RESPONSES);
   if (responsesEndpoint?.transport === 'http' || responsesEndpoint?.transport === 'websocket') return responsesEndpoint.transport;
   return getResponsesTransportFromBaseURL(channel?.baseURL);
 }
@@ -396,6 +422,24 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   );
   const [retryableErrorPatternsText, setRetryableErrorPatternsText] = useState(() =>
     formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns)
+  );
+  const [hammerRetryEnabled, setHammerRetryEnabled] = useState(() =>
+    Boolean(initialRow?.settings?.hammerRetry)
+  );
+  const [hammerRetryDelayMs, setHammerRetryDelayMs] = useState(() =>
+    initialRow?.settings?.hammerRetry?.retryDelayMs?.toString() ?? ''
+  );
+  const [hammerMaxRetries, setHammerMaxRetries] = useState(() =>
+    initialRow?.settings?.hammerRetry?.maxRetries?.toString() ?? ''
+  );
+  const [hammerMaxDurationMs, setHammerMaxDurationMs] = useState(() =>
+    initialRow?.settings?.hammerRetry?.maxDurationMs?.toString() ?? ''
+  );
+  const [hammerErrorPatternsText, setHammerErrorPatternsText] = useState(() =>
+    formatRetryableErrorPatterns(initialRow?.settings?.hammerRetry?.errorPatterns)
+  );
+  const [hammerConsecutiveHardFailures, setHammerConsecutiveHardFailures] = useState(() =>
+    initialRow?.settings?.hammerRetry?.consecutiveHardFailureLimit?.toString() ?? ''
   );
 
   // Memoized proxy config for OAuth exchange
@@ -1282,6 +1326,34 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         return;
       }
 
+      // Hammer retry ("挤模式") fields: numbers fall back to backend defaults
+      // when left empty; pattern syntax reuses the retryable-error parsing.
+      let hammerRetry: ChannelHammerRetry | null = null;
+      if (hammerRetryEnabled) {
+        const hammerDelay = parseHammerPositiveInt(hammerRetryDelayMs);
+        const hammerRetries = parseHammerPositiveInt(hammerMaxRetries);
+        const hammerDuration = parseHammerPositiveInt(hammerMaxDurationMs);
+        const hammerHardFails = parseHammerPositiveInt(hammerConsecutiveHardFailures);
+        if (hammerDelay === null || hammerRetries === null || hammerDuration === null || hammerHardFails === null) {
+          toast.error(t('channels.dialogs.hammerRetry.validation.number'));
+          return;
+        }
+
+        const hammerErrorPatterns = parseRetryableErrorPatternsInput(hammerErrorPatternsText);
+        if (hammerErrorPatterns === null) {
+          toast.error(t('channels.dialogs.hammerRetry.validation.patterns'));
+          return;
+        }
+
+        hammerRetry = {
+          retryDelayMs: hammerDelay,
+          maxRetries: hammerRetries,
+          maxDurationMs: hammerDuration,
+          errorPatterns: hammerErrorPatterns,
+          consecutiveHardFailureLimit: hammerHardFails,
+        };
+      }
+
       const valuesForSubmit = isEdit
         ? values
         : {
@@ -1339,6 +1411,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           passThroughBody,
           retryableStatusCodes,
           retryableErrorPatterns,
+          hammerRetry,
           // Cookie edits (including clearing the saved cookie) travel through
           // the settings patch; mergeChannelSettingsForUpdate preserves the
           // field when the patch omits it and carries the null clear through.
@@ -1399,6 +1472,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           passThroughBody,
           retryableStatusCodes,
           retryableErrorPatterns,
+          hammerRetry,
         });
 
         const createInput = {
@@ -1832,6 +1906,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setPassThroughBody(initialRow?.settings?.passThroughBody ?? null);
             setRetryableStatusCodesText(formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes));
             setRetryableErrorPatternsText(formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns));
+            setHammerRetryEnabled(Boolean(initialRow?.settings?.hammerRetry));
+            setHammerRetryDelayMs(initialRow?.settings?.hammerRetry?.retryDelayMs?.toString() ?? '');
+            setHammerMaxRetries(initialRow?.settings?.hammerRetry?.maxRetries?.toString() ?? '');
+            setHammerMaxDurationMs(initialRow?.settings?.hammerRetry?.maxDurationMs?.toString() ?? '');
+            setHammerErrorPatternsText(formatRetryableErrorPatterns(initialRow?.settings?.hammerRetry?.errorPatterns));
+            setHammerConsecutiveHardFailures(initialRow?.settings?.hammerRetry?.consecutiveHardFailureLimit?.toString() ?? '');
             // Reset provider and API format state
             if (initialRow) {
               setSelectedProvider(getProviderFromChannelType(initialRow.type) || 'openai');
@@ -2853,6 +2933,110 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                           </Select>
                           {passThroughBody === true && (
                             <p className='text-xs text-(--warning-soft-fg) dark:text-(--warning-soft-fg)'>{t('channels.dialogs.bodyPassThrough.warning')}</p>
+                          )}
+                        </div>
+                      </FormItem>
+
+                      <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                        <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-end'>
+                          <FormLabel className='font-medium'>{t('channels.dialogs.hammerRetry.label')}</FormLabel>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type='button'
+                                className='text-muted-foreground hover:text-foreground inline-flex items-center'
+                                aria-label={t('channels.dialogs.hammerRetry.tooltip')}
+                              >
+                                <Info className='h-3.5 w-3.5' />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent className='max-w-sm'>
+                              <p>{t('channels.dialogs.hammerRetry.tooltip')}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                        <div className='space-y-2 md:col-span-6'>
+                          <div className='flex items-center gap-2'>
+                            <Switch checked={hammerRetryEnabled} onCheckedChange={setHammerRetryEnabled} />
+                            <span className='text-muted-foreground text-sm'>
+                              {hammerRetryEnabled ? t('channels.dialogs.hammerRetry.enabled') : t('channels.dialogs.hammerRetry.disabled')}
+                            </span>
+                          </div>
+                          {hammerRetryEnabled && (
+                            <div className='space-y-3 rounded-md border p-3'>
+                              <div className='grid grid-cols-1 gap-3 sm:grid-cols-2'>
+                                <div className='space-y-1'>
+                                  <FormLabel className='text-sm font-normal'>{t('channels.dialogs.hammerRetry.retryDelayMs.label')}</FormLabel>
+                                  <Input
+                                    value={hammerRetryDelayMs}
+                                    onChange={(event) => setHammerRetryDelayMs(event.target.value)}
+                                    placeholder={t('channels.dialogs.hammerRetry.retryDelayMs.placeholder')}
+                                    className='font-mono text-sm'
+                                    inputMode='numeric'
+                                  />
+                                </div>
+                                <div className='space-y-1'>
+                                  <FormLabel className='text-sm font-normal'>{t('channels.dialogs.hammerRetry.maxRetries.label')}</FormLabel>
+                                  <Input
+                                    value={hammerMaxRetries}
+                                    onChange={(event) => setHammerMaxRetries(event.target.value)}
+                                    placeholder={t('channels.dialogs.hammerRetry.maxRetries.placeholder')}
+                                    className='font-mono text-sm'
+                                    inputMode='numeric'
+                                  />
+                                </div>
+                                <div className='space-y-1'>
+                                  <FormLabel className='text-sm font-normal'>{t('channels.dialogs.hammerRetry.maxDurationMs.label')}</FormLabel>
+                                  <Input
+                                    value={hammerMaxDurationMs}
+                                    onChange={(event) => setHammerMaxDurationMs(event.target.value)}
+                                    placeholder={t('channels.dialogs.hammerRetry.maxDurationMs.placeholder')}
+                                    className='font-mono text-sm'
+                                    inputMode='numeric'
+                                  />
+                                </div>
+                                <div className='space-y-1'>
+                                  <FormLabel className='text-sm font-normal'>{t('channels.dialogs.hammerRetry.consecutiveHardFailureLimit.label')}</FormLabel>
+                                  <Input
+                                    value={hammerConsecutiveHardFailures}
+                                    onChange={(event) => setHammerConsecutiveHardFailures(event.target.value)}
+                                    placeholder={t('channels.dialogs.hammerRetry.consecutiveHardFailureLimit.placeholder')}
+                                    className='font-mono text-sm'
+                                    inputMode='numeric'
+                                  />
+                                </div>
+                              </div>
+                              <div className='space-y-1'>
+                                <div className='flex items-center justify-between'>
+                                  <FormLabel className='text-sm font-normal'>{t('channels.dialogs.hammerRetry.errorPatterns.label')}</FormLabel>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        type='button'
+                                        variant='ghost'
+                                        size='sm'
+                                        className='h-6 gap-1 px-2 text-xs'
+                                        onClick={() => setHammerErrorPatternsText(HAMMER_ERROR_PATTERN_TEMPLATE)}
+                                      >
+                                        <Sparkles className='h-3 w-3' />
+                                        {t('channels.dialogs.hammerRetry.errorPatterns.template')}
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent className='max-w-sm'>
+                                      <p>{t('channels.dialogs.hammerRetry.errorPatterns.description')}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </div>
+                                <Textarea
+                                  value={hammerErrorPatternsText}
+                                  onChange={(event) => setHammerErrorPatternsText(event.target.value)}
+                                  placeholder={t('channels.dialogs.hammerRetry.errorPatterns.placeholder')}
+                                  className='min-h-[88px] resize-y font-mono text-sm'
+                                />
+                                <p className='text-muted-foreground text-xs'>{t('channels.dialogs.hammerRetry.errorPatterns.hint')}</p>
+                              </div>
+                              <p className='text-xs text-(--warning-soft-fg) dark:text-(--warning-soft-fg)'>{t('channels.dialogs.hammerRetry.warning')}</p>
+                            </div>
                           )}
                         </div>
                       </FormItem>

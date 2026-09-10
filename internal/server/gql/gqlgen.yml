@@ -160,6 +160,12 @@ models:
   RetryableErrorPatternInput:
     model:
       - github.com/looplj/axonhub/internal/objects.RetryableErrorPattern
+  ChannelHammerRetry:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelHammerRetry
+  ChannelHammerRetryInput:
+    model:
+      - github.com/looplj/axonhub/internal/objects.ChannelHammerRetry
   ChannelProviderQuotaSettings:
     model:
       - github.com/looplj/axonhub/internal/objects.ChannelProviderQuotaSettings

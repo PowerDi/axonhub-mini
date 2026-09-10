@@ -35,6 +35,22 @@ type ChannelRetryable interface {
 	PrepareForRetry(ctx context.Context) error
 }
 
+// SameChannelRetryBudget lets a transformer opt out of the pipeline's global
+// maxSameChannelRetries limit and provide its own retry delay. Channels with
+// "hammer" retry (contended upstreams retried at high frequency) use this:
+// their own attempt/duration budget governs, and the delay between attempts
+// comes from the channel configuration instead of the global retryDelay.
+type SameChannelRetryBudget interface {
+	// OverridesSameChannelLimit returns true when the transformer tracks its
+	// own same-channel attempt budget, so the pipeline must not gate retry on
+	// maxSameChannelRetries.
+	OverridesSameChannelLimit() bool
+
+	// SameChannelRetryDelay returns the delay to apply before the next
+	// same-channel attempt. Only consulted for same-channel retries.
+	SameChannelRetryDelay() time.Duration
+}
+
 // ChannelCustomizedExecutor interface for channel need custom the process of request.
 // The customized executor will be used to execute the request.
 // e.g. the aws bedrock process need a custom executor to handle the request.
@@ -275,6 +291,10 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 
 	channelSwitches := 0
 	sameChannelRetries := 0
+	// sameChannelDelay overrides p.retryDelay for same-channel retries when the
+	// transformer provides its own budget (hammer retry). Zero means use the
+	// global delay.
+	sameChannelDelay := time.Duration(0)
 
 	// Step 3: Process the request
 	for {
@@ -302,10 +322,19 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 		// 1. Try same-channel retry first if supported
 		if !timeoutRetry {
 			if channelRetryable, ok := p.Outbound.(ChannelRetryable); ok {
-				if sameChannelRetries < p.getMaxSameChannelRetries() && channelRetryable.CanRetry(lastErr) {
+				// A transformer with its own same-channel budget (e.g. hammer
+				// retry) bypasses the pipeline-wide attempt limit.
+				budget, hasBudget := p.Outbound.(SameChannelRetryBudget)
+				overridden := hasBudget && budget.OverridesSameChannelLimit()
+
+				if (overridden || sameChannelRetries < p.getMaxSameChannelRetries()) && channelRetryable.CanRetry(lastErr) {
 					if err := channelRetryable.PrepareForRetry(ctx); err == nil {
 						sameChannelRetries++
 						canRetry = true
+
+						if overridden {
+							sameChannelDelay = budget.SameChannelRetryDelay()
+						}
 
 						slog.DebugContext(ctx, "retrying same channel",
 							slog.Int("same_channel_attempt", sameChannelRetries),
@@ -343,10 +372,18 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 			break
 		}
 
-		// Add retry delay if configured
-		if p.retryDelay > 0 {
-			time.Sleep(p.retryDelay)
+		// Add retry delay if configured. A same-channel delay set by a budget
+		// provider (hammer retry) takes precedence over the global delay.
+		delay := p.retryDelay
+		if sameChannelDelay > 0 {
+			delay = sameChannelDelay
 		}
+
+		if delay > 0 {
+			time.Sleep(delay)
+		}
+
+		sameChannelDelay = 0
 
 		slog.WarnContext(ctx, "request process failed, retrying...",
 			slog.Any("error", lastErr),
