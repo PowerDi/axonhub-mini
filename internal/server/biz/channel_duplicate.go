@@ -19,7 +19,8 @@ func (svc *ChannelService) DuplicateChannel(ctx context.Context, sourceID int, i
 	err := svc.RunInTransaction(ctx, func(ctx context.Context) error {
 		db := svc.entFromContext(ctx)
 
-		if _, err := db.Channel.Get(ctx, sourceID); err != nil {
+		source, err := db.Channel.Get(ctx, sourceID)
+		if err != nil {
 			return fmt.Errorf("failed to get source channel: %w", err)
 		}
 		if input.Endpoints == nil {

@@ -99,7 +99,7 @@ var (
 		{Name: "created_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "updated_at", Type: field.TypeTime, Default: schema.Expr("CURRENT_TIMESTAMP")},
 		{Name: "deleted_at", Type: field.TypeInt, Default: 0},
-		{Name: "type", Type: field.TypeEnum, Enums: []string{"openai", "openai_responses", "atlascloud", "cline", "codex", "vercel", "anthropic", "anthropic_aws", "anthropic_gcp", "gemini_openai", "gemini", "gemini_vertex", "deepseek", "deepseek_anthropic", "deepinfra", "qiniu", "fireworks", "doubao", "doubao_anthropic", "moonshot", "moonshot_anthropic", "zhipu", "zai", "zhipu_anthropic", "zai_anthropic", "anthropic_fake", "openai_fake", "openrouter", "xiaomi", "xiaomi_anthropic", "xai", "xai_responses", "xai_subscription", "ppio", "siliconflow", "volcengine", "volcengine_anthropic", "longcat", "longcat_anthropic", "minimax", "minimax_anthropic", "aihubmix", "aihubmix_anthropic", "burncloud", "modelscope", "bailian", "bailian_anthropic", "moonshot_coding", "jina", "github", "github_copilot", "claudecode", "cerebras", "antigravity", "nanogpt", "nanogpt_responses", "opencode_go", "opencode_go_anthropic", "ollama", "ollama_anthropic", "evolink", "evolink_anthropic", "groq", "qiniu_anthropic", "fenno", "zenmux", "zenmux_responses", "zenmux_anthropic", "zenmux_gemini", "commandcode", "commandcode_anthropic"}},
+		{Name: "type", Type: field.TypeEnum, Enums: []string{"openai", "openai_responses", "openai_multiprotocol", "atlascloud", "cline", "codex", "vercel", "anthropic", "anthropic_aws", "anthropic_gcp", "gemini_openai", "gemini", "gemini_vertex", "deepseek", "deepseek_anthropic", "deepinfra", "qiniu", "fireworks", "doubao", "doubao_anthropic", "moonshot", "moonshot_anthropic", "zhipu", "zai", "zhipu_anthropic", "zai_anthropic", "anthropic_fake", "openai_fake", "openrouter", "xiaomi", "xiaomi_anthropic", "xai", "xai_responses", "xai_subscription", "ppio", "siliconflow", "volcengine", "volcengine_anthropic", "longcat", "longcat_anthropic", "minimax", "minimax_anthropic", "aihubmix", "aihubmix_anthropic", "burncloud", "modelscope", "bailian", "bailian_anthropic", "moonshot_coding", "jina", "github", "github_copilot", "claudecode", "cerebras", "antigravity", "nanogpt", "nanogpt_responses", "opencode_go", "opencode_go_anthropic", "ollama", "ollama_anthropic", "evolink", "evolink_anthropic", "groq", "qiniu_anthropic", "fenno", "zenmux", "zenmux_responses", "zenmux_anthropic", "zenmux_gemini", "commandcode", "commandcode_anthropic"}},
 		{Name: "base_url", Type: field.TypeString, Nullable: true},
 		{Name: "name", Type: field.TypeString},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"enabled", "disabled", "archived"}, Default: "disabled"},
@@ -348,7 +348,7 @@ var (
 		Indexes: []*schema.Index{
 			{
 				Name:    "models_by_name",
-				Unique:  true,
+				Unique:  false,
 				Columns: []*schema.Column{ModelsColumns[7], ModelsColumns[3]},
 			},
 			{
@@ -620,11 +620,6 @@ var (
 				Name:    "requests_by_trace_id_created_at",
 				Unique:  false,
 				Columns: []*schema.Column{RequestsColumns[26], RequestsColumns[1]},
-			},
-			{
-				Name:    "requests_by_external_id_api_key_id_status_created_at",
-				Unique:  false,
-				Columns: []*schema.Column{RequestsColumns[11], RequestsColumns[22], RequestsColumns[12], RequestsColumns[1]},
 			},
 			{
 				Name:    "requests_by_created_at",

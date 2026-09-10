@@ -14,6 +14,7 @@ import (
 	"github.com/aptible/supercronic/cronexpr"
 	"go.uber.org/fx"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/ent/schema/schematype"

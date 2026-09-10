@@ -2,7 +2,6 @@
 package orchestrator
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -51,6 +50,7 @@ func newZenmuxVideoCandidateFixture(t *testing.T, settings *objects.ChannelSetti
 			Models: []biz.ChannelModelEntry{{
 				RequestModel: "video-model",
 				ActualModel:  "video-model",
+				Policy:       settings.GetModelAPIFormatPolicy("video-model"),
 			}},
 		},
 		openAIOutbound: openAIOutbound,
@@ -60,9 +60,9 @@ func newZenmuxVideoCandidateFixture(t *testing.T, settings *objects.ChannelSetti
 
 func TestPopulateAPIFormat_ZenMuxVideoOverrideSelectsNativeOutbound(t *testing.T) {
 	fixture := newZenmuxVideoCandidateFixture(t, &objects.ChannelSettings{
-		ModelProtocols: []objects.ModelProtocol{{
-			Model:      "video-model",
-			APIFormats: []string{llm.APIFormatZenmuxVideo.String()},
+		ModelAPIFormatPolicies: []objects.ModelAPIFormatPolicy{{
+			Model: "video-model",
+			Allow: []string{llm.APIFormatZenmuxVideo.String()},
 		}},
 	})
 	request := &llm.Request{
@@ -71,10 +71,12 @@ func TestPopulateAPIFormat_ZenMuxVideoOverrideSelectsNativeOutbound(t *testing.T
 		APIFormat:   llm.APIFormatOpenAIVideo,
 	}
 
-	result := populateAPIFormat(context.Background(), []*ChannelModelsCandidate{fixture.candidate}, request)
-	selectedOutbound := selectOutboundForCandidate(fixture.candidate)
+	result := populateAPIFormat([]*ChannelModelsCandidate{fixture.candidate}, request)
+	selectedOutbound, format, ok := selectOutboundForEntry(fixture.candidate, 0, request)
 
 	require.Len(t, result, 1)
+	require.True(t, ok)
+	require.Equal(t, llm.APIFormatZenmuxVideo.String(), format)
 	require.Equal(t, llm.APIFormatZenmuxVideo.String(), fixture.candidate.APIFormat)
 	require.Same(t, fixture.nativeOutbound, selectedOutbound)
 	require.IsType(t, &zenmuxtransformer.OutboundTransformer{}, selectedOutbound)
@@ -88,10 +90,12 @@ func TestPopulateAPIFormat_ZenMuxVideoWithoutOverrideSelectsOpenAIOutbound(t *te
 		APIFormat:   llm.APIFormatOpenAIVideo,
 	}
 
-	result := populateAPIFormat(context.Background(), []*ChannelModelsCandidate{fixture.candidate}, request)
-	selectedOutbound := selectOutboundForCandidate(fixture.candidate)
+	result := populateAPIFormat([]*ChannelModelsCandidate{fixture.candidate}, request)
+	selectedOutbound, format, ok := selectOutboundForEntry(fixture.candidate, 0, request)
 
 	require.Len(t, result, 1)
+	require.True(t, ok)
+	require.Equal(t, llm.APIFormatOpenAIVideo.String(), format)
 	require.Equal(t, llm.APIFormatOpenAIVideo.String(), fixture.candidate.APIFormat)
 	require.Same(t, fixture.openAIOutbound, selectedOutbound)
 	require.IsType(t, &openai.OutboundTransformer{}, selectedOutbound)
