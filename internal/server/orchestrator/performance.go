@@ -137,6 +137,14 @@ func (m *performanceRecording) OnOutboundRawError(ctx context.Context, err error
 	} else {
 		errorCode := ExtractErrorCode(err)
 		perf.MarkFailedWithMessage(errorCode, extractErrorMessageForMatching(err))
+		// Hammer channels expect rate-limit-shaped failures; auto-disable
+		// must not count them towards its thresholds, or the channel gets
+		// disabled within a single request's hammer budget.
+		if hammer := hammerConfigForChannel(m.outbound.GetCurrentChannel()); hammer != nil {
+			if hammerable, _ := classifyHammerError(err, hammer); hammerable {
+				perf.Hammerable = true
+			}
+		}
 	}
 
 	m.outbound.state.ChannelService.AsyncRecordPerformance(ctx, perf)

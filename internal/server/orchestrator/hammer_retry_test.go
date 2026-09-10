@@ -1,6 +1,7 @@
 package orchestrator
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func newUpstream429() error {
@@ -196,4 +198,54 @@ func TestHammerSameChannelBudgetInterface(t *testing.T) {
 	outbound = newHammerOutbound(nil)
 	assert.False(t, outbound.OverridesSameChannelLimit())
 	assert.Equal(t, time.Duration(0), outbound.SameChannelRetryDelay())
+}
+
+func TestHammerStateResetsOnChannelSwitch(t *testing.T) {
+	outbound := newHammerOutbound(&objects.ChannelHammerRetry{MaxRetries: 5})
+
+	// Burn most of the budget on channel A.
+	for i := 0; i < 4; i++ {
+		allow, handled := outbound.hammerCanRetry(newUpstream429())
+		assert.True(t, allow)
+		assert.True(t, handled)
+	}
+	assert.Equal(t, 4, outbound.state.HammerAttempts)
+	assert.False(t, outbound.state.HammerStartedAt.IsZero())
+
+	// Set up a second candidate so NextChannel has somewhere to go, then
+	// switch — the hammer budget must reset.
+	outbound.state.ChannelModelsCandidates = []*ChannelModelsCandidate{
+		outbound.state.CurrentCandidate,
+		newHammerOutbound(&objects.ChannelHammerRetry{MaxRetries: 5}).state.CurrentCandidate,
+	}
+	err := outbound.NextChannel(context.Background())
+	require.NoError(t, err)
+	assert.Zero(t, outbound.state.HammerAttempts)
+	assert.True(t, outbound.state.HammerStartedAt.IsZero())
+	assert.Zero(t, outbound.state.HammerConsecutiveHardFails)
+
+	// The new channel starts with a full budget.
+	allow, handled := outbound.hammerCanRetry(newUpstream429())
+	assert.True(t, allow)
+	assert.True(t, handled)
+	assert.Equal(t, 1, outbound.state.HammerAttempts)
+}
+
+func TestHammerableFlagOnPerformanceRecord(t *testing.T) {
+	// The performance middleware marks hammerable failures so auto-disable
+	// can skip them. Verify the classification feeding that flag directly.
+	hammer := &objects.ChannelHammerRetry{
+		ErrorPatterns: []objects.RetryableErrorPattern{{Pattern: "负载已经达到上限"}},
+	}
+
+	// Upstream 429 and pattern-matched errors are hammerable.
+	hammerable, _ := classifyHammerError(newUpstream429(), hammer)
+	assert.True(t, hammerable)
+	hammerable, _ = classifyHammerError(newUpstream500("当前模型 gpt-6-astra 负载已经达到上限，请稍后重试"), hammer)
+	assert.True(t, hammerable)
+
+	// Unrelated failures on the same hammer channel are NOT hammerable and
+	// must still feed auto-disable (the channel may be genuinely broken).
+	hammerable, _ = classifyHammerError(newUpstream500("internal server error"), hammer)
+	assert.False(t, hammerable)
 }

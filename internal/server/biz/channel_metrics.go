@@ -373,7 +373,10 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 
 			svc.apiKeyErrorCountsLock.Unlock()
 		}
-	} else if !perf.Canceled {
+	} else if !perf.Canceled && !perf.Hammerable {
+		// Hammer channels reject most requests by design ("挤模式" contention);
+		// a hammerable failure is expected behaviour, not a health signal, so
+		// it must not feed auto-disable counters.
 		matched := false
 		if perf.APIKey != "" {
 			matched, _ = svc.checkAndHandleChannelAPIKeyRules(ctx, perf)
@@ -559,6 +562,12 @@ type PerformanceRecord struct {
 	ResponseStatusCode int
 	ErrorMessage       string
 	CompletionTokens   int64
+
+	// Hammerable marks a failure that the channel's hammer retry ("挤模式")
+	// treats as expected contention (upstream 429 or a pattern-matched
+	// rate-limit error). Auto-disable must not count such failures towards
+	// its thresholds — a hammer channel rejects most requests by design.
+	Hammerable bool
 }
 
 // Calculate calculates performance metrics from collected data.

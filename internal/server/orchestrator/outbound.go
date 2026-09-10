@@ -667,6 +667,13 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 	p.state.RequestExec = nil
 	p.state.PassThroughApplied = false
 
+	// Hammer retry budget is per-channel: the new candidate starts with a
+	// fresh attempt/duration/fuse budget, mirroring the pipeline resetting
+	// sameChannelRetries on channel switch.
+	p.state.HammerStartedAt = time.Time{}
+	p.state.HammerAttempts = 0
+	p.state.HammerConsecutiveHardFails = 0
+
 	candidate := p.state.ChannelModelsCandidates[p.state.CurrentCandidateIndex]
 	p.state.CurrentCandidate = candidate
 	// Best-effort outbound for the new candidate's first entry; every attempt
@@ -774,7 +781,6 @@ func (p *PersistentOutboundTransformer) PrepareForRetry(ctx context.Context) err
 	// Reset request execution for the same channel.
 	p.state.RequestExec = nil
 	p.state.PassThroughApplied = false
-
 
 	// Cancel any in-flight pass-through stream goroutine from the previous attempt
 	// so it exits promptly and releases its upstream HTTP connection.
