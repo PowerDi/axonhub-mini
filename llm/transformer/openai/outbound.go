@@ -405,6 +405,15 @@ func parseStreamErrorEvent(event *httpclient.StreamEvent) *llm.ResponseError {
 			Code:    errObj.Get("code").String(),
 			Param:   errObj.Get("param").String(),
 		}
+		if !errObj.Exists() && root.Type == gjson.String {
+			detail.Message = root.String()
+		}
+		if detail.Message == "" {
+			detail.Message = root.Get("message").String()
+		}
+		if detail.Message == "" && !errObj.Exists() {
+			detail.Message = strings.TrimSpace(string(event.Data))
+		}
 
 		if detail.Message == "" && errObj.Exists() {
 			detail.Message = errObj.String()
@@ -422,13 +431,26 @@ func parseStreamErrorEvent(event *httpclient.StreamEvent) *llm.ResponseError {
 			detail.RequestID = rid
 		}
 
-		return llm.NewStreamResponseError(detail)
+		return newStreamResponseErrorWithStatus(root, errObj, detail)
 	}
 
 	// OpenAI-style: {"error":{...}} or {"error":"..."}
 	ep := root.Get("error")
 	if !ep.Exists() {
-		return nil
+		// A few relays emit an OpenAI-shaped error with the message at the root
+		// instead of nesting it under `error`.
+		message := root.Get("message")
+		if !message.Exists() {
+			return nil
+		}
+
+		detail := llm.ErrorDetail{
+			Message: message.String(),
+			Type:    root.Get("type").String(),
+			Code:    root.Get("code").String(),
+		}
+
+		return newStreamResponseErrorWithStatus(root, root, detail)
 	}
 
 	detail := llm.ErrorDetail{
@@ -446,6 +468,22 @@ func parseStreamErrorEvent(event *httpclient.StreamEvent) *llm.ResponseError {
 		detail.RequestID = rid
 	} else if rid := ep.Get("request_id").String(); rid != "" {
 		detail.RequestID = rid
+	}
+
+	return newStreamResponseErrorWithStatus(root, ep, detail)
+}
+
+// newStreamResponseErrorWithStatus preserves an explicit status emitted by a
+// relay in an SSE error payload. The transport response is usually HTTP 200,
+// so without this field the retry layer cannot distinguish an upstream 429.
+func newStreamResponseErrorWithStatus(root, errorObject gjson.Result, detail llm.ErrorDetail) *llm.ResponseError {
+	for _, path := range []string{"status", "status_code"} {
+		if status := root.Get(path).Int(); status >= 400 && status <= 599 {
+			return &llm.ResponseError{StatusCode: int(status), Detail: detail}
+		}
+		if status := errorObject.Get(path).Int(); status >= 400 && status <= 599 {
+			return &llm.ResponseError{StatusCode: int(status), Detail: detail}
+		}
 	}
 
 	return llm.NewStreamResponseError(detail)

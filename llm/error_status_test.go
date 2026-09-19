@@ -63,6 +63,34 @@ func TestInferStatusCode(t *testing.T) {
 	}
 }
 
+func TestInferStatusCodeNumericAndMessageRateLimits(t *testing.T) {
+	tests := []struct {
+		name   string
+		detail ErrorDetail
+	}{
+		{
+			name:   "numeric code",
+			detail: ErrorDetail{Code: "429"},
+		},
+		{
+			name:   "message only",
+			detail: ErrorDetail{Message: "429 Too Many Requests"},
+		},
+		{
+			name:   "rate limit message",
+			detail: ErrorDetail{Message: "upstream rate limit reached"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := InferStatusCode(tt.detail); got != http.StatusTooManyRequests {
+				t.Fatalf("InferStatusCode() = %d, want 429", got)
+			}
+		})
+	}
+}
+
 func TestNewStreamResponseError(t *testing.T) {
 	err := NewStreamResponseError(ErrorDetail{
 		Message: "Your requests to gpt-6-astra have exceeded rate limit.",

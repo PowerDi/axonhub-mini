@@ -54,3 +54,25 @@ func TestParseStreamErrorEvent_UnknownCodeKeepsStatusUnknown(t *testing.T) {
 	require.NotNil(t, respErr)
 	require.Equal(t, 0, respErr.StatusCode)
 }
+
+func TestParseStreamErrorEvent_PreservesExplicitStatus(t *testing.T) {
+	event := &httpclient.StreamEvent{
+		Data: []byte(`{"status":429,"error":{"message":"Too Many Requests"}}`),
+	}
+
+	respErr := parseStreamErrorEvent(event)
+	require.NotNil(t, respErr)
+	require.Equal(t, http.StatusTooManyRequests, respErr.StatusCode)
+}
+
+func TestParseStreamErrorEvent_TextOnlyErrorInfersRateLimit(t *testing.T) {
+	event := &httpclient.StreamEvent{
+		Type: "error",
+		Data: []byte(`"[System Error] exceeded retry limit, last status: 429 Too Many Requests"`),
+	}
+
+	respErr := parseStreamErrorEvent(event)
+	require.NotNil(t, respErr)
+	require.Equal(t, http.StatusTooManyRequests, respErr.StatusCode)
+	require.Contains(t, respErr.Detail.Message, "exceeded retry limit")
+}

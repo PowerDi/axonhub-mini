@@ -68,6 +68,19 @@ type testChannelRetryableOutbound struct {
 	prepareRetryCalls int
 }
 
+type testBudgetOutbound struct {
+	testChannelRetryableOutbound
+	overrides bool
+}
+
+func (t *testBudgetOutbound) OverridesSameChannelLimit() bool {
+	return t.overrides
+}
+
+func (t *testBudgetOutbound) SameChannelRetryDelay() time.Duration {
+	return 0
+}
+
 func (t *testChannelRetryableOutbound) APIFormat() llm.APIFormat {
 	return "test/channel-retryable"
 }
@@ -157,6 +170,14 @@ func TestRetryable_HasMoreChannels(t *testing.T) {
 	outbound.currentChannelIndex = 2
 	require.False(t, outbound.HasMoreChannels())
 	require.Equal(t, 2, outbound.hasMoreChannelsCalls)
+}
+
+func TestPipeline_HasStreamRetryBudgetIncludesChannelBudget(t *testing.T) {
+	p := &pipeline{
+		Outbound: &testBudgetOutbound{overrides: true},
+	}
+
+	require.True(t, p.hasStreamRetryBudget())
 }
 
 func TestRetryable_NextChannel(t *testing.T) {

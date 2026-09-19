@@ -158,7 +158,17 @@ func isTerminalLlmStreamEvent(resp *llm.Response) bool {
 }
 
 func (p *pipeline) hasStreamRetryBudget() bool {
-	return p.maxSameChannelRetries > 0 || p.maxChannelRetries > 0
+	if p.maxSameChannelRetries > 0 || p.maxChannelRetries > 0 {
+		return true
+	}
+
+	// Channel-level retry budgets (for example hammer retry) intentionally
+	// override the global same-channel limit. Streaming must still pre-read
+	// until the first meaningful event so an upstream error before any client
+	// visible content can be retried through that budget.
+	budget, ok := p.Outbound.(SameChannelRetryBudget)
+
+	return ok && budget.OverridesSameChannelLimit()
 }
 
 func shouldWrapPreReadStreamError(err error) bool {

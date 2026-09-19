@@ -2,6 +2,7 @@ package llm
 
 import (
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -55,8 +56,9 @@ var statusCodeByErrorCode = map[string]int{
 }
 
 // InferStatusCode derives the HTTP status a provider error represents from its
-// code/type. It returns 0 when the error is not recognized, so callers can keep
-// treating the status as unknown rather than inventing one.
+// code, type, or common rate-limit message. It returns 0 when the error is not
+// recognized, so callers can keep treating the status as unknown rather than
+// inventing one.
 //
 // Code is consulted before Type because providers are more specific there
 // (OpenAI sends code "rate_limit_exceeded" with type "too_many_requests"; both
@@ -66,8 +68,27 @@ func InferStatusCode(detail ErrorDetail) int {
 		return status
 	}
 
+	// Some relays serialize the HTTP status as a numeric error code instead of
+	// using a provider-specific symbolic code (for example `code: 429`).
+	if status, err := strconv.Atoi(strings.TrimSpace(detail.Code)); err == nil && status >= 400 && status <= 599 {
+		return status
+	}
+
 	if status, ok := statusCodeByErrorCode[normalizeErrorKey(detail.Type)]; ok {
 		return status
+	}
+
+	// SSE error events frequently omit both code and type and only include the
+	// provider's human-readable rate-limit message. Preserve retry semantics for
+	// those responses instead of treating them as an unknown status.
+	message := strings.ToLower(detail.Message)
+	if strings.Contains(message, "too many requests") ||
+		strings.Contains(message, "rate limit") ||
+		strings.Contains(message, "rate-limit") ||
+		strings.Contains(message, "rate_limit") ||
+		strings.Contains(message, "quota exceeded") ||
+		strings.Contains(message, "quota_exceeded") {
+		return http.StatusTooManyRequests
 	}
 
 	return 0
