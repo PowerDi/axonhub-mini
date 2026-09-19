@@ -225,7 +225,17 @@ func (svc *ChannelService) BulkDeleteChannels(ctx context.Context, ids []int) er
 		return nil
 	}
 
-	deleted, err := svc.entFromContext(ctx).Channel.Delete().Where(channel.IDIn(ids...)).Exec(ctx)
+	var deleted int
+	err := svc.RunInTransaction(ctx, func(txCtx context.Context) error {
+		if err := svc.removeChannelAssociations(txCtx, ids); err != nil {
+			return err
+		}
+
+		var err error
+		deleted, err = svc.entFromContext(txCtx).Channel.Delete().Where(channel.IDIn(ids...)).Exec(txCtx)
+
+		return err
+	})
 	if err != nil {
 		return fmt.Errorf("failed to bulk delete channels: %w", err)
 	}

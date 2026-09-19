@@ -813,11 +813,22 @@ func (svc *ModelService) CountModelAssociatedChannels(ctx context.Context, m *en
 }
 
 func (svc *ModelService) QueryUnassociatedChannels(ctx context.Context) ([]*UnassociatedChannel, error) {
-	channels, err := svc.entFromContext(ctx).Channel.Query().
-		Where(channel.StatusIn(channel.StatusEnabled, channel.StatusDisabled)).
+	allChannels, err := svc.entFromContext(ctx).Channel.Query().
+		Where(channel.StatusIn(channel.StatusEnabled, channel.StatusDisabled, channel.StatusArchived)).
 		All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query channels: %w", err)
+	}
+
+	channels := make([]*ent.Channel, 0, len(allChannels))
+	archivedChannelIDs := make(map[int]struct{})
+	for _, ch := range allChannels {
+		if ch.Status == channel.StatusArchived {
+			archivedChannelIDs[ch.ID] = struct{}{}
+			continue
+		}
+
+		channels = append(channels, ch)
 	}
 
 	if len(channels) == 0 {
@@ -843,7 +854,7 @@ func (svc *ModelService) QueryUnassociatedChannels(ctx context.Context) ([]*Unas
 		allAssociations = append(allAssociations, EffectiveModelAssociations(systemSettings, m)...)
 	}
 
-	return findUnassociatedChannels(channels, allAssociations), nil
+	return findUnassociatedChannelsWithArchivedChannels(channels, allAssociations, archivedChannelIDs), nil
 }
 
 func (svc *ModelService) countAssociatedChannels(ctx context.Context, associations []*objects.ModelAssociation) (int, error) {
@@ -883,6 +894,14 @@ func (svc *ModelService) modelSettingsOrDefault(ctx context.Context) *SystemMode
 }
 
 func findUnassociatedChannels(channels []*ent.Channel, associations []*objects.ModelAssociation) []*UnassociatedChannel {
+	return findUnassociatedChannelsWithArchivedChannels(channels, associations, nil)
+}
+
+func findUnassociatedChannelsWithArchivedChannels(
+	channels []*ent.Channel,
+	associations []*objects.ModelAssociation,
+	archivedChannelIDs map[int]struct{},
+) []*UnassociatedChannel {
 	if len(channels) == 0 {
 		return []*UnassociatedChannel{}
 	}
@@ -898,6 +917,22 @@ func findUnassociatedChannels(channels []*ent.Channel, associations []*objects.M
 
 	// Build a map of associated (channelID, modelID) combinations
 	associatedMap := make(map[ChannelModelKey]bool)
+	// An archived channel is intentionally absent from `channels`, so its
+	// channel_model rule cannot produce a connection. Keep the model ID marked
+	// as configured nevertheless; otherwise the same upstream model on a
+	// remaining channel is incorrectly offered as unassociated after archiving.
+	associatedModelIDs := make(map[string]bool)
+	for _, association := range associations {
+		if association == nil || association.Type != "channel_model" || association.ChannelModel == nil {
+			continue
+		}
+
+		if _, archived := archivedChannelIDs[association.ChannelModel.ChannelID]; archived && !lo.ContainsBy(channelWrappers, func(ch *Channel) bool {
+			return ch.ID == association.ChannelModel.ChannelID
+		}) {
+			associatedModelIDs[association.ChannelModel.ModelID] = true
+		}
+	}
 
 	for _, conn := range connections {
 		for _, entry := range conn.Models {
@@ -923,7 +958,7 @@ func findUnassociatedChannels(channels []*ent.Channel, associations []*objects.M
 				ChannelID: ch.ID,
 				ModelID:   modelID,
 			}
-			if !associatedMap[key] {
+			if !associatedMap[key] && !associatedModelIDs[modelID] {
 				unassociatedModels = append(unassociatedModels, modelID)
 			}
 		}
