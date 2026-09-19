@@ -438,7 +438,7 @@ func parseAnthropicStreamErrorEvent(event *httpclient.StreamEvent) *llm.Response
 		detail.Type = "stream_error"
 	}
 
-	return &llm.ResponseError{Detail: detail}
+	return llm.NewStreamResponseError(detail)
 }
 
 func (s *outboundStream) Current() *llm.Response {

@@ -422,7 +422,7 @@ func parseStreamErrorEvent(event *httpclient.StreamEvent) *llm.ResponseError {
 			detail.RequestID = rid
 		}
 
-		return &llm.ResponseError{Detail: detail}
+		return llm.NewStreamResponseError(detail)
 	}
 
 	// OpenAI-style: {"error":{...}} or {"error":"..."}
@@ -448,7 +448,7 @@ func parseStreamErrorEvent(event *httpclient.StreamEvent) *llm.ResponseError {
 		detail.RequestID = rid
 	}
 
-	return &llm.ResponseError{Detail: detail}
+	return llm.NewStreamResponseError(detail)
 }
 
 // buildFullRequestURL constructs the appropriate URL based on the platform.

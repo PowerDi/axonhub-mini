@@ -349,6 +349,76 @@ func TestOutboundTransformer_StreamTransformation_ErrorEvent(t *testing.T) {
 	require.Contains(t, err.Error(), "Something went wrong")
 }
 
+// TestOutboundTransformer_StreamTransformation_ErrorEventInfersRateLimitStatus
+// reproduces the production failure: a relay (e.g., anyrouter, agentrouter)
+// forwards an Azure OpenAI rate-limit error event but omits the `status` field.
+// Before inference, the resulting ResponseError carried StatusCode 0, causing
+// the gateway to treat an upstream 429 as an unknown failure and skip retry.
+func TestOutboundTransformer_StreamTransformation_ErrorEventInfersRateLimitStatus(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	// Real shape from production: anyrouter/agentrouter forward the Azure error
+	// event but do not populate the `status` field. The detail lives in `error`.
+	events := []*httpclient.StreamEvent{
+		{
+			Type: "error",
+			Data: []byte(`{
+				"type": "error",
+				"error": {
+					"type": "too_many_requests",
+					"code": "rate_limit_exceeded",
+					"message": "Your requests to gpt-6-astra for gpt-6-astra in eastus2 have exceeded rate limit."
+				}
+			}`),
+		},
+	}
+
+	transformedStream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	_, err = streams.All(transformedStream)
+	require.Error(t, err)
+
+	var respErr *llm.ResponseError
+	require.ErrorAs(t, err, &respErr)
+	require.Equal(t, 429, respErr.StatusCode, "should infer 429 from rate_limit_exceeded code")
+	require.Equal(t, "rate_limit_exceeded", respErr.Detail.Code)
+	require.Contains(t, respErr.Error(), "Request failed: Too Many Requests")
+}
+
+// TestOutboundTransformer_StreamTransformation_ErrorEventPreservesExplicitStatus
+// guards against inference overriding an explicit upstream status.
+func TestOutboundTransformer_StreamTransformation_ErrorEventPreservesExplicitStatus(t *testing.T) {
+	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
+	require.NoError(t, err)
+
+	events := []*httpclient.StreamEvent{
+		{
+			Type: "error",
+			Data: []byte(`{
+				"type": "error",
+				"status": 503,
+				"error": {
+					"type": "service_unavailable",
+					"code": "rate_limit_exceeded",
+					"message": "Temporary overload"
+				}
+			}`),
+		},
+	}
+
+	transformedStream, err := trans.TransformStream(t.Context(), nil, streams.SliceStream(events))
+	require.NoError(t, err)
+
+	_, err = streams.All(transformedStream)
+	require.Error(t, err)
+
+	var respErr *llm.ResponseError
+	require.ErrorAs(t, err, &respErr)
+	require.Equal(t, 503, respErr.StatusCode, "should preserve explicit status 503 even when code suggests 429")
+}
+
 func TestOutboundTransformer_TransformStream_UsesFinalEncryptedContentPerReasoningItem(t *testing.T) {
 	trans, err := NewOutboundTransformer("https://api.openai.com", "test-api-key")
 	require.NoError(t, err)

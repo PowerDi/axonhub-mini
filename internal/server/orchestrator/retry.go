@@ -166,3 +166,10 @@ func deriveRoutingPolicy(
 func deriveLoadBalancerStrategy(retryPolicy *biz.RetryPolicy, apiKey *ent.APIKey) string {
 	return deriveRoutingPolicy(retryPolicy, apiKey, nil).LoadBalancerStrategy
 }
+
+// isRateLimitError returns true when err represents a 429 rate-limit response,
+// whether it arrived via HTTP transport (httpclient.Error) or inside a streaming
+// response body (llm.ResponseError with inferred status 429).
+func isRateLimitError(err error) bool {
+	return ExtractStatusCodeFromError(err) == 429
+}

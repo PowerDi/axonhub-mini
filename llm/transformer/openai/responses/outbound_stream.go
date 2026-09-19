@@ -722,10 +722,19 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 				detail.Param = streamEvent.Error.Param
 			}
 		}
-		return &llm.ResponseError{
-			StatusCode: streamEvent.Status,
-			Detail:     detail,
+		// Responses-API error events carry `status` only when the provider
+		// bothers to set it; relays commonly omit it, leaving StatusCode 0 and
+		// making every status-based gateway decision treat an upstream 429 as
+		// an unknown failure. Fall back to inferring it from the error
+		// code/type, keeping an explicit upstream status when present.
+		if streamEvent.Status != 0 {
+			return &llm.ResponseError{
+				StatusCode: streamEvent.Status,
+				Detail:     detail,
+			}
 		}
+
+		return llm.NewStreamResponseError(detail)
 
 	case StreamEventTypeImageGenerationPartialImage,
 		StreamEventTypeImageGenerationGenerating,

@@ -748,14 +748,30 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 		return true
 	}
 
-	// 429 Too Many Requests: always skip same-channel retry.
+	// 429 Too Many Requests: prefer a channel switch over same-channel retry.
 	// The upstream is explicitly rate-limiting this channel, so retrying the same
 	// channel would just burn a retry attempt without any chance of success.
 	// Instead, force a channel switch so the next candidate (e.g. a backup channel)
 	// is tried immediately. The load balancer (e.g. ErrorAware strategy) will
 	// deprioritize this channel for subsequent requests and it will naturally
 	// recover as the rate-limit window resets.
-	if httpclient.IsRateLimitErr(err) {
+	//
+	// That reasoning assumes another candidate exists. When this is the last
+	// candidate, skipping same-channel retry means the pipeline has nowhere left
+	// to go and returns the 429 after a single upstream attempt, silently
+	// discarding the configured same-channel retry budget. Falling back to
+	// same-channel retry keeps the configured budget meaningful; the pipeline
+	// still caps it at MaxSingleChannelRetries and waits RetryDelayMs between
+	// attempts.
+	if isRateLimitError(err) {
+		if !p.HasMoreChannels() {
+			log.Debug(context.Background(), "429 rate limit on last candidate, allowing same-channel retry",
+				log.Int("channel_id", p.state.CurrentCandidate.Channel.ID),
+			)
+
+			return true
+		}
+
 		log.Debug(context.Background(), "429 rate limit, skipping same-channel retry to switch to next channel",
 			log.Int("channel_id", p.state.CurrentCandidate.Channel.ID),
 		)

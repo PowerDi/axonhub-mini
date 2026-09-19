@@ -230,14 +230,13 @@ func (m *persistRequestExecutionMiddleware) OnOutboundRawError(ctx context.Conte
 
 // ExtractErrorInfo extracts HTTP status code and sanitized response body from error.
 func ExtractErrorInfo(err error) *biz.ExecutionErrorInfo {
-	httpErr, ok := xerrors.As[*httpclient.Error](err)
-	if !ok {
-		return nil
+	if statusCode := ExtractStatusCodeFromError(err); statusCode != 0 {
+		return &biz.ExecutionErrorInfo{
+			StatusCode: &statusCode,
+		}
 	}
 
-	return &biz.ExecutionErrorInfo{
-		StatusCode: &httpErr.StatusCode,
-	}
+	return nil
 }
 
 // ExtractErrorMessage extracts HTTP error message from error.

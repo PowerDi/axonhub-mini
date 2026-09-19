@@ -212,12 +212,14 @@ func (s *recordPerformanceStream) Err() error {
 	return s.stream.Err()
 }
 
-// ExtractErrorCode extracts HTTP error code from error.
+// ExtractErrorCode extracts the HTTP error code from error, falling back to 500
+// when the failure carries no recognizable status. Streaming errors arrive in a
+// 200 body and have their status inferred from the provider error code, so this
+// must go through ExtractStatusCodeFromError rather than only matching
+// httpclient.Error: auto-disable rules match on this value, and reporting an
+// upstream 429 as 500 makes those rules fire on the wrong condition.
 func ExtractErrorCode(err error) int {
-	// Check if error is an HTTP error
-	httpErr := &httpclient.Error{}
-	if errors.As(err, &httpErr) {
-		code := httpErr.StatusCode
+	if code := ExtractStatusCodeFromError(err); code != 0 {
 		return code
 	}
 

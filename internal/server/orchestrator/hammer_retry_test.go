@@ -188,9 +188,19 @@ func TestHammerCanRetryInCanRetry(t *testing.T) {
 	outbound := newHammerOutbound(&objects.ChannelHammerRetry{MaxRetries: hammerIntPtr(5)})
 	assert.True(t, outbound.CanRetry(newUpstream429()))
 
-	// A channel without hammer retry keeps the default 429 switch behaviour.
+	// A channel without hammer retry keeps the default 429 switch behaviour,
+	// but only while another candidate is available to switch to.
 	outbound = newHammerOutbound(nil)
+	outbound.state.ChannelModelsCandidates = []*ChannelModelsCandidate{
+		outbound.state.CurrentCandidate,
+		newHammerOutbound(nil).state.CurrentCandidate,
+	}
 	assert.False(t, outbound.CanRetry(newUpstream429()))
+
+	// On the last candidate there is nowhere to switch to, so the configured
+	// same-channel retry budget applies instead of failing after one attempt.
+	outbound = newHammerOutbound(nil)
+	assert.True(t, outbound.CanRetry(newUpstream429()))
 }
 
 func TestHammerSameChannelBudgetInterface(t *testing.T) {

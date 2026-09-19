@@ -46,7 +46,7 @@ func classifyHammerError(err error, hammer *objects.ChannelHammerRetry) (hammera
 	// Upstream 429: the bread-and-butter hammer case. Local admission errors
 	// are also synthesized as 429-shaped, but the check above already
 	// filtered them out.
-	if httpclient.IsRateLimitErr(err) {
+	if isRateLimitError(err) {
 		return true, false
 	}
 
