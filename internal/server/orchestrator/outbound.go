@@ -705,7 +705,15 @@ func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 	// Trace/thread sticky candidates are intentionally one-shot. A failed
 	// sticky attempt must proceed to the normal fallback candidates instead of
 	// retrying the same channel or another mapped model on that channel.
-	if p.state.CurrentCandidate.TraceSticky {
+	//
+	// Hammer channels ("挤模式") are the exception. Keeping the request on the
+	// contended channel until a concurrency slot opens is the entire point of
+	// hammer mode, and with trace_sticky_mode=prefer_previous_channel the
+	// sticky candidate IS the hammer channel for every request after the first
+	// in a trace. Returning false here silently discarded the whole configured
+	// hammer budget for those requests. hammerEligible only classifies the
+	// error; the budget is consumed by hammerCanRetry below.
+	if p.state.CurrentCandidate.TraceSticky && !p.hammerEligible(err) {
 		return false
 	}
 

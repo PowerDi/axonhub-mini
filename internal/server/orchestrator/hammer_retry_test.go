@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-
 func hammerIntPtr(v int) *int { return &v }
 
 func newUpstream429() error {
@@ -261,4 +260,73 @@ func TestHammerableFlagOnPerformanceRecord(t *testing.T) {
 	// must still feed auto-disable (the channel may be genuinely broken).
 	hammerable, _ = classifyHammerError(newUpstream500("internal server error"), hammer)
 	assert.False(t, hammerable)
+}
+
+// TestHammerRetryOnTraceStickyCandidate reproduces the production failure on
+// channel 10 (agentrouter/gpt-6-astra): with
+// trace_sticky_mode=prefer_previous_channel, every request after the first in a
+// trace routes to the previous channel as a TraceSticky candidate. The sticky
+// one-shot rule used to return false from CanRetry before hammer classification
+// ran, so the configured hammer budget was silently discarded and an upstream
+// 429 failed after a single attempt.
+func TestHammerRetryOnTraceStickyCandidate(t *testing.T) {
+	newSticky := func(hammer *objects.ChannelHammerRetry) *PersistentOutboundTransformer {
+		outbound := newHammerOutbound(hammer)
+		outbound.state.CurrentCandidate.TraceSticky = true
+
+		return outbound
+	}
+
+	t.Run("hammer channel keeps hammering an upstream 429 while sticky", func(t *testing.T) {
+		outbound := newSticky(&objects.ChannelHammerRetry{MaxRetries: hammerIntPtr(5)})
+
+		require.True(t, outbound.CanRetry(newUpstream429()),
+			"sticky hammer candidate must consume its hammer budget, not fail after one attempt")
+		assert.Equal(t, 1, outbound.state.HammerAttempts)
+	})
+
+	t.Run("hammer channel keeps hammering a pattern-matched 500 while sticky", func(t *testing.T) {
+		outbound := newSticky(&objects.ChannelHammerRetry{
+			MaxRetries:    hammerIntPtr(5),
+			ErrorPatterns: []objects.RetryableErrorPattern{{Pattern: "负载已经达到上限"}},
+		})
+
+		err := newUpstream500("当前模型 gpt-6-astra 负载已经达到上限，请稍后重试")
+		require.True(t, outbound.CanRetry(err))
+		assert.Equal(t, 1, outbound.state.HammerAttempts)
+	})
+
+	t.Run("sticky hammer budget is still bounded", func(t *testing.T) {
+		outbound := newSticky(&objects.ChannelHammerRetry{MaxRetries: hammerIntPtr(3)})
+
+		assert.True(t, outbound.CanRetry(newUpstream429()))
+		assert.True(t, outbound.CanRetry(newUpstream429()))
+		assert.False(t, outbound.CanRetry(newUpstream429()),
+			"the hammer attempt budget must still terminate a sticky candidate")
+	})
+
+	t.Run("non-hammerable error keeps the sticky one-shot rule", func(t *testing.T) {
+		outbound := newSticky(&objects.ChannelHammerRetry{MaxRetries: hammerIntPtr(5)})
+
+		assert.False(t, outbound.CanRetry(errors.New("upstream connection reset")),
+			"a sticky candidate must stay one-shot for errors hammer does not own")
+		assert.Zero(t, outbound.state.HammerAttempts,
+			"classification must not consume hammer budget")
+	})
+
+	t.Run("sticky candidate without hammer stays one-shot on 429", func(t *testing.T) {
+		outbound := newSticky(nil)
+		assert.False(t, outbound.CanRetry(newUpstream429()))
+	})
+
+	t.Run("hammerEligible does not consume budget", func(t *testing.T) {
+		outbound := newSticky(&objects.ChannelHammerRetry{MaxRetries: hammerIntPtr(5)})
+
+		for range 3 {
+			assert.True(t, outbound.hammerEligible(newUpstream429()))
+		}
+
+		assert.Zero(t, outbound.state.HammerAttempts)
+		assert.True(t, outbound.state.HammerStartedAt.IsZero())
+	})
 }

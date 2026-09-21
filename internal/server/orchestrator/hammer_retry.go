@@ -77,6 +77,21 @@ func hammerErrorMessage(err error) string {
 	return message
 }
 
+// hammerEligible reports whether err would be handled by hammer retry on the
+// current channel, WITHOUT touching the per-request hammer counters. It mirrors
+// the hammerCanRetry classification so ordering decisions can be made before
+// the budget is consumed.
+func (p *PersistentOutboundTransformer) hammerEligible(err error) bool {
+	hammer := hammerConfigForChannel(p.GetCurrentChannel())
+	if hammer == nil {
+		return false
+	}
+
+	hammerable, _ := classifyHammerError(err, hammer)
+
+	return hammerable
+}
+
 // hammerBudgetExhausted reports whether the hammer time budget has been
 // consumed for the current request. The budget starts at the first hammerable
 // failure; a zero HammerStartedAt means no budget is running yet.
@@ -164,4 +179,3 @@ func (p *PersistentOutboundTransformer) SameChannelRetryDelay() time.Duration {
 
 	return time.Duration(hammer.EffectiveDelayMs()) * time.Millisecond
 }
-
