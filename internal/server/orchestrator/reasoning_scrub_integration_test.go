@@ -24,19 +24,23 @@ import (
 	anthropictransformer "github.com/looplj/axonhub/llm/transformer/anthropic"
 )
 
-// TestChatCompletionOrchestrator_Process_StripsSignedReasoningOnChannelSwitch is
-// the full-pipeline proof for the reasoning-scrub feature: a client replays a
+// TestChatCompletionOrchestrator_Process_StripsSignedReasoningAndRetriesSameChannel
+// is the full-pipeline proof for the reasoning-scrub feature: a client replays a
 // signed Anthropic thinking block, the first upstream rejects it with an
-// "encrypted content could not be verified" 400, and the pipeline fails over to
-// a second channel. The assertion is on the two captured upstream request
-// bodies — the first still carries the account-bound signature, the second (sent
-// after the failover) has it stripped while the plain reasoning text is kept.
+// "encrypted content could not be verified" 400, and the pipeline retries the
+// SAME channel with a stripped body. The assertion is on the two captured
+// upstream request bodies — both go to the same channel (same API key), the first
+// still carries the account-bound signature, and the second (the same-channel
+// retry) has it stripped while the plain reasoning text is kept.
+//
+// The channel must have Settings.ReasoningFilter enabled: the whole mechanism is
+// gated on that flag, so with it off the 400 would pass straight through.
 //
 // Anthropic is used on both ends on purpose: it is the only inbound that parses a
 // request-side thinking signature into the structured llm.Request, and its
 // outbound re-serializes that signature verbatim, so the scrub is observable in
 // the wire body rather than only in unit-level field assertions.
-func TestChatCompletionOrchestrator_Process_StripsSignedReasoningOnChannelSwitch(t *testing.T) {
+func TestChatCompletionOrchestrator_Process_StripsSignedReasoningAndRetriesSameChannel(t *testing.T) {
 	ctx := context.Background()
 	ctx = authz.WithTestBypass(ctx)
 
@@ -141,6 +145,7 @@ func TestChatCompletionOrchestrator_Process_StripsSignedReasoningOnChannelSwitch
 			SetCredentials(objects.ChannelCredentials{APIKey: key}).
 			SetSupportedModels([]string{"gpt-4"}).
 			SetDefaultTestModel("gpt-4").
+			SetSettings(&objects.ChannelSettings{ReasoningFilter: true}).
 			Save(ctx)
 		require.NoError(t, err)
 
@@ -154,10 +159,12 @@ func TestChatCompletionOrchestrator_Process_StripsSignedReasoningOnChannelSwitch
 		}
 	}
 
+	// A single channel: the recovery is a same-channel strip-and-retry, not a
+	// failover. The account-bound credential is what the account rejects, so a
+	// clean body has a real chance on the same channel.
 	channelSelector := &staticChannelSelector{
 		candidates: []*ChannelModelsCandidate{
 			mkCandidate("Anthropic A", "key-a"),
-			mkCandidate("Anthropic B", "key-b"),
 		},
 	}
 
@@ -186,18 +193,26 @@ func TestChatCompletionOrchestrator_Process_StripsSignedReasoningOnChannelSwitch
 	// Exactly two upstream attempts: the rejected one and the recovered one.
 	require.Len(t, executor.requests, 2)
 
+	// Both attempts hit the SAME channel: the recovery is a same-channel
+	// strip-and-retry, not a failover to a different account.
+	require.Equal(t,
+		executor.requests[0].Headers.Get("X-API-Key"),
+		executor.requests[1].Headers.Get("X-API-Key"),
+		"both attempts must go to the same channel (same-channel retry, not failover)",
+	)
+
 	// First attempt replays the account-bound signature verbatim.
 	require.True(t,
 		bytes.Contains(executor.requests[0].Body, []byte(signature)),
 		"first upstream attempt must carry the signed thinking block",
 	)
 
-	// After the failover the signature is gone, but the plain reasoning text is
-	// kept (design: only signed credentials are stripped, plain reasoning stays so
-	// providers that require it to be passed back are satisfied).
+	// On the same-channel retry the signature is gone, but the plain reasoning
+	// text is kept (design: only signed credentials are stripped, plain reasoning
+	// stays so providers that require it to be passed back are satisfied).
 	require.False(t,
 		bytes.Contains(executor.requests[1].Body, []byte(signature)),
-		"after failover the account-bound signature must be stripped",
+		"the same-channel retry must strip the account-bound signature",
 	)
 	require.True(t,
 		bytes.Contains(executor.requests[1].Body, []byte(thinkingText)),

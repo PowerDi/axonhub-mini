@@ -288,16 +288,26 @@ type ChannelSettings struct {
 	// counting for matched errors.
 	HammerRetry *ChannelHammerRetry `json:"hammerRetry,omitempty"`
 
-	// ReasoningFilter enables deep reasoning-credential scrubbing on failover.
+	// ReasoningFilter turns on reasoning-credential scrubbing for this channel.
 	// Encrypted reasoning (thinking signatures / OpenAI encrypted_content) is
-	// signed by the upstream account that produced it, so replaying it on another
-	// channel/account is rejected. The signed reasoning blocks themselves are
-	// always stripped before a failover retry; enabling this flag additionally
-	// clears the OpenAI Responses server-side references (previous_response_id,
-	// forces store:false, compaction ciphertext) that only the signing account
-	// can resolve. Off by default; deep scrubbing loses server-side conversation
-	// continuity, so only enable it for channels/groups that route across
-	// accounts which do not share reasoning credentials.
+	// signed by the upstream account that produced it, so replaying it verbatim
+	// makes the upstream reject the request ("encrypted content could not be
+	// verified", "reasoning must be passed back", etc.).
+	//
+	// This single flag gates the WHOLE mechanism — nothing is stripped unless it
+	// is enabled. When a channel with the flag on returns such an error, the
+	// request is retried on the SAME channel with the account-bound reasoning
+	// fields removed (a clean body is what the account will accept). If that
+	// retry still fails, the pipeline falls back to normal channel switching and
+	// keeps sending the stripped body. For Responses-format outbounds the retry
+	// also drops the server-side references (previous_response_id, forces
+	// store:false, compaction ciphertext) that only the signing account can
+	// resolve.
+	//
+	// Off by default: scrubbing sacrifices thinking/conversation continuity, so
+	// only enable it for channels that hit these account-bound reasoning errors.
+	// Note: it has no effect on pass-through channels, which replay the original
+	// bytes instead of re-serializing the structured request.
 	ReasoningFilter bool `json:"reasoningFilter"`
 
 	// ProviderQuota holds provider-specific quota collection credentials and

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 )
 
@@ -127,17 +128,17 @@ func isResourceOwnershipError(message string) bool {
 	return containsAny(message, ownershipWords...)
 }
 
-// needsPortabilityScrub reports whether this error requires the deep
-// (portability) scrub regardless of the channel flag. Resource-ownership errors
-// literally say the reference does not belong to this resource, so stripping
-// only the signed reasoning cannot recover them — the server-side references
-// (previous_response_id, store) must go too, or the retry hits the same error.
-func needsPortabilityScrub(err error) bool {
-	if err == nil {
+// reasoningFilterEnabled reports whether the channel opted in to reasoning
+// scrubbing via Settings.ReasoningFilter. The whole mechanism (both the shallow
+// signed-reasoning strip and the deep Responses portability scrub) is off unless
+// this returns true, so a channel with the flag disabled lets the credential
+// error pass through untouched.
+func reasoningFilterEnabled(ch *biz.Channel) bool {
+	if ch == nil || ch.Settings == nil {
 		return false
 	}
 
-	return isResourceOwnershipError(reasoningErrorMessage(err))
+	return ch.Settings.ReasoningFilter
 }
 
 func containsAny(value string, candidates ...string) bool {

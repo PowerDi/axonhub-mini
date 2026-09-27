@@ -122,48 +122,6 @@ func TestShouldStripReasoning(t *testing.T) {
 	}
 }
 
-func TestNeedsPortabilityScrub(t *testing.T) {
-	tests := []struct {
-		name string
-		err  error
-		want bool
-	}{
-		{
-			name: "resource ownership triggers deep scrub",
-			err:  respErr("created under a different Azure OpenAI resource", "", "invalid_request_error"),
-			want: true,
-		},
-		{
-			name: "another account",
-			err:  errors.New("this item belongs to another account"),
-			want: true,
-		},
-		{
-			name: "plain signature error does not force deep scrub",
-			err:  respErr("thinking signature invalid", "thinking_signature_invalid", ""),
-			want: false,
-		},
-		{
-			name: "resource word alone (quota) is not ownership",
-			err:  respErr("insufficient quota for this resource", "", ""),
-			want: false,
-		},
-		{
-			name: "nil",
-			err:  nil,
-			want: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := needsPortabilityScrub(tt.err); got != tt.want {
-				t.Errorf("needsPortabilityScrub() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestIsResourceOwnershipError(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -203,15 +161,16 @@ func signedReasoningMessage() llm.Message {
 	}
 }
 
-// newScrubTestTransformer builds a transformer whose single candidate uses the
-// given outbound format and ReasoningFilter flag, marked as already needing a
-// scrub. applyReasoningScrub reads only the current candidate, so this is enough
-// to exercise both scrub depths without a database.
-func newScrubTestTransformer(reasoningFilter bool) *PersistentOutboundTransformer {
+// newScrubTestTransformer builds a transformer whose single candidate is marked
+// as already needing a scrub. applyReasoningScrub gates only on the
+// ReasoningStripped mark (the channel's ReasoningFilter flag is checked once, at
+// detection time in CanRetry), so this is enough to exercise both scrub depths
+// without a database.
+func newScrubTestTransformer() *PersistentOutboundTransformer {
 	candidate := &ChannelModelsCandidate{
 		Channel: &biz.Channel{
 			Channel: &ent.Channel{
-				Settings: &objects.ChannelSettings{ReasoningFilter: reasoningFilter},
+				Settings: &objects.ChannelSettings{ReasoningFilter: true},
 			},
 		},
 	}
@@ -226,7 +185,7 @@ func newScrubTestTransformer(reasoningFilter bool) *PersistentOutboundTransforme
 }
 
 func TestApplyReasoningScrub_NoOpUntilMarked(t *testing.T) {
-	p := newScrubTestTransformer(false)
+	p := newScrubTestTransformer()
 	p.state.ReasoningStripped = false
 
 	req := &llm.Request{
@@ -241,7 +200,7 @@ func TestApplyReasoningScrub_NoOpUntilMarked(t *testing.T) {
 }
 
 func TestApplyReasoningScrub_ShallowStripsSignatureKeepsPlainText(t *testing.T) {
-	p := newScrubTestTransformer(false)
+	p := newScrubTestTransformer()
 
 	req := &llm.Request{
 		APIFormat: llm.APIFormatAnthropicMessage,
@@ -264,9 +223,9 @@ func TestApplyReasoningScrub_ShallowStripsSignatureKeepsPlainText(t *testing.T) 
 }
 
 func TestApplyReasoningScrub_DeepScrubGatedOnResponsesFormat(t *testing.T) {
-	// ReasoningFilter on, but Anthropic outbound: deep scrub must NOT touch
-	// server-side references (Anthropic has none); PreviousResponseID stays.
-	p := newScrubTestTransformer(true)
+	// Anthropic outbound: deep scrub must NOT touch server-side references
+	// (Anthropic has none); PreviousResponseID stays, shallow strip still runs.
+	p := newScrubTestTransformer()
 
 	req := &llm.Request{
 		APIFormat:          llm.APIFormatAnthropicMessage,
@@ -280,8 +239,10 @@ func TestApplyReasoningScrub_DeepScrubGatedOnResponsesFormat(t *testing.T) {
 	require.Nil(t, got.Messages[0].ReasoningSignature, "shallow strip still runs")
 }
 
-func TestApplyReasoningScrub_DeepScrubOnResponsesWithFilter(t *testing.T) {
-	p := newScrubTestTransformer(true)
+func TestApplyReasoningScrub_DeepScrubOnResponsesFormat(t *testing.T) {
+	// Responses outbound + marked: the deep portability scrub runs automatically
+	// (the channel flag is checked once at detection time, not here).
+	p := newScrubTestTransformer()
 
 	storeTrue := true
 	req := &llm.Request{
@@ -302,48 +263,19 @@ func TestApplyReasoningScrub_DeepScrubOnResponsesWithFilter(t *testing.T) {
 	require.True(t, *req.Store)
 }
 
-func TestApplyReasoningScrub_DeepScrubSkippedWithoutFilterOrOwnership(t *testing.T) {
-	// Responses outbound, but ReasoningFilter off and not a resource-ownership
-	// error: shallow only, server-side refs preserved.
-	p := newScrubTestTransformer(false)
-
-	req := &llm.Request{
-		APIFormat:          llm.APIFormatOpenAIResponse,
-		PreviousResponseID: lo.ToPtr("resp_123"),
-		Messages:           []llm.Message{signedReasoningMessage()},
-	}
-
-	got := p.applyReasoningScrub(req, llm.APIFormatOpenAIResponse)
-
-	require.NotNil(t, got.PreviousResponseID, "shallow-only must keep server-side references")
-	require.Nil(t, got.Messages[0].ReasoningSignature)
-}
-
-func TestApplyReasoningScrub_ResourceOwnershipLatchForcesDeepScrub(t *testing.T) {
-	// ReasoningFilter off, but the latched resource-ownership flag must force
-	// the deep scrub anyway (mirrors needsPortabilityScrub semantics).
-	p := newScrubTestTransformer(false)
-	p.state.ReasoningNeedsPortabilityScrub = true
-
-	req := &llm.Request{
-		APIFormat:          llm.APIFormatOpenAIResponse,
-		PreviousResponseID: lo.ToPtr("resp_123"),
-		Messages:           []llm.Message{signedReasoningMessage()},
-	}
-
-	got := p.applyReasoningScrub(req, llm.APIFormatOpenAIResponse)
-
-	require.Nil(t, got.PreviousResponseID, "latched ownership flag forces deep scrub regardless of channel setting")
-}
-
-// canRetryTransformer builds a transformer with n plain candidates positioned at
-// index idx, so CanRetry's HasMoreChannels() branch can be exercised.
-func canRetryTransformer(n, idx int) *PersistentOutboundTransformer {
+// canRetryTransformer builds a transformer with n candidates positioned at index
+// idx. reasoningFilter controls whether every candidate opts in to reasoning
+// scrubbing via Settings.ReasoningFilter, so CanRetry's gate can be exercised.
+func canRetryTransformer(n, idx int, reasoningFilter bool) *PersistentOutboundTransformer {
 	candidates := make([]*ChannelModelsCandidate, n)
 	for i := range candidates {
 		candidates[i] = &ChannelModelsCandidate{
-			Channel: &biz.Channel{Channel: &ent.Channel{}},
-			Models:  []biz.ChannelModelEntry{{RequestModel: "m", ActualModel: "m"}},
+			Channel: &biz.Channel{
+				Channel: &ent.Channel{
+					Settings: &objects.ChannelSettings{ReasoningFilter: reasoningFilter},
+				},
+			},
+			Models: []biz.ChannelModelEntry{{RequestModel: "m", ActualModel: "m"}},
 		}
 	}
 
@@ -356,38 +288,33 @@ func canRetryTransformer(n, idx int) *PersistentOutboundTransformer {
 	}
 }
 
-func TestCanRetry_ReasoningErrorPrefersChannelSwitch(t *testing.T) {
-	p := canRetryTransformer(2, 0) // more channels remain
+func TestCanRetry_ReasoningErrorRetriesSameChannel(t *testing.T) {
+	// ReasoningFilter enabled + more channels remain: the primary recovery is a
+	// same-channel retry with the stripped body, NOT a channel switch.
+	p := canRetryTransformer(2, 0, true)
 
 	got := p.CanRetry(respErr("thinking signature invalid", "thinking_signature_invalid", "invalid_request_error"))
 
-	require.False(t, got, "with more channels, reasoning error must route to NextChannel")
+	require.True(t, got, "reasoning error on a filtered channel must retry the same channel")
 	require.True(t, p.state.ReasoningStripped, "detection must latch the strip flag")
 }
 
-func TestCanRetry_ReasoningErrorLastCandidateRetriesSameChannel(t *testing.T) {
-	p := canRetryTransformer(2, 1) // last candidate
+func TestCanRetry_ReasoningErrorIgnoredWithoutFilter(t *testing.T) {
+	// ReasoningFilter disabled: the whole mechanism is off, the error passes
+	// through to the normal retryability logic and the flag is never latched.
+	p := canRetryTransformer(2, 0, false)
 
 	got := p.CanRetry(respErr("thinking signature invalid", "thinking_signature_invalid", "invalid_request_error"))
 
-	require.True(t, got, "on the last candidate, retry same channel so the stripped body still gets a chance")
-	require.True(t, p.state.ReasoningStripped)
-}
-
-func TestCanRetry_ResourceOwnershipLatchesPortabilityScrub(t *testing.T) {
-	p := canRetryTransformer(2, 0)
-
-	p.CanRetry(respErr("The requested item was created under a different Azure OpenAI resource.", "", "invalid_request_error"))
-
-	require.True(t, p.state.ReasoningStripped)
-	require.True(t, p.state.ReasoningNeedsPortabilityScrub, "resource-ownership error must latch deep scrub")
+	require.False(t, got, "without the flag, a non-retryable 400 is not retried")
+	require.False(t, p.state.ReasoningStripped, "disabled channel must not latch the strip flag")
 }
 
 func TestCanRetry_ReasoningDetectionIsOncePerRequest(t *testing.T) {
-	p := canRetryTransformer(2, 0)
+	p := canRetryTransformer(2, 0, true)
 
-	// First reasoning error latches the flags and prefers a switch.
-	require.False(t, p.CanRetry(respErr("thinking signature invalid", "thinking_signature_invalid", "")))
+	// First reasoning error latches the flag and retries the same channel.
+	require.True(t, p.CanRetry(respErr("thinking signature invalid", "thinking_signature_invalid", "")))
 	require.True(t, p.state.ReasoningStripped)
 
 	// A second reasoning error must not re-enter the reasoning branch (already
@@ -398,11 +325,10 @@ func TestCanRetry_ReasoningDetectionIsOncePerRequest(t *testing.T) {
 	require.False(t, got, "second reasoning error falls through, not handled by the once-only branch")
 }
 
-func TestCanRetry_NonReasoningErrorLeavesFlagsUnset(t *testing.T) {
-	p := canRetryTransformer(2, 0)
+func TestCanRetry_NonReasoningErrorLeavesFlagUnset(t *testing.T) {
+	p := canRetryTransformer(2, 0, true)
 
 	p.CanRetry(respErr("missing required parameter: model", "", "invalid_request_error"))
 
 	require.False(t, p.state.ReasoningStripped)
-	require.False(t, p.state.ReasoningNeedsPortabilityScrub)
 }
