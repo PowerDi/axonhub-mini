@@ -588,6 +588,7 @@ type ComplexityRoot struct {
 		ProviderQuota            func(childComplexity int) int
 		Proxy                    func(childComplexity int) int
 		RateLimit                func(childComplexity int) int
+		ReasoningFilter          func(childComplexity int) int
 		RetryableErrorPatterns   func(childComplexity int) int
 		RetryableStatusCodes     func(childComplexity int) int
 		TransformOptions         func(childComplexity int) int
@@ -4460,6 +4461,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSettings.RateLimit(childComplexity), true
+	case "ChannelSettings.reasoningFilter":
+		if e.complexity.ChannelSettings.ReasoningFilter == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.ReasoningFilter(childComplexity), true
 	case "ChannelSettings.retryableErrorPatterns":
 		if e.complexity.ChannelSettings.RetryableErrorPatterns == nil {
 			break
@@ -20730,6 +20737,8 @@ func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, fie
 				return ec.fieldContext_ChannelSettings_retryableErrorPatterns(ctx, field)
 			case "hammerRetry":
 				return ec.fieldContext_ChannelSettings_hammerRetry(ctx, field)
+			case "reasoningFilter":
+				return ec.fieldContext_ChannelSettings_reasoningFilter(ctx, field)
 			case "providerQuota":
 				return ec.fieldContext_ChannelSettings_providerQuota(ctx, field)
 			}
@@ -25641,6 +25650,35 @@ func (ec *executionContext) fieldContext_ChannelSettings_hammerRetry(_ context.C
 				return ec.fieldContext_ChannelHammerRetry_consecutiveHardFailureLimit(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ChannelHammerRetry", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_reasoningFilter(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSettings_reasoningFilter,
+		func(ctx context.Context) (any, error) {
+			return obj.ReasoningFilter, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_reasoningFilter(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -68987,7 +69025,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "modelApiFormatPolicies", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "hammerRetry", "providerQuota"}
+	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "modelApiFormatPolicies", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "hammerRetry", "reasoningFilter", "providerQuota"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -69113,6 +69151,13 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.HammerRetry = data
+		case "reasoningFilter":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reasoningFilter"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ReasoningFilter = data
 		case "providerQuota":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("providerQuota"))
 			data, err := ec.unmarshalOChannelProviderQuotaSettingsInput2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐChannelProviderQuotaSettings(ctx, v)
@@ -95623,6 +95668,8 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._ChannelSettings_retryableErrorPatterns(ctx, field, obj)
 		case "hammerRetry":
 			out.Values[i] = ec._ChannelSettings_hammerRetry(ctx, field, obj)
+		case "reasoningFilter":
+			out.Values[i] = ec._ChannelSettings_reasoningFilter(ctx, field, obj)
 		case "providerQuota":
 			field := field
 

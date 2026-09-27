@@ -90,4 +90,20 @@ type PersistenceState struct {
 	HammerStartedAt              time.Time
 	HammerAttempts               int
 	HammerConsecutiveHardFails   int
+
+	// ReasoningStripped records that this request hit a reasoning-credential
+	// rejection and every subsequent attempt must strip the account-bound
+	// reasoning fields before serializing. It is per-request (not per-channel),
+	// so NextChannel must NOT reset it: once one account rejects the signed
+	// reasoning, replaying it on any other account fails the same way.
+	ReasoningStripped bool
+
+	// ReasoningNeedsPortabilityScrub latches whether the reasoning rejection was a
+	// resource-ownership error, which forces the deep portability scrub regardless
+	// of the channel's ReasoningFilter flag. It is a latched decision rather than a
+	// re-derivation from the live error, because CanRetry overwrites the error each
+	// attempt (e.g. an internal sentinel from a later candidate) and would
+	// otherwise lose the original resource-ownership signal. Set once alongside
+	// ReasoningStripped; NextChannel must NOT reset it.
+	ReasoningNeedsPortabilityScrub bool
 }

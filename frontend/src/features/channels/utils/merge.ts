@@ -166,6 +166,7 @@ export function mergeChannelSettingsForUpdate(
     retryableStatusCodes: pick('retryableStatusCodes', existing?.retryableStatusCodes ?? []),
     retryableErrorPatterns: pick('retryableErrorPatterns', existing?.retryableErrorPatterns ?? []),
     hammerRetry: pick('hammerRetry', existing?.hammerRetry ?? null),
+    reasoningFilter: pick('reasoningFilter', existing?.reasoningFilter ?? false),
     providerQuota: pick('providerQuota', existing?.providerQuota ?? null),
   };
 }

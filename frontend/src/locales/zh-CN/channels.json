@@ -416,6 +416,8 @@
   "channels.dialogs.fields.transformOptions.forceArrayInputs.description": "强制渠道接受数组格式的输入",
   "channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.label": "将 developer 角色替换为 system",
   "channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.description": "用于不支持 developer 角色的渠道，发送请求前将 developer 角色替换为 system",
+  "channels.dialogs.fields.transformOptions.reasoningFilter.label": "故障转移时深度清洗思维链引用",
+  "channels.dialogs.fields.transformOptions.reasoningFilter.description": "当请求故障转移到其他渠道时，额外剥离 OpenAI Responses 的服务端引用（previous_response_id、store、compaction/加密内容），使请求可在其他账号上重发。带签名的思维块在故障转移时始终会被剥离，与此开关无关。",
   "channels.dialogs.fields.transformOptions.reasoningEffortMapping.label": "reasoning_effort 映射",
   "channels.dialogs.fields.transformOptions.reasoningEffortMapping.description": "将 reasoning_effort 按映射表替换后发送给上游。每条把源值替换为目标值，未命中的保持原样。例如从 \"xhigh\" 到 \"max\" 适配只认 max 的非标准 OpenAI 兼容渠道",
   "channels.dialogs.fields.transformOptions.reasoningEffortMapping.fromPlaceholder": "源 effort（如 xhigh）",

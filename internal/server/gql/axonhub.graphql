@@ -191,6 +191,7 @@ type ChannelSettings {
   retryableStatusCodes: [Int!]
   retryableErrorPatterns: [RetryableErrorPattern!]
   hammerRetry: ChannelHammerRetry
+  reasoningFilter: Boolean
   providerQuota: ChannelProviderQuotaSettings @goField(forceResolver: true)
 }
 
@@ -272,6 +273,7 @@ input ChannelSettingsInput {
   retryableStatusCodes: [Int!]
   retryableErrorPatterns: [RetryableErrorPatternInput!]
   hammerRetry: ChannelHammerRetryInput
+  reasoningFilter: Boolean
   providerQuota: ChannelProviderQuotaSettingsInput
 }
 

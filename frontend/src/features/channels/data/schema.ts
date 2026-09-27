@@ -342,6 +342,7 @@ export const channelSettingsSchema = z.object({
   retryableStatusCodes: z.array(z.number().int().min(400).max(599)).optional().nullable(),
   retryableErrorPatterns: z.array(retryableErrorPatternSchema).optional().nullable(),
   hammerRetry: channelHammerRetrySchema.optional().nullable(),
+  reasoningFilter: z.boolean().optional(),
   providerQuota: channelProviderQuotaSettingsSchema.optional().nullable(),
 });
 

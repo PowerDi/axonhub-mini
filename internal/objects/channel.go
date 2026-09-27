@@ -288,6 +288,18 @@ type ChannelSettings struct {
 	// counting for matched errors.
 	HammerRetry *ChannelHammerRetry `json:"hammerRetry,omitempty"`
 
+	// ReasoningFilter enables deep reasoning-credential scrubbing on failover.
+	// Encrypted reasoning (thinking signatures / OpenAI encrypted_content) is
+	// signed by the upstream account that produced it, so replaying it on another
+	// channel/account is rejected. The signed reasoning blocks themselves are
+	// always stripped before a failover retry; enabling this flag additionally
+	// clears the OpenAI Responses server-side references (previous_response_id,
+	// forces store:false, compaction ciphertext) that only the signing account
+	// can resolve. Off by default; deep scrubbing loses server-side conversation
+	// continuity, so only enable it for channels/groups that route across
+	// accounts which do not share reasoning credentials.
+	ReasoningFilter bool `json:"reasoningFilter"`
+
 	// ProviderQuota holds provider-specific quota collection credentials and
 	// options. Fields are sensitive (e.g. auth cookies) and only exposed to
 	// operators holding channel write permission.

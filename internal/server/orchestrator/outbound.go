@@ -506,6 +506,7 @@ func (p *PersistentOutboundTransformer) TransformRequest(ctx context.Context, ll
 		llmRequest = transformedRequest
 	}
 	llmRequest = filterResponseCustomToolMessagesForNonResponsesOutbound(llmRequest, outboundFormat)
+	llmRequest = p.applyReasoningScrub(llmRequest, outboundFormat)
 
 	if shouldForceStreamingForCandidate(candidate, llmRequest) {
 		streamPtr := lo.ToPtr(true)
@@ -567,6 +568,65 @@ func containsResponseCustomToolMessages(messages []llm.Message) bool {
 	}
 
 	return false
+}
+
+// applyReasoningScrub strips account-bound reasoning credentials from the request
+// once this request has been marked for scrubbing (see CanRetry). The mark is
+// per-request, not per-channel: the first upstream rejection that looks like a
+// reasoning-credential error sets it, and every subsequent attempt on any channel
+// re-serializes from the pristine state.LlmRequest, so the scrub must be re-applied
+// on each attempt rather than mutated once.
+//
+// Two depths, matching the octopus design:
+//   - Shallow (always, when marked): drop signed reasoning fields from messages.
+//     A different account never accepts another account's signature/encrypted
+//     content, so replaying it makes every candidate reject the request.
+//   - Deep (Responses outbound only, when the channel enables ReasoningFilter or
+//     the error is a resource-ownership error): additionally drop server-side
+//     references (previous_response_id, store, compaction) the new account cannot
+//     resolve.
+//
+// Anthropic has no server-side conversation reference, so deep == shallow there;
+// ScrubResponsesPortability is gated on the Responses outbound format.
+func (p *PersistentOutboundTransformer) applyReasoningScrub(
+	llmRequest *llm.Request,
+	outboundFormat llm.APIFormat,
+) *llm.Request {
+	if llmRequest == nil || !p.state.ReasoningStripped {
+		return llmRequest
+	}
+
+	// Clone before mutating: llmRequest may be the shared state.LlmRequest, and
+	// scrubbing must not corrupt the persisted request or later attempts' baseline.
+	cloned := *llmRequest
+
+	if stripped, changed := shared.StripSignedReasoning(cloned.Messages); changed {
+		cloned.Messages = stripped
+	}
+
+	// Deep portability scrub only makes sense for the Responses family; the
+	// decision (channel flag OR resource-ownership error) is latched at detection
+	// time in CanRetry, so a later internal sentinel error cannot clobber it.
+	if isResponsesFormat(outboundFormat) && p.reasoningPortabilityScrubEnabled() {
+		shared.ScrubResponsesPortability(&cloned)
+	}
+
+	return &cloned
+}
+
+// reasoningPortabilityScrubEnabled reports whether the deep portability scrub
+// should run: either the current channel opts in via Settings.ReasoningFilter,
+// or the reasoning rejection was latched as a resource-ownership error (which is
+// unrecoverable without dropping server-side references, regardless of the flag).
+func (p *PersistentOutboundTransformer) reasoningPortabilityScrubEnabled() bool {
+	if p.state.ReasoningNeedsPortabilityScrub {
+		return true
+	}
+
+	candidate := p.state.CurrentCandidate
+
+	return candidate != nil && candidate.Channel != nil &&
+		candidate.Channel.Settings != nil && candidate.Channel.Settings.ReasoningFilter
 }
 
 func (p *PersistentOutboundTransformer) TransformResponse(ctx context.Context, response *httpclient.Response) (*llm.Response, error) {
@@ -700,6 +760,41 @@ func (p *PersistentOutboundTransformer) NextChannel(ctx context.Context) error {
 func (p *PersistentOutboundTransformer) CanRetry(err error) bool {
 	if p.state.CurrentCandidate == nil {
 		return false
+	}
+
+	// Reasoning-credential failures (signed thinking blocks, encrypted_content,
+	// "the reasoning_text ... must be passed back", resource-ownership rejections)
+	// are bound to the account that issued them. Replaying the same signed payload
+	// on another account fails identically, which is why these 400s otherwise burn
+	// the whole channel-switch budget and still return the error. Latch the request
+	// so the next TransformRequest re-serializes a clean body, and latch the
+	// deep-scrub decision from the ORIGINAL error (a later attempt may surface an
+	// internal sentinel that no longer carries the resource-ownership wording).
+	//
+	// Placed before the sticky/circuit-breaker/hammer early returns on purpose: a
+	// genuine reasoning 400 is disjoint from those internal sentinels and rate-limit
+	// shapes, and marking here (rather than after a wasted sticky→fallback switch)
+	// lets the very next channel switch send the stripped body. Guarded to run once
+	// per request (per-request semantics; NextChannel must not reset the flags).
+	if !p.state.ReasoningStripped && shouldStripReasoning(err) {
+		p.state.ReasoningStripped = true
+		p.state.ReasoningNeedsPortabilityScrub = needsPortabilityScrub(err)
+
+		log.Debug(context.Background(), "reasoning credential error detected, will strip reasoning on retry",
+			log.Int("channel_id", p.state.CurrentCandidate.Channel.ID),
+			log.Bool("has_more_channels", p.HasMoreChannels()),
+			log.Bool("needs_portability_scrub", p.state.ReasoningNeedsPortabilityScrub),
+		)
+
+		// Prefer switching accounts: returning false routes the pipeline to
+		// NextChannel, and TransformRequest strips the body for the new candidate.
+		// When this is the last candidate, retry the same channel once so the
+		// stripped body still gets a chance (mirrors the 429 last-candidate path).
+		if p.HasMoreChannels() {
+			return false
+		}
+
+		return true
 	}
 
 	// Trace/thread sticky candidates are intentionally one-shot. A failed

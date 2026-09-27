@@ -133,6 +133,7 @@ const CREATE_CHANNEL_MUTATION = `
           }
           consecutiveHardFailureLimit
         }
+        reasoningFilter
         providerQuota {
           commandCode {
             authCookie
@@ -222,6 +223,7 @@ const DUPLICATE_CHANNEL_MUTATION = `
           }
           consecutiveHardFailureLimit
         }
+        reasoningFilter
         providerQuota {
           commandCode {
             authCookie
@@ -311,6 +313,7 @@ const BULK_CREATE_CHANNELS_MUTATION = `
           }
           consecutiveHardFailureLimit
         }
+        reasoningFilter
         providerQuota {
           commandCode {
             authCookie
@@ -400,6 +403,7 @@ const UPDATE_CHANNEL_MUTATION = `
           }
           consecutiveHardFailureLimit
         }
+        reasoningFilter
         providerQuota {
           commandCode {
             authCookie
@@ -604,6 +608,7 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
             }
             consecutiveHardFailureLimit
           }
+          reasoningFilter
           providerQuota {
             commandCode {
               authCookie
@@ -849,6 +854,7 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
             }
             consecutiveHardFailureLimit
           }
+          reasoningFilter
           providerQuota {
             commandCode {
               authCookie
@@ -1025,6 +1031,7 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
               }
               consecutiveHardFailureLimit
             }
+            reasoningFilter
             providerQuota {
               commandCode {
                 authCookie
