@@ -288,27 +288,26 @@ type ChannelSettings struct {
 	// counting for matched errors.
 	HammerRetry *ChannelHammerRetry `json:"hammerRetry,omitempty"`
 
-	// ReasoningFilter turns on reasoning-credential scrubbing for this channel.
+	// ReasoningScrubMode controls reasoning-credential scrubbing for this channel.
 	// Encrypted reasoning (thinking signatures / OpenAI encrypted_content) is
 	// signed by the upstream account that produced it, so replaying it verbatim
 	// makes the upstream reject the request ("encrypted content could not be
 	// verified", "reasoning must be passed back", etc.).
 	//
-	// This single flag gates the WHOLE mechanism — nothing is stripped unless it
-	// is enabled. When a channel with the flag on returns such an error, the
-	// request is retried on the SAME channel with the account-bound reasoning
-	// fields removed (a clean body is what the account will accept). If that
-	// retry still fails, the pipeline falls back to normal channel switching and
-	// keeps sending the stripped body. For Responses-format outbounds the retry
-	// also drops the server-side references (previous_response_id, forces
-	// store:false, compaction ciphertext) that only the signing account can
-	// resolve.
-	//
-	// Off by default: scrubbing sacrifices thinking/conversation continuity, so
-	// only enable it for channels that hit these account-bound reasoning errors.
+	// See ReasoningScrubMode for the three tiers. Empty means off. Scrubbing
+	// sacrifices thinking/conversation continuity, so it stays opt-in per channel.
 	// Note: it has no effect on pass-through channels, which replay the original
 	// bytes instead of re-serializing the structured request.
-	ReasoningFilter bool `json:"reasoningFilter"`
+	ReasoningScrubMode ReasoningScrubMode `json:"reasoningScrubMode,omitempty"`
+
+	// ReasoningFilter is the legacy boolean form of ReasoningScrubMode, kept only
+	// so settings written before the enum existed keep working: a stored
+	// reasoningFilter:true still resolves to ReasoningScrubModeAuto. Always read
+	// the pair through EffectiveReasoningScrubMode rather than either field
+	// directly; new writes populate ReasoningScrubMode instead.
+	//
+	// Deprecated: use ReasoningScrubMode / EffectiveReasoningScrubMode.
+	ReasoningFilter bool `json:"reasoningFilter,omitempty"`
 
 	// ProviderQuota holds provider-specific quota collection credentials and
 	// options. Fields are sensitive (e.g. auth cookies) and only exposed to
@@ -664,6 +663,57 @@ const (
 	CapabilityPolicyRequire   CapabilityPolicy = "require"
 	CapabilityPolicyForbid    CapabilityPolicy = "forbid"
 )
+
+// ReasoningScrubMode selects how a channel handles account-bound reasoning
+// credentials (thinking signatures / encrypted_content), which only the upstream
+// account that issued them accepts.
+type ReasoningScrubMode string
+
+const (
+	// ReasoningScrubModeOff disables scrubbing: requests are replayed verbatim and
+	// reasoning-credential errors pass through to the client. The zero value.
+	ReasoningScrubModeOff ReasoningScrubMode = ""
+
+	// ReasoningScrubModeAuto scrubs reactively. The request is sent as-is; only
+	// when the upstream rejects it with a recognizable reasoning-credential error
+	// (see orchestrator.shouldStripReasoning) is the credential stripped and the
+	// same channel retried. Costs one failed upstream attempt but preserves
+	// thinking continuity for every request that does not hit the error.
+	ReasoningScrubModeAuto ReasoningScrubMode = "auto"
+
+	// ReasoningScrubModeAlways scrubs proactively: every request leaves with the
+	// account-bound reasoning credentials already removed, with no upstream error
+	// needed to trigger it.
+	//
+	// This exists because detection cannot be made reliable. Relays that collapse
+	// the upstream body into an opaque "bad response status code 400" with no
+	// error code strip away every signal shouldValidateStripReasoning keys on, and
+	// widening the criteria to match bare 400s would scrub on ordinary parameter
+	// errors too. Always mode is the manual override for those channels: turn it
+	// on, let the request through, turn it off.
+	ReasoningScrubModeAlways ReasoningScrubMode = "always"
+)
+
+// EffectiveReasoningScrubMode resolves the channel's scrub mode, folding in the
+// deprecated ReasoningFilter boolean so channels configured before the enum
+// existed keep their behaviour (reasoningFilter:true == auto). ReasoningScrubMode
+// wins whenever it is set, so re-saving a channel through the UI migrates it.
+func (s *ChannelSettings) EffectiveReasoningScrubMode() ReasoningScrubMode {
+	if s == nil {
+		return ReasoningScrubModeOff
+	}
+
+	switch s.ReasoningScrubMode {
+	case ReasoningScrubModeAuto, ReasoningScrubModeAlways:
+		return s.ReasoningScrubMode
+	}
+
+	if s.ReasoningFilter {
+		return ReasoningScrubModeAuto
+	}
+
+	return ReasoningScrubModeOff
+}
 
 type ChannelPolicies struct {
 	Stream CapabilityPolicy `json:"stream,omitempty"`
