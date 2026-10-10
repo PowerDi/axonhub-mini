@@ -105,6 +105,27 @@ func TestChannelTestAPIFormatUsesModelAPIFormatPolicyPriority(t *testing.T) {
 	}
 }
 
+// TestChannelTestAPIFormatIgnoresStalePolicyFormats pins the drift behaviour: a
+// policy whose allow-list references an endpoint the channel no longer exposes
+// must not starve the test — channelTestAPIFormat falls back to the resolved
+// endpoint surface, mirroring the runtime selection fallback.
+func TestChannelTestAPIFormatIgnoresStalePolicyFormats(t *testing.T) {
+	ch := &biz.Channel{Channel: &ent.Channel{
+		Type:            channel.TypeOpenai,
+		SupportedModels: []string{"test-model"},
+		Endpoints: []objects.ChannelEndpoint{
+			{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+		},
+		Settings: &objects.ChannelSettings{ModelAPIFormatPolicies: []objects.ModelAPIFormatPolicy{
+			{Model: "test-model", Allow: []string{llm.APIFormatAnthropicMessage.String()}},
+		}},
+	}}
+
+	// The policy pins a format with no configured endpoint; the test must probe
+	// chat_completions rather than fail or probe the missing protocol.
+	require.Equal(t, llm.APIFormatOpenAIChatCompletion, channelTestAPIFormat(ch, "test-model"))
+}
+
 // TestUsesResponsesWebSocket verifies explicit and URL-inferred WebSocket transports.
 func TestUsesResponsesWebSocket(t *testing.T) {
 	t.Run("inferred from channel base URL", func(t *testing.T) {

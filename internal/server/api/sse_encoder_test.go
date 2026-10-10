@@ -72,3 +72,43 @@ func TestSSEEncoder_TerminalEvidence_when_PolicyWrapsStream(t *testing.T) {
 		})
 	}
 }
+
+// TestSSEEncoder_CanceledClientSuppressesErrorEvent pins the fork-specific
+// writeSSEStreamEnd ordering: a canceled request context must preempt a
+// non-canceled stream error and stay silent. The Responses conversion tests
+// cover the streamErr == context.Canceled shape; this is the other half —
+// caller canceled, source still fails with a real transport error.
+func TestSSEEncoder_CanceledClientSuppressesErrorEvent(t *testing.T) {
+	for _, heartbeat := range []bool{false, true} {
+		t.Run(fmtResponsesCase(heartbeat, nil), func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
+			w := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(w)
+			c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil).WithContext(ctx)
+
+			// The stream fails with a real transport error after emitting a chunk,
+			// but the client went away before the writer observed it.
+			stream := &errorAfterStream{items: []*httpclient.StreamEvent{
+				{Type: "response.output_text.delta", Data: []byte(`{"delta":"partial"}`)},
+			}, err: io.ErrUnexpectedEOF}
+
+			h := &ChatCompletionHandlers{
+				sseKeepAlive:       SSEKeepAliveConfig{Enabled: heartbeat, Interval: time.Hour},
+				sseHeartbeatFormat: sseHeartbeatOpenAI,
+				streamAdapterFactory: func(_ context.Context, stream streams.Stream[*httpclient.StreamEvent], _ *biz.SystemService) (streams.Stream[*httpclient.StreamEvent], StreamErrorEncoder) {
+					return stream, func(_ context.Context, err error) (*httpclient.StreamEvent, error) {
+						return &httpclient.StreamEvent{Type: "error", Data: []byte(`{"message":"boom"}`)}, nil
+					}
+				},
+			}
+
+			cancel()
+			h.writeSSEStream(c, stream)
+
+			// The canceled context must preempt the stream error: no error event
+			// is written, only the partial content that was already delivered.
+			require.Contains(t, w.Body.String(), "partial")
+			require.NotContains(t, w.Body.String(), "event:error")
+		})
+	}
+}

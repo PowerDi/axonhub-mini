@@ -391,6 +391,17 @@ func maybeEvaluateChannelAPIKeyRulesOnFailure(
 		return
 	}
 
+	// Hammer channels expect rate-limit-shaped failures ("挤模式" contention);
+	// auto-disable must not count them towards its thresholds. The main
+	// performance path marks hammerable failures on the persisted record; this
+	// bypass path runs only when that record was not persisted, so classify the
+	// raw error directly to keep both paths aligned.
+	if hammer := hammerConfigForChannel(channel); hammer != nil {
+		if hammerable, _ := classifyHammerError(rawErr, hammer); hammerable {
+			return
+		}
+	}
+
 	apiKey, ok := contexts.GetChannelAPIKey(ctx)
 	if !ok && outbound.state.Perf != nil {
 		apiKey = outbound.state.Perf.APIKey
