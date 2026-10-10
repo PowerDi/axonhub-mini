@@ -66,7 +66,7 @@ export function TraceDrawer({ open, onOpenChange, traceId }: TraceDrawerProps) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side='right' className={cn('w-full p-0 transition-all duration-300', isFullscreen ? 'sm:max-w-none' : 'sm:max-w-[900px] lg:max-w-[1100px]')}>
+      <SheetContent side='right' className={cn('flex w-full flex-col p-0 transition-all duration-300', isFullscreen ? 'sm:max-w-none' : 'sm:max-w-[900px] lg:max-w-[1100px]')}>
         <SheetHeader className={cn(
           'border-b border-border/50 px-6 py-4',
           isFullscreen && 'fixed top-0 left-0 right-0 z-50'
@@ -182,7 +182,7 @@ export function TraceDrawer({ open, onOpenChange, traceId }: TraceDrawerProps) {
 
             {/* Right: Span Detail */}
             <div className={cn(
-              'border-border/50 bg-card/50 shrink-0 overflow-y-auto border-l backdrop-blur-sm transition-all duration-300',
+              'min-h-0 border-border/50 bg-card/50 shrink-0 overflow-y-auto border-l backdrop-blur-sm transition-all duration-300',
               isFullscreen ? 'w-[420px]' : 'w-[380px] lg:w-[420px]'
             )}>
               <SpanSection selectedTrace={selectedTrace} selectedSpan={selectedSpan} selectedSpanType={selectedSpanType} />

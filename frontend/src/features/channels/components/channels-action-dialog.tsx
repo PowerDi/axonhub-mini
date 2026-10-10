@@ -25,15 +25,21 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { AutoCompleteSelect } from '@/components/auto-complete-select';
+import { AutoComplete } from '@/components/auto-complete';
 import { SelectDropdown } from '@/components/select-dropdown';
-import { useProxyPresets, useSaveProxyPreset } from '@/features/system/data/system';
+import {
+  usePassThroughSettings,
+  useProxyPresets,
+  useQuotaRoutingSettings,
+  useSaveProxyPreset,
+  useUserAgentPassThroughSettings,
+} from '@/features/system/data/system';
 import { usePermissions } from '@/hooks/usePermissions';
 import { antigravityOAuthExchange, antigravityOAuthStart } from '../data/antigravity';
 import {
   useCreateChannel,
   useDuplicateChannel,
-  useUpdateChannel,
+  useUpdateChannelSettings,
   useFetchModels,
   useAllChannelNames,
   useAllChannelTags,
@@ -60,7 +66,17 @@ import {
   getApiFormatsForProvider,
   getChannelTypeForApiFormat,
 } from '../data/config_providers';
-import { Channel, ChannelType, ApiFormat, ChannelSettings, ChannelHammerRetry, RetryableErrorPattern, createChannelInputSchema, updateChannelInputSchema } from '../data/schema';
+import {
+  Channel,
+  ChannelType,
+  ApiFormat,
+  ChannelSettings,
+  ChannelQuotaRoutingMode,
+  ChannelHammerRetry,
+  RetryableErrorPattern,
+  createChannelInputSchema,
+  updateChannelInputSchema,
+} from '../data/schema';
 import { ProxyConfig, useOAuthFlow } from '../hooks/use-oauth-flow';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
 import { isValidModelPattern, matchesModelPattern } from '../utils/pattern';
@@ -80,10 +96,10 @@ const MAX_MODELS_DISPLAY = 2;
 
 const duplicateNameRegex = /^(.*) \((\d+)\)$/;
 
-type ApiFormatOption = ApiFormat | 'openai/responses:websocket';
+type ApiFormatOption = ApiFormat;
 type ResponsesTransport = 'http' | 'websocket';
 
-const OPENAI_RESPONSES_WEBSOCKET: ApiFormatOption = 'openai/responses:websocket';
+const OPENAI_RESPONSES_WEBSOCKET: ApiFormatOption = 'openai/responses-ws';
 // A single trailing # suppresses automatic version suffix appending while still
 // allowing the Responses transformer to append /responses. Do not replace these
 // defaults with ## unless the upstream URL should be used fully raw.
@@ -106,6 +122,19 @@ function getResponsesTransportBaseURLError(transport: ResponsesTransport): strin
   return transport === 'websocket'
     ? 'channels.dialogs.fields.baseURL.errors.websocketScheme'
     : 'channels.dialogs.fields.baseURL.errors.httpScheme';
+}
+
+// Dialog-init recall for the per-channel quota routing mode: an absent
+// settings field displays as INHERIT (the backend stores "" for inherit).
+export function recallQuotaRoutingMode(settings: ChannelSettings | null | undefined): ChannelQuotaRoutingMode {
+  return settings?.quotaRoutingMode ?? 'INHERIT';
+}
+
+// Single dialog-state -> GraphQL-input mapping: every wire value passes
+// through unchanged. Explicit INHERIT is required to override the merge
+// whitelist's stored-value fallback; the backend maps INHERIT to empty storage.
+export function quotaRoutingModeSettingsPatch(mode: ChannelQuotaRoutingMode): Partial<ChannelSettings> {
+  return mode === 'INHERIT' ? { quotaRoutingMode: 'INHERIT' } : { quotaRoutingMode: mode };
 }
 
 function formatRetryableStatusCodes(codes: number[] | null | undefined): string {
@@ -351,7 +380,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const initialRow: Channel | undefined = currentRow || duplicateFromRow;
   const createChannel = useCreateChannel();
   const duplicateChannel = useDuplicateChannel();
-  const updateChannel = useUpdateChannel();
+  const updateChannelSettings = useUpdateChannelSettings();
   const fetchModels = useFetchModels();
   const syncChannelModels = useSyncChannelModels();
   const { data: allChannelNames = [], isSuccess: allChannelNamesLoaded } = useAllChannelNames({ enabled: open && isDuplicate });
@@ -359,6 +388,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const { data: proxyPresets = [] } = useProxyPresets();
   const saveProxyPreset = useSaveProxyPreset();
   const { hasSystemScope } = usePermissions();
+  const { data: quotaRoutingSettings } = useQuotaRoutingSettings();
+  const canReadSystemSettings = hasSystemScope('read_settings');
+  const { data: userAgentPassThroughSettings } = useUserAgentPassThroughSettings({ enabled: canReadSystemSettings });
+  const { data: passThroughSettings } = usePassThroughSettings({ enabled: canReadSystemSettings });
   const [supportedModels, setSupportedModels] = useState<string[]>(() => initialRow?.supportedModels || []);
   const [manualModels, setManualModels] = useState<string[]>(() => initialRow?.manualModels || []);
   const [newModel, setNewModel] = useState('');
@@ -382,6 +415,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const hasAutoSetDuplicateNameRef = useRef(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [showCommandCodeAuthCookie, setShowCommandCodeAuthCookie] = useState(false);
+  const [showOllamaAuthCookie, setShowOllamaAuthCookie] = useState(false);
   const [showApiKeysPanel, setShowApiKeysPanel] = useState(false);
   const [apiKeysSearch, setApiKeysSearch] = useState('');
   const [selectedKeysToRemove, setSelectedKeysToRemove] = useState<Set<string>>(new Set());
@@ -417,6 +451,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [passThroughBody, setPassThroughBody] = useState<boolean | null>(() => {
     return initialRow?.settings?.passThroughBody ?? null;
   });
+  const [quotaRoutingMode, setQuotaRoutingMode] = useState<ChannelQuotaRoutingMode>(() => recallQuotaRoutingMode(initialRow?.settings));
   const [retryableStatusCodesText, setRetryableStatusCodesText] = useState(() =>
     formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes)
   );
@@ -441,6 +476,20 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [hammerConsecutiveHardFailures, setHammerConsecutiveHardFailures] = useState(() =>
     initialRow?.settings?.hammerRetry?.consecutiveHardFailureLimit?.toString() ?? ''
   );
+  const userAgentInheritLabel = userAgentPassThroughSettings
+    ? t('channels.dialogs.userAgentPassThrough.inheritWithValue', {
+        value: t(
+          userAgentPassThroughSettings.enabled
+            ? 'channels.dialogs.userAgentPassThrough.enabled'
+            : 'channels.dialogs.userAgentPassThrough.disabled'
+        ),
+      })
+    : t('channels.dialogs.userAgentPassThrough.inherit');
+  const passThroughInheritLabel = passThroughSettings
+    ? t('channels.dialogs.bodyPassThrough.inheritWithValue', {
+        value: t(passThroughSettings.enabled ? 'channels.dialogs.bodyPassThrough.enabled' : 'channels.dialogs.bodyPassThrough.disabled'),
+      })
+    : t('channels.dialogs.bodyPassThrough.inherit');
 
   // Memoized proxy config for OAuth exchange
   const proxyConfig: ProxyConfig | undefined = useMemo(() => {
@@ -521,6 +570,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       form.setValue('credentials.apiKey', credentials);
     },
   });
+  const { reset: resetCodexOAuth } = codexOAuth;
+  const { reset: resetClaudecodeOAuth } = claudecodeOAuth;
+  const { reset: resetXaiOAuth } = xaiOAuth;
+  const { reset: resetAntigravityOAuth } = antigravityOAuth;
 
   // Provider-based selection state
   const [selectedProvider, setSelectedProvider] = useState<string>(() => {
@@ -531,9 +584,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   });
   const [selectedApiFormat, setSelectedApiFormat] = useState<ApiFormat>(() => {
     if (initialRow) {
-      return CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || 'openai/chat_completions';
+      return CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || OPENAI_CHAT_COMPLETIONS;
     }
-    return 'openai/chat_completions';
+    return OPENAI_CHAT_COMPLETIONS;
   });
   const [responsesTransport, setResponsesTransport] = useState<ResponsesTransport>(() => getResponsesTransportFromChannel(initialRow));
   const [useGeminiVertex, setUseGeminiVertex] = useState(() => {
@@ -579,19 +632,20 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   useEffect(() => {
     if (!open) {
       hasAutoSetDuplicateNameRef.current = false;
-      codexOAuth.reset();
-      claudecodeOAuth.reset();
-      antigravityOAuth.reset();
-      xaiOAuth.reset();
+      resetCodexOAuth();
+      resetClaudecodeOAuth();
+      resetAntigravityOAuth();
+      resetXaiOAuth();
       setCodexAuthJSONText('');
       setXaiSSOToken('');
     }
-  }, [open, codexOAuth.reset, claudecodeOAuth.reset, antigravityOAuth.reset, xaiOAuth.reset]);
+  }, [open, resetCodexOAuth, resetClaudecodeOAuth, resetAntigravityOAuth, resetXaiOAuth]);
 
   useEffect(() => {
     if (!open) {
       setShowApiKey(false);
       setShowCommandCodeAuthCookie(false);
+      setShowOllamaAuthCookie(false);
       setShowApiKeysPanel(false);
       setApiKeysSearch('');
       setSelectedKeysToRemove(new Set());
@@ -653,13 +707,6 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       setShowApiKeysPanel(false);
     }
   }, [open, showModelsPanel, initialRow]);
-
-  // Sync manualModels when dialog opens with new initialRow
-  useEffect(() => {
-    if (open && initialRow) {
-      setManualModels(initialRow.manualModels || []);
-    }
-  }, [open, initialRow]);
 
   // Get available providers (excluding fake types)
   const availableProviders = useMemo(
@@ -812,7 +859,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
 
   const apiKeys = form.watch('credentials.apiKeys');
   const apiKeysCount = useMemo(() => (apiKeys || []).filter((k) => k.trim().length > 0).length, [apiKeys]);
-  const isSubmitting = createChannel.isPending || duplicateChannel.isPending || updateChannel.isPending;
+  const isSubmitting = createChannel.isPending || duplicateChannel.isPending || updateChannelSettings.isPending;
 
   const { data: disabledKeys = [], isFetching: isFetchingDisabledKeys } = useChannelDisabledAPIKeys(currentRow?.id || '', {
     enabled: isEdit && !!currentRow?.id && showApiKeysPanel,
@@ -854,8 +901,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const isClaudeCodeType = activeChannelType === 'claudecode';
   const isCopilotType = activeChannelType === 'github_copilot';
   const isXAISubscriptionType = activeChannelType === 'xai_subscription';
-  const isZenmuxType = ['zenmux', 'zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini'].includes(activeChannelType);
+  const isZenmuxType = ['zenmux', 'zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini', 'zenmux_video'].includes(activeChannelType);
   const isCommandCodeType = activeChannelType === 'commandcode' || activeChannelType === 'commandcode_anthropic';
+  const isOllamaType = activeChannelType === 'ollama' || activeChannelType === 'ollama_anthropic';
 
   // OAuth providers cannot have their provider/API format changed during edit.
   // Derived from currentRow credentials so it stays stable across re-renders
@@ -1140,22 +1188,25 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     if (!isCommandCodeType) {
       setShowCommandCodeAuthCookie(false);
     }
-  }, [isCommandCodeType]);
+    if (!isOllamaType) {
+      setShowOllamaAuthCookie(false);
+    }
+  }, [isCommandCodeType, isOllamaType]);
 
   useEffect(() => {
     if (isEdit || isDuplicate) return;
 
     if (!isCodexType) {
-      codexOAuth.reset();
+      resetCodexOAuth();
     }
     if (selectedProvider !== 'claudecode') {
-      claudecodeOAuth.reset();
+      resetClaudecodeOAuth();
     }
     if (selectedProvider !== 'antigravity') {
-      antigravityOAuth.reset();
+      resetAntigravityOAuth();
     }
     if (selectedProvider !== 'xai_subscription') {
-      xaiOAuth.reset();
+      resetXaiOAuth();
       setXaiSSOToken('');
     }
 
@@ -1188,10 +1239,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     selectedProvider,
     authMode,
     form,
-    codexOAuth.reset,
-    claudecodeOAuth.reset,
-    antigravityOAuth.reset,
-    xaiOAuth.reset,
+    resetCodexOAuth,
+    resetClaudecodeOAuth,
+    resetAntigravityOAuth,
+    resetXaiOAuth,
     responsesTransport,
   ]);
 
@@ -1368,19 +1419,27 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         manualModels: manualModels.map((m) => m.trim()).filter((m) => m.length > 0),
         credentials: valuesForSubmit.credentials,
       };
-      // The Command Code quota cookie is a browser-session credential that only
-      // belongs on Command Code channels. Never let a duplicate/type-switch
-      // flow attach it to an unrelated channel type. Clearing it explicitly
-      // sends providerQuota: null so the backend removes the stored cookie.
+      // The Command Code / Ollama quota cookie is a browser-session credential
+      // that only belongs on its own channel type. Never let a
+      // duplicate/type-switch flow attach it to an unrelated channel type.
+      // Clearing it explicitly sends providerQuota: null so the backend
+      // removes the stored cookie.
       const isCommandCodeSubmit =
         valuesForSubmit.type === 'commandcode' || valuesForSubmit.type === 'commandcode_anthropic';
       const commandCodeAuthCookie = isCommandCodeSubmit
         ? values.settings?.providerQuota?.commandCode?.authCookie?.trim()
         : undefined;
+      const isOllamaSubmit =
+        valuesForSubmit.type === 'ollama' || valuesForSubmit.type === 'ollama_anthropic';
+      const ollamaAuthCookie = isOllamaSubmit
+        ? values.settings?.providerQuota?.ollama?.authCookie?.trim()
+        : undefined;
       const settingsForSubmit = values.settings
         ? {
             ...values.settings,
-            ...(isCommandCodeSubmit && commandCodeAuthCookie ? {} : { providerQuota: null }),
+            ...((isCommandCodeSubmit && commandCodeAuthCookie) || (isOllamaSubmit && ollamaAuthCookie)
+              ? {}
+              : { providerQuota: null }),
           }
         : undefined;
 
@@ -1406,7 +1465,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       }
 
       if (isEdit && currentRow) {
-        const nextSettings = mergeChannelSettingsForUpdate(settingsForSubmit, {
+        const settingsPatch: Partial<ChannelSettings> = {
           passThroughUserAgent,
           passThroughBody,
           retryableStatusCodes,
@@ -1416,13 +1475,14 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           // the settings patch; mergeChannelSettingsForUpdate preserves the
           // field when the patch omits it and carries the null clear through.
           providerQuota: settingsForSubmit?.providerQuota,
-        });
+          ...quotaRoutingModeSettingsPatch(quotaRoutingMode),
+        };
 
         const updateInput = {
           ...dataWithModels,
-          settings: nextSettings,
           ...(isOAuthChannel ? { type: currentRow.type } : {}),
         } as z.infer<typeof updateChannelInputSchema>;
+        delete updateInput.settings;
 
         const finalChannelType = updateInput.type || currentRow.type;
         const keepsManagementApiKey = [
@@ -1430,6 +1490,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           'zenmux_responses',
           'zenmux_anthropic',
           'zenmux_gemini',
+          'zenmux_video',
         ].includes(finalChannelType);
         if (!keepsManagementApiKey && updateInput.credentials) {
           delete updateInput.credentials.managementApiKey;
@@ -1452,10 +1513,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           delete updateInput.credentials;
         }
 
-        await updateChannel.mutateAsync({
+        await updateChannelSettings.mutateAsync({
           id: currentRow.id,
           input: updateInput,
+          patch: settingsPatch,
         });
+        toast.success(t('channels.messages.updateSuccess'));
       } else {
         const proxyConfig = {
           type: proxyType as 'disabled' | 'environment' | 'url',
@@ -1473,6 +1536,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           retryableStatusCodes,
           retryableErrorPatterns,
           hammerRetry,
+          ...quotaRoutingModeSettingsPatch(quotaRoutingMode),
         });
 
         const createInput = {
@@ -1670,7 +1734,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       pattern: formPattern.trim() ? formPattern : undefined,
     });
 
+    // Sync is authoritative for both lists; refreshing only supportedModels
+    // leaves manualModels stale and makes the header count drift from the badges.
     setSupportedModels(result.supportedModels || []);
+    setManualModels(result.manualModels || []);
     return result.supportedModels || [];
   }, [currentRow, form, patternError, syncChannelModels]);
 
@@ -1904,6 +1971,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             setProxyPassword(initialRow?.settings?.proxy?.password || '');
             setPassThroughUserAgent(initialRow?.settings?.passThroughUserAgent ?? null);
             setPassThroughBody(initialRow?.settings?.passThroughBody ?? null);
+            setQuotaRoutingMode(recallQuotaRoutingMode(initialRow?.settings));
             setRetryableStatusCodesText(formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes));
             setRetryableErrorPatternsText(formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns));
             setHammerRetryEnabled(Boolean(initialRow?.settings?.hammerRetry));
@@ -1915,7 +1983,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             // Reset provider and API format state
             if (initialRow) {
               setSelectedProvider(getProviderFromChannelType(initialRow.type) || 'openai');
-              setSelectedApiFormat(CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || OPENAI_CHAT_COMPLETIONS);
+              setSelectedApiFormat(
+                CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || OPENAI_CHAT_COMPLETIONS
+              );
               setResponsesTransport(getResponsesTransportFromChannel(initialRow));
               setUseGeminiVertex(initialRow.type === 'gemini_vertex');
               setUseAnthropicAws(initialRow.type === 'anthropic_aws');
@@ -2003,8 +2073,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                     </div>
 
                     {/* Right Side - Form Fields */}
-                    <div className='flex-1 space-y-5 overflow-y-auto md:pr-4'>
-                      {selectedProvider !== 'jina' && selectedProvider !== 'codex' && selectedProvider !== 'claudecode' && (
+                    <div className='flex-1 space-y-6 overflow-y-auto md:pr-4'>
+                      {selectedProvider !== 'jina' && selectedProvider !== 'codex' && selectedProvider !== 'claudecode' && selectedProvider !== 'typesafe' && (
                         <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
                           <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
                             {t('channels.dialogs.fields.apiFormat.label')}
@@ -2506,12 +2576,17 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                         <Button
                                           type='button'
                                           variant='ghost'
-                                          size='icon-sm'
-                                          onClick={() => {
+                                          size='sm'
+                                          className='h-7 w-7 p-0'
+                                          onClick={async () => {
                                             const keys = field.value || [];
                                             if (keys.length > 0) {
-                                              copyTextToClipboard(keys.join('\n')).catch(() => toast.error(t('common.errors.copyFailed')));
-                                              toast.success(t('channels.messages.credentialsCopied'));
+                                              try {
+                                                await copyTextToClipboard(keys.join('\n'));
+                                                toast.success(t('channels.messages.credentialsCopied'));
+                                              } catch {
+                                                toast.error(t('common.errors.copyFailed'));
+                                              }
                                             }
                                           }}
                                         >
@@ -2621,6 +2696,80 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         />
                       )}
 
+                      {isOllamaType && (
+                        <FormField
+                          control={form.control}
+                          name='settings.providerQuota.ollama.authCookie'
+                          render={({ field, fieldState }) => (
+                            <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                              <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                                {t('channels.dialogs.fields.ollamaQuota.authCookie.label')}
+                              </FormLabel>
+                              <div className='space-y-1 md:col-span-6'>
+                                <div className='relative'>
+                                  <Input
+                                    type={showOllamaAuthCookie ? 'text' : 'password'}
+                                    value={field.value ?? ''}
+                                    onChange={field.onChange}
+                                    onBlur={field.onBlur}
+                                    placeholder={t('channels.dialogs.fields.ollamaQuota.authCookie.placeholder')}
+                                    autoComplete='new-password'
+                                    data-form-type='other'
+                                    spellCheck={false}
+                                    aria-invalid={!!fieldState.error}
+                                    data-testid='channel-ollama-auth-cookie-input'
+                                    className='pr-10 font-mono text-xs'
+                                  />
+                                  <Button
+                                    type='button'
+                                    variant='ghost'
+                                    size='sm'
+                                    className='absolute top-0 right-0 h-full px-3'
+                                    onClick={() => setShowOllamaAuthCookie((visible) => !visible)}
+                                  >
+                                    {showOllamaAuthCookie ? <EyeOff className='h-4 w-4' /> : <Eye className='h-4 w-4' />}
+                                  </Button>
+                                </div>
+                                <FormDescription className='text-xs'>
+                                  {t('channels.dialogs.fields.ollamaQuota.authCookie.description')}
+                                </FormDescription>
+                                <FormMessage />
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+                      )}
+
+                      <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                        <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                          {t('channels.dialogs.fields.quotaRoutingMode.label')}
+                        </FormLabel>
+                        <div className='space-y-1 md:col-span-6'>
+                          <Select
+                            value={quotaRoutingMode}
+                            onValueChange={(value) => setQuotaRoutingMode(value as ChannelQuotaRoutingMode)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder={t('channels.dialogs.fields.quotaRoutingMode.options.INHERIT')} />
+                            </SelectTrigger>
+                            <SelectContent>
+                               <SelectItem value='INHERIT'>
+                                 {quotaRoutingSettings?.defaultMode
+                                   ? t('channels.dialogs.fields.quotaRoutingMode.options.INHERIT_WITH_MODE', {
+                                       mode: t(`channels.dialogs.fields.quotaRoutingMode.options.${quotaRoutingSettings.defaultMode}`),
+                                     })
+                                   : t('channels.dialogs.fields.quotaRoutingMode.options.INHERIT')}
+                               </SelectItem>
+                              <SelectItem value='IGNORE_QUOTA'>{t('channels.dialogs.fields.quotaRoutingMode.options.IGNORE_QUOTA')}</SelectItem>
+                              <SelectItem value='REMOVE_ON_EXHAUSTED'>{t('channels.dialogs.fields.quotaRoutingMode.options.REMOVE_ON_EXHAUSTED')}</SelectItem>
+                              <SelectItem value='BACKPRESSURE'>{t('channels.dialogs.fields.quotaRoutingMode.options.BACKPRESSURE')}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription className='text-xs'>
+                            {t(`channels.dialogs.fields.quotaRoutingMode.descriptions.${quotaRoutingMode}`)}
+                          </FormDescription>
+                        </div>
+                      </FormItem>
 
                       <FormField
                         control={form.control}
@@ -2656,10 +2805,13 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         <div className='space-y-2 md:col-span-6'>
                           <div className='flex gap-2'>
                             {useFetchedModels && fetchedModels.length > 20 ? (
-                              <AutoCompleteSelect
+                              <AutoComplete
                                 items={fetchedModels.map((model) => ({ value: model, label: model }))}
                                 selectedValue={newModel}
                                 onSelectedValueChange={setNewModel}
+                                searchValue={newModel}
+                                onSearchValueChange={setNewModel}
+                                onKeyDown={handleKeyDown}
                                 placeholder={t('channels.dialogs.fields.supportedModels.description')}
                               />
                             ) : (
@@ -2769,7 +2921,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                         size='sm'
                                         variant='outline'
                                         onClick={handleSyncNow}
-                                        disabled={syncChannelModels.isPending || updateChannel.isPending}
+                                        disabled={syncChannelModels.isPending || updateChannelSettings.isPending}
                                       >
                                         <Play className={`mr-1 h-3 w-3 ${syncChannelModels.isPending ? 'animate-spin' : ''}`} />
                                         {syncChannelModels.isPending
@@ -2905,7 +3057,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               <SelectValue placeholder={t('channels.dialogs.userAgentPassThrough.inherit')} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value='inherit'>{t('channels.dialogs.userAgentPassThrough.inherit')}</SelectItem>
+                              <SelectItem value='inherit'>{userAgentInheritLabel}</SelectItem>
                               <SelectItem value='enabled'>{t('channels.dialogs.userAgentPassThrough.enabled')}</SelectItem>
                               <SelectItem value='disabled'>{t('channels.dialogs.userAgentPassThrough.disabled')}</SelectItem>
                             </SelectContent>
@@ -2926,7 +3078,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               <SelectValue placeholder={t('channels.dialogs.bodyPassThrough.inherit')} />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value='inherit'>{t('channels.dialogs.bodyPassThrough.inherit')}</SelectItem>
+                              <SelectItem value='inherit'>{passThroughInheritLabel}</SelectItem>
                               <SelectItem value='enabled'>{t('channels.dialogs.bodyPassThrough.enabled')}</SelectItem>
                               <SelectItem value='disabled'>{t('channels.dialogs.bodyPassThrough.disabled')}</SelectItem>
                             </SelectContent>
@@ -3042,7 +3194,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                       </FormItem>
 
                       <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-                        <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-end'>
+                        <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-start'>
                           <FormLabel className='font-medium'>{t('channels.dialogs.retryableStatusCodes.label')}</FormLabel>
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -3070,7 +3222,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                       </FormItem>
 
                       <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-                        <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-end'>
+                        <div className='flex items-center gap-1.5 pt-2 md:col-span-2 md:justify-start'>
                           <FormLabel className='font-medium'>{t('channels.dialogs.retryableErrorPatterns.label')}</FormLabel>
                           <Tooltip>
                             <TooltipTrigger asChild>

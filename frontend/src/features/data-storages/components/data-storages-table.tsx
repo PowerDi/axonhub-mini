@@ -59,9 +59,9 @@ export function DataStoragesTable({
         />
       </div>
 
-      <div className='relative flex-1 overflow-auto rounded-lg border'>
-        <Table>
-          <TableHeader className='sticky top-0 z-20'>
+      <div data-testid='data-storages-table-scroll' className='shadow-soft relative mt-4 min-h-0 flex-1 overflow-auto overflow-x-hidden rounded-2xl border border-[var(--table-border)]'>
+        <Table className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
+          <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id} className='group/row'>
                 {headerGroup.headers.map((header) => (

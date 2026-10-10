@@ -305,17 +305,33 @@ func TestHammerRetryOnTraceStickyCandidate(t *testing.T) {
 			"the hammer attempt budget must still terminate a sticky candidate")
 	})
 
-	t.Run("non-hammerable error keeps the sticky one-shot rule", func(t *testing.T) {
+	t.Run("non-hammerable error ignores hammer config", func(t *testing.T) {
 		outbound := newSticky(&objects.ChannelHammerRetry{MaxRetries: hammerIntPtr(5)})
 
 		assert.False(t, outbound.CanRetry(errors.New("upstream connection reset")),
-			"a sticky candidate must stay one-shot for errors hammer does not own")
+			"a non-hammerable error must not consume a hammer attempt")
 		assert.Zero(t, outbound.state.HammerAttempts,
 			"classification must not consume hammer budget")
 	})
 
-	t.Run("sticky candidate without hammer stays one-shot on 429", func(t *testing.T) {
+	t.Run("sticky candidate without hammer follows the normal 429 rule", func(t *testing.T) {
 		outbound := newSticky(nil)
+
+		// Sticky candidates share the same-channel retry budget with normal
+		// candidates (#2469). On the last candidate a 429 falls back to a
+		// same-channel retry instead of failing after one attempt.
+		assert.True(t, outbound.CanRetry(newUpstream429()))
+		assert.Zero(t, outbound.state.HammerAttempts,
+			"a channel without hammer config must not consume a hammer budget")
+	})
+
+	t.Run("sticky candidate without hammer switches channel while a fallback exists", func(t *testing.T) {
+		outbound := newSticky(nil)
+		outbound.state.ChannelModelsCandidates = []*ChannelModelsCandidate{
+			outbound.state.CurrentCandidate,
+			{Channel: outbound.state.CurrentCandidate.Channel},
+		}
+
 		assert.False(t, outbound.CanRetry(newUpstream429()))
 	})
 

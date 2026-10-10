@@ -42,6 +42,17 @@ export function CopilotDeviceFlow({ onSuccess, onError, existingCredentials }: C
     deviceFlow.start();
   };
 
+  const handleCopyUserCode = async () => {
+    if (!deviceFlow.userCode) return;
+
+    try {
+      await copyTextToClipboard(deviceFlow.userCode);
+      toast.success(t('channels.messages.credentialsCopied'));
+    } catch {
+      toast.error(t('common.errors.copyFailed'));
+    }
+  };
+
   // Show already authenticated state
   if (hasExistingCredentials && !deviceFlow.userCode && !deviceFlow.isComplete && !deviceFlow.error) {
     return (
@@ -140,12 +151,7 @@ export function CopilotDeviceFlow({ onSuccess, onError, existingCredentials }: C
 
               <Button
                 type='button'
-                onClick={() => {
-                  if (deviceFlow.userCode) {
-                    copyTextToClipboard(deviceFlow.userCode).catch(() => toast.error(t('common.errors.copyFailed')));
-                    toast.success(t('channels.messages.credentialsCopied'));
-                  }
-                }}
+                onClick={handleCopyUserCode}
                 variant='outline'
                 size='icon'
                 title={t('copilot_device.copy_code')}

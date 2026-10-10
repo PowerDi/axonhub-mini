@@ -168,6 +168,7 @@ export function mergeChannelSettingsForUpdate(
     hammerRetry: pick('hammerRetry', existing?.hammerRetry ?? null),
     reasoningFilter: pick('reasoningFilter', existing?.reasoningFilter ?? false),
     providerQuota: pick('providerQuota', existing?.providerQuota ?? null),
+    quotaRoutingMode: pick('quotaRoutingMode', existing?.quotaRoutingMode ?? undefined),
   };
 }
 

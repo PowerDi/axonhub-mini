@@ -20,7 +20,7 @@ export function DataTableColumnHeader<TData, TValue>({ column, title, className 
   const { t } = useTranslation();
 
   if (!column.getCanSort()) {
-    return <div className={cn(className)}>{title}</div>;
+    return <div className={cn('text-muted-foreground text-xs font-medium leading-5', className)}>{title}</div>;
   }
 
   return (

@@ -99,14 +99,16 @@ export function DimensionDetailTable({
             <table className='w-full min-w-[800px] table-fixed caption-bottom text-sm tabular-nums'>
               <colgroup>
                 <col className='w-[20%]' />
-                <col className='w-[10%]' />
-                <col className='w-[10%]' />
-                <col className='w-[10%]' />
-                <col className='w-[10%]' />
-                <col className='w-[10%]' />
-                <col className='w-[10%]' />
-                <col className='w-[10%]' />
-                <col className='w-[10%]' />
+                <col className='w-[8%]' />
+                <col className='w-[8%]' />
+                <col className='w-[8%]' />
+                <col className='w-[8%]' />
+                <col className='w-[8%]' />
+                <col className='w-[8%]' />
+                <col className='w-[8%]' />
+                <col className='w-[8%]' />
+                <col className='w-[8%]' />
+                <col className='w-[8%]' />
               </colgroup>
               <thead className='[&_tr]:border-b'>
                 <tr className='border-b'>
@@ -133,8 +135,14 @@ export function DimensionDetailTable({
                     <td className='whitespace-nowrap px-2 py-2 text-right text-sm'>
                       {item.inputTokens > 0 ? ((item.cachedInputTokens / item.inputTokens) * 100).toFixed(1) : '0'}%
                     </td>
-                    <td className='whitespace-nowrap px-2 py-2 text-right text-sm'>{formatExactNumber(item.requestCount)}</td>
-                    <td className='whitespace-nowrap px-2 py-2 text-right text-sm'>{formatCurrency(item.cost)}</td>
+                    <td className='whitespace-nowrap px-4 py-2 text-right text-sm'>{formatExactNumber(item.requestCount)}</td>
+                    <td className='whitespace-nowrap px-4 py-2 text-right text-sm'>
+                      {item.tokensPerSecond == null ? '—' : item.tokensPerSecond.toFixed(2)}
+                    </td>
+                    <td className='whitespace-nowrap px-4 py-2 text-right text-sm'>
+                      {item.ttftMs == null ? '—' : Math.round(item.ttftMs).toLocaleString()}
+                    </td>
+                    <td className='whitespace-nowrap px-4 py-2 text-right text-sm'>{formatCurrency(item.cost)}</td>
                   </tr>
                 ))}
               </tbody>

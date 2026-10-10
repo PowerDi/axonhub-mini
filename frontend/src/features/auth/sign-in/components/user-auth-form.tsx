@@ -13,21 +13,26 @@ import { PasswordInput } from '@/components/password-input';
 import { useSignIn, useOIDCProviders, useOIDCAuthorize } from '@/features/auth/data/auth';
 import { LogIn } from 'lucide-react';
 
-type UserAuthFormProps = HTMLAttributes<HTMLFormElement>;
+type UserAuthFormProps = HTMLAttributes<HTMLFormElement> & {
+  redirect?: string;
+};
 
 // Create form schema with dynamic validation messages
 const createFormSchema = (t: (key: string) => string) =>
   z.object({
-    email: z.email().min(1, { message: t('auth.signIn.validation.emailRequired') }),
+    email: z
+      .string()
+      .min(1, { message: t('auth.signIn.validation.emailRequired') })
+      .pipe(z.email({ message: t('auth.signIn.validation.emailInvalid') })),
     password: passwordSchema(t),
   });
 
-export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
+export function UserAuthForm({ className, redirect, ...props }: UserAuthFormProps) {
   const { t } = useTranslation();
-  const signInMutation = useSignIn();
+  const signInMutation = useSignIn(redirect);
   const [rememberMe, setRememberMe] = useState(false);
   const { data: oidcProviders } = useOIDCProviders();
-  const oidcAuthorizeMutation = useOIDCAuthorize();
+  const oidcAuthorizeMutation = useOIDCAuthorize(redirect);
 
   const formSchema = createFormSchema(t);
   const form = useForm<z.infer<typeof formSchema>>({
@@ -57,6 +62,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                 <FormControl>
                   <Input
                     type='email'
+                    autoComplete='username'
                     placeholder={t('auth.signIn.form.email.placeholder')}
                     className='border-border !bg-white text-muted-foreground transition-all duration-300 placeholder:text-muted-foreground focus:border-border focus:!bg-white'
                     data-testid='sign-in-email'
@@ -84,6 +90,7 @@ export function UserAuthForm({ className, ...props }: UserAuthFormProps) {
                 </div>
                 <FormControl>
                   <PasswordInput
+                    autoComplete='current-password'
                     placeholder={t('auth.signIn.form.password.placeholder')}
                     className='border-border bg-white text-muted-foreground backdrop-blur-sm transition-all duration-300 placeholder:text-muted-foreground focus:border-border focus:bg-white'
                     data-testid='sign-in-password'

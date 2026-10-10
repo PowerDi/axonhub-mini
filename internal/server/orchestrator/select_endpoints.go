@@ -5,6 +5,17 @@ import (
 	"github.com/looplj/axonhub/llm"
 )
 
+// requiresExplicitEndpoint reports whether a request type may only be served by
+// an endpoint that explicitly declares support for it. Without a matching
+// endpoint the request must fail rather than fall back to the first configured
+// endpoint: these protocols are not interchangeable with a generic chat
+// endpoint, and the wrong-protocol fallback would be silently lossy.
+func requiresExplicitEndpoint(requestType llm.RequestType) bool {
+	return requestType == llm.RequestTypeAlphaSearch ||
+		requestType == llm.RequestTypeDecisions ||
+		requestType == llm.RequestTypeSystemOne
+}
+
 // SelectAPIFormat selects the most appropriate APIFormat from a channel's resolved endpoints
 // based on the request type and inbound API format. Prefers an endpoint whose API format
 // matches the inbound request format so that pass-through can be enabled when identical
@@ -32,7 +43,7 @@ func SelectAPIFormat(endpoints []objects.ChannelEndpoint, req *llm.Request) stri
 			}
 		}
 
-		if req.RequestType == llm.RequestTypeAlphaSearch {
+		if requiresExplicitEndpoint(req.RequestType) {
 			return ""
 		}
 	}

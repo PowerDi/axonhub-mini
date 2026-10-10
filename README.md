@@ -5,6 +5,7 @@
 
 [![Go 版本](https://img.shields.io/github/go-mod/go-version/looplj/axonhub?logo=go&logoColor=white)](https://golang.org/)
 [![Docker Ready](https://img.shields.io/badge/docker-ready-2496ED?logo=docker&logoColor=white)](https://docker.com)
+[![Greptile: The War on Bugs](https://www.greptile.com/badge.svg)](https://www.greptile.com/?utm_source=oss_badge&utm_medium=readme&utm_campaign=greptile_for_open_source)
 
 [中文](README.md) | [English](README.en-US.md) | [日本語](README.ja-JP.md)
 
@@ -235,7 +236,7 @@ kubectl port-forward svc/axonhub 8090:8090
 
 ## 📄 许可证 | License
 
-本项目采用多种许可证授权（Apache-2.0 和 LGPL-3.0），与上游保持一致。详见 [LICENSE](LICENSE)。
+本项目采用多种许可证授权（Apache-2.0 和 LGPL-3.0），与上游保持一致。授权范围详见 [NOTICE](NOTICE)，协议全文见 [LICENSE](LICENSE) 和 [llm/LICENSE](llm/LICENSE)。
 
 ---
 

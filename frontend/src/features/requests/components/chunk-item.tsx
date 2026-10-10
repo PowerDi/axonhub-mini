@@ -24,11 +24,15 @@ export function ChunkItem({ chunk, index }: ChunkItemProps) {
     }
   };
 
-  const copyToClipboard = () => {
-    copyTextToClipboard(formatJson(chunk)).catch(() => toast.error(t('common.errors.copyFailed')));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-    toast.success(t('requests.actions.copy'));
+  const copyToClipboard = async () => {
+    try {
+      await copyTextToClipboard(formatJson(chunk));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      toast.success(t('requests.actions.copy'));
+    } catch {
+      toast.error(t('common.errors.copyFailed'));
+    }
   };
 
   const downloadChunk = () => {

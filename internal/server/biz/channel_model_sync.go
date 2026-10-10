@@ -115,33 +115,51 @@ func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *
 		}
 	}
 
-	// Read existing manual models from the channel
-	manualModels := ch.ManualModels
-	if manualModels == nil {
-		manualModels = []string{}
-	}
-
-	// Merge fetched models with manual models, removing duplicates
-	mergedModels := lo.Uniq(append(manualModels, fetchedModelIDs...))
-
-	if len(mergedModels) == 0 {
-		log.Warn(ctx, "no models to sync for channel (both fetched and manual are empty)",
-			log.Int("channel_id", ch.ID),
-			log.String("channel_name", ch.Name))
-
-		return ch, false, nil
-	}
-
-	addedModels := lo.Without(mergedModels, ch.SupportedModels...)
-	removedModels := lo.Without(ch.SupportedModels, mergedModels...)
-	modelsChanged := len(addedModels) > 0 || len(removedModels) > 0
-	var updatedCh *ent.Channel
-	changed := false
+	var (
+		updatedCh     *ent.Channel
+		changed       bool
+		modelsChanged bool
+		manualCount   int
+		totalCount    int
+	)
 
 	err = svc.RunInTransaction(ctx, func(ctx context.Context) error {
-		updatedCh = ch
+		db := svc.entFromContext(ctx)
+
+		// Re-read the channel inside the transaction: the provider fetch above can
+		// take seconds, so manual models saved meanwhile must not be overwritten by
+		// the stale snapshot passed into this function.
+		current, err := db.Channel.Get(ctx, ch.ID)
+		if err != nil {
+			return fmt.Errorf("failed to reload channel for model sync: %w", err)
+		}
+
+		updatedCh = current
+
+		manualModels := current.ManualModels
+		if manualModels == nil {
+			manualModels = []string{}
+		}
+		manualCount = len(manualModels)
+
+		// Merge fetched models with manual models, removing duplicates
+		mergedModels := lo.Uniq(append(manualModels, fetchedModelIDs...))
+		totalCount = len(mergedModels)
+
+		if len(mergedModels) == 0 {
+			log.Warn(ctx, "no models to sync for channel (both fetched and manual are empty)",
+				log.Int("channel_id", ch.ID),
+				log.String("channel_name", ch.Name))
+
+			return nil
+		}
+
+		addedModels := lo.Without(mergedModels, current.SupportedModels...)
+		removedModels := lo.Without(current.SupportedModels, mergedModels...)
+		modelsChanged = len(addedModels) > 0 || len(removedModels) > 0
+
 		if modelsChanged {
-			channel, err := svc.entFromContext(ctx).Channel.
+			updated, err := db.Channel.
 				UpdateOneID(ch.ID).
 				SetSupportedModels(mergedModels).
 				Save(ctx)
@@ -149,7 +167,7 @@ func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *
 				return fmt.Errorf("failed to update channel supported models: %w", err)
 			}
 
-			updatedCh = channel
+			updatedCh = updated
 		}
 
 		pricesChanged, err := svc.ensureChannelModelPrices(ctx, ch.ID, mergedModels)
@@ -164,7 +182,7 @@ func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *
 	if err != nil {
 		return nil, false, err
 	}
-	if ent.TxFromContext(ctx) == nil && modelsChanged {
+	if ent.TxFromContext(ctx) == nil && updatedCh != nil {
 		updatedCh.Unwrap()
 	}
 
@@ -172,8 +190,8 @@ func (svc *ChannelService) syncChannelModelsForChannel(ctx context.Context, ch *
 		log.Int("channel_id", ch.ID),
 		log.String("channel_name", ch.Name),
 		log.Int("fetched_count", len(fetchedModelIDs)),
-		log.Int("manual_count", len(manualModels)),
-		log.Int("total_count", len(mergedModels)))
+		log.Int("manual_count", manualCount),
+		log.Int("total_count", totalCount))
 
 	return updatedCh, changed, nil
 }

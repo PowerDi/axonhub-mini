@@ -6,8 +6,8 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
-import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
+import { Header } from '@/components/layout/header';
 import { PermissionGuard } from '@/components/permission-guard';
 import { createColumns } from './components/prompts-columns';
 import { PromptsDialogs } from './components/prompts-dialogs';
@@ -140,7 +140,7 @@ function CreateButton() {
 
 function ActionButtons() {
   return (
-    <div className='flex gap-2'>
+    <div className='flex min-w-0 max-w-full flex-wrap items-center gap-2'>
       <PermissionGuard requiredScope='write_prompts'>
         <CreateButton />
       </PermissionGuard>

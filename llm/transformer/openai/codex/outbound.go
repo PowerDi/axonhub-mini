@@ -9,6 +9,7 @@ import (
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 
@@ -43,6 +44,7 @@ type OutboundTransformer struct {
 	transport       string
 	baseURL         string
 	alphaSearchPath string
+	imageMainModel  string
 
 	// official reports whether the configured upstream is the official Codex
 	// backend (chatgpt.com). Official endpoints always stream SSE, so they keep
@@ -56,10 +58,16 @@ type OutboundTransformer struct {
 	webSocketExecutors map[pipeline.Executor]*responses.WebSocketExecutor
 }
 
+// SupportsCodexResponseHeaders identifies the official Codex response-header contract.
+func (*OutboundTransformer) SupportsCodexResponseHeaders() bool {
+	return true
+}
+
 var (
-	_ transformer.Outbound               = (*OutboundTransformer)(nil)
-	_ transformer.PassThroughBodyPolicy  = (*OutboundTransformer)(nil)
-	_ pipeline.ChannelCustomizedExecutor = (*OutboundTransformer)(nil)
+	_ transformer.Outbound                  = (*OutboundTransformer)(nil)
+	_ transformer.PassThroughBodyPolicy     = (*OutboundTransformer)(nil)
+	_ transformer.TransportRequestFinalizer = (*OutboundTransformer)(nil)
+	_ pipeline.ChannelCustomizedExecutor    = (*OutboundTransformer)(nil)
 )
 
 var responsesBlockedPassThroughFields = []string{
@@ -73,13 +81,34 @@ type Params struct {
 	BaseURL         string
 	Transport       string
 	AlphaSearchPath string
+	// ImageMainModel is the resolved channel default test model used to call the
+	// image generation tool. Empty values and image models use the fallback.
+	ImageMainModel string
 }
 
 // isOfficialCodexBaseURL reports whether baseURL points at the official Codex
 // backend. Everything else is treated as a compatible relay that may return a
-// completed JSON response instead of SSE.
+// completed JSON response instead of SSE, and that must not receive the private
+// Responses Lite constructs.
+//
+// The host is compared as a whole: a relay reached through a path or hostname
+// that merely mentions the official domain is still a relay.
 func isOfficialCodexBaseURL(baseURL string) bool {
-	return strings.Contains(strings.ToLower(baseURL), "chatgpt.com")
+	host := ""
+	if parsed, err := url.Parse(baseURL); err == nil && parsed.Host != "" {
+		host = parsed.Hostname()
+	} else {
+		// Tolerate a base URL written without a scheme, e.g. "chatgpt.com/v1".
+		remainder := strings.TrimPrefix(strings.TrimPrefix(baseURL, "//"), "/")
+		host = strings.SplitN(remainder, "/", 2)[0]
+		if idx := strings.Index(host, ":"); idx >= 0 {
+			host = host[:idx]
+		}
+	}
+
+	host = strings.ToLower(host)
+
+	return host == "chatgpt.com" || strings.HasSuffix(host, ".chatgpt.com")
 }
 
 // isOfficialCodex reports whether the transformer targets the official Codex backend.
@@ -101,6 +130,12 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 	if alphaSearchPath == "" {
 		alphaSearchPath = "/alpha/search"
 	}
+	imageMainModel := strings.TrimSpace(params.ImageMainModel)
+	if imageMainModel == "" || strings.HasPrefix(strings.ToLower(imageMainModel), "gpt-image-") {
+		imageMainModel = defaultImageMainModel
+	}
+
+	official := isOfficialCodexBaseURL(baseURL)
 
 	// The underlying responses outbound requires baseURL/apiKey. We only need its request body logic.
 	// Use a dummy config and then override URL/auth.
@@ -108,6 +143,12 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 		BaseURL:        baseURL,
 		APIKeyProvider: auth.NewStaticKeyProvider("dummy"),
 		Transport:      params.Transport,
+		// Responses Lite keeps its tool definitions in an `additional_tools` input
+		// item instead of the top-level `tools` array. That item belongs to the
+		// private Codex protocol, so it is replayed only to the official backend;
+		// relays are not assumed to implement it. The same rule drops the Responses
+		// Lite header for relays in TransformRequest.
+		PreserveAdditionalTools: official,
 	})
 	if err != nil {
 		return nil, err
@@ -118,7 +159,8 @@ func NewOutboundTransformer(params Params) (*OutboundTransformer, error) {
 		transport:         params.Transport,
 		baseURL:           strings.TrimSuffix(baseURL, "##"),
 		alphaSearchPath:   alphaSearchPath,
-		official:          isOfficialCodexBaseURL(baseURL),
+		imageMainModel:    imageMainModel,
+		official:          official,
 		responsesOutbound: ro,
 	}, nil
 }
@@ -200,7 +242,6 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	// Clone request so we do not mutate upstream pipeline state.
 	reqCopy := *llmReq
 	originalRequestType := reqCopy.RequestType
-	originalAPIFormat := reqCopy.APIFormat
 	isImageRequest := originalRequestType == llm.RequestTypeImage
 
 	// Codex expects Responses API payload with some strict rules.
@@ -223,7 +264,7 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	if isImageRequest {
-		reqCopy.Model = defaultImageMainModel
+		reqCopy.Model = t.imageMainModel
 		reqCopy.TransformerMetadata[responses.ImageGenerationToolModelMetadataKey] = llmReq.Model
 	}
 
@@ -259,8 +300,10 @@ func (t *OutboundTransformer) TransformRequest(ctx context.Context, llmReq *llm.
 	}
 
 	if isImageRequest {
+		// Keep the Responses wire format so pass-through cannot replace the
+		// converted payload or response with the incompatible Images format.
+		// RequestType alone selects the image response conversion.
 		hreq.RequestType = originalRequestType.String()
-		hreq.APIFormat = originalAPIFormat.String()
 	}
 
 	// Overwrite auth.
@@ -451,6 +494,7 @@ type codexExecutor struct {
 }
 
 func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*httpclient.Response, error) {
+	request = e.requestForTransport(request)
 	// Compact and alpha search are non-streaming endpoints; proxy them
 	// through the real HTTP client instead of the SSE stream path.
 	if request.RequestType == string(llm.RequestTypeCompact) ||
@@ -474,7 +518,7 @@ func (e *codexExecutor) Do(ctx context.Context, request *httpclient.Request) (*h
 // upstream SSE stream and aggregate the events into a completed Responses
 // JSON body.
 func (e *codexExecutor) doStreamAndAggregate(ctx context.Context, request *httpclient.Request) (*httpclient.Response, error) {
-	stream, err := e.inner.DoStream(ctx, request)
+	stream, err := e.executor(ctx).DoStream(ctx, request)
 	if err != nil {
 		return nil, err
 	}
@@ -511,9 +555,9 @@ func (e *codexExecutor) doStreamAndAggregate(ctx context.Context, request *httpc
 
 	return &httpclient.Response{
 		StatusCode: http.StatusOK,
-		Headers: http.Header{
+		Headers: httpclient.MergeForwardResponseHeaders(http.Header{
 			"Content-Type": []string{"application/json"},
-		},
+		}, httpclient.GetResponseHeaders(stream)),
 		Body:    body,
 		Request: request,
 	}, nil
@@ -601,5 +645,28 @@ func decodeSSEChunks(ctx context.Context, body []byte) ([]*httpclient.StreamEven
 }
 
 func (e *codexExecutor) DoStream(ctx context.Context, request *httpclient.Request) (streams.Stream[*httpclient.StreamEvent], error) {
-	return e.inner.DoStream(ctx, request)
+	return e.executor(ctx).DoStream(ctx, e.requestForTransport(request))
+}
+
+func (e *codexExecutor) executor(_ context.Context) pipeline.Executor {
+	if e == nil {
+		return nil
+	}
+	return e.inner
+}
+
+func (e *codexExecutor) requestForTransport(request *httpclient.Request) *httpclient.Request {
+	if e == nil || e.transformer == nil {
+		return request
+	}
+
+	return e.transformer.FinalizeTransportRequest(request)
+}
+
+func (t *OutboundTransformer) FinalizeTransportRequest(request *httpclient.Request) *httpclient.Request {
+	if t == nil || t.transport == responses.TransportWebSocket {
+		return request
+	}
+
+	return responses.PrepareHTTPTransportRequest(request, true)
 }

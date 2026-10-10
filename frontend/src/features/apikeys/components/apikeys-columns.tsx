@@ -2,9 +2,8 @@ import { format } from 'date-fns';
 import { ColumnDef, Table, Row } from '@tanstack/react-table';
 import { Copy, Eye, Settings } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { toast } from 'sonner';
-import { copyTextToClipboard } from '@/lib/clipboard';
 import { cn, extractNumberID, formatUserName } from '@/lib/utils';
+import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -21,10 +20,10 @@ function ApiKeyCell({ apiKey, fullApiKey }: { apiKey: string; fullApiKey: ApiKey
   // Keep the masked value compact so the identifying suffix is never clipped by the table cell.
   const maskedKey = apiKey.length > 4 ? `${'•'.repeat(8)}${apiKey.slice(-4)}` : '•'.repeat(apiKey.length);
 
-  const copyToClipboard = () => {
-    copyTextToClipboard(apiKey).catch(() => toast.error(t('common.errors.copyFailed')));
-    toast.success(t('apikeys.messages.copied'));
-  };
+  const { handleCopy: copyToClipboard } = useCopyToClipboard({
+    text: apiKey,
+    copyMessage: t('apikeys.messages.copied'),
+  });
 
   const handleViewKey = () => {
     openDialog('view', fullApiKey);

@@ -4,10 +4,10 @@ import { IconPlus, IconSettings, IconDownload } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
+import { revealFocusedHorizontalButton, useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
 import { Button } from '@/components/ui/button';
-import { Header } from '@/components/layout/header';
 import { Main } from '@/components/layout/main';
+import { Header } from '@/components/layout/header';
 import { PermissionGuard } from '@/components/permission-guard';
 import { useOnboardingInfo } from '@/features/system/data/system';
 import { createColumns } from './components/models-columns';
@@ -86,7 +86,7 @@ function CreateButton() {
   const { setOpen } = useModels();
 
   return (
-    <Button onClick={() => setOpen('create')}>
+    <Button className='shrink-0' onClick={() => setOpen('create')}>
       <IconPlus className='mr-2 h-4 w-4' />
       {t('models.actions.create')}
     </Button>
@@ -101,7 +101,7 @@ function BulkAddButton() {
   const { setOpen } = useModels();
 
   return (
-    <Button variant='ghost' onClick={() => setOpen('batchCreate')}>
+    <Button variant='outline' className='shrink-0' onClick={() => setOpen('batchCreate')}>
       <IconPlus className='mr-2 h-4 w-4' />
       {t('models.actions.bulkAdd')}
     </Button>
@@ -113,7 +113,7 @@ function SettingsButton() {
   const { setOpen } = useModels();
 
   return (
-    <Button variant='outline' onClick={() => setOpen('settings')} data-settings-button>
+    <Button variant='outline' className='shrink-0' onClick={() => setOpen('settings')} data-settings-button>
       <IconSettings className='mr-2 h-4 w-4' />
       {t('models.actions.settings')}
     </Button>
@@ -127,7 +127,7 @@ function ImportUnassociatedButton() {
   const { setOpen } = useModels();
 
   return (
-    <Button variant='outline' onClick={() => setOpen('unassociated')}>
+    <Button variant='outline' className='shrink-0' onClick={() => setOpen('unassociated')}>
       <IconDownload className='mr-2 h-4 w-4' />
       {t('models.actions.importUnassociated')}
     </Button>
@@ -137,7 +137,7 @@ function ImportUnassociatedButton() {
 function ActionButtons() {
   const scrollRef = useHorizontalScroll<HTMLDivElement>();
   return (
-    <div ref={scrollRef} className='flex gap-2 overflow-x-auto md:overflow-x-visible'>
+    <div ref={scrollRef} onFocusCapture={revealFocusedHorizontalButton} data-testid='model-actions-scroller' className='flex min-w-0 max-w-full gap-2 overflow-x-auto p-1'>
       <PermissionGuard requiredScope='write_channels'>
         <>
           <ImportUnassociatedButton />

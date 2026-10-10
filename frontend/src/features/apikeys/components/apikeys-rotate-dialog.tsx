@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { Copy, RefreshCw, AlertTriangle, CheckIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { toast } from 'sonner';
-import { copyTextToClipboard } from '@/lib/clipboard';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 import { useApiKeysContext } from '../context/apikeys-context';
 import { useRotateApiKey } from '../data/apikeys';
 
@@ -21,7 +20,10 @@ export function ApiKeysRotateDialog() {
   const { isDialogOpen, closeDialog, selectedApiKey, setSelectedApiKey } = useApiKeysContext();
   const rotateApiKey = useRotateApiKey();
   const [newKey, setNewKey] = useState<string | null>(null);
-  const [isCopied, setIsCopied] = useState(false);
+  const { isCopied, handleCopy } = useCopyToClipboard({
+    text: newKey ?? '',
+    copyMessage: t('apikeys.messages.copied'),
+  });
 
   const handleRotate = async () => {
     if (!selectedApiKey) return;
@@ -33,19 +35,6 @@ export function ApiKeysRotateDialog() {
       setSelectedApiKey({ ...selectedApiKey, key: result.key });
     } catch {
       // Error is handled by the mutation
-    }
-  };
-
-  const handleCopy = async () => {
-    if (newKey) {
-      try {
-        await copyTextToClipboard(newKey);
-        setIsCopied(true);
-        toast.success(t('apikeys.messages.copied'));
-        setTimeout(() => setIsCopied(false), 2000);
-      } catch {
-        toast.error(t('common.errors.copyFailed'));
-      }
     }
   };
 

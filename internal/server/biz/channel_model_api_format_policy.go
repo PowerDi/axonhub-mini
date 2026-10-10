@@ -6,9 +6,11 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/llm"
 )
 
@@ -109,9 +111,11 @@ func (svc *ChannelService) validateUpdateModelRoutability(ctx context.Context, i
 		return nil
 	}
 
-	existing, err := svc.entFromContext(ctx).Channel.Query().Where(channel.IDEQ(id)).
-		Select(channel.FieldType, channel.FieldStatus, channel.FieldEndpoints, channel.FieldSettings).
-		Only(ctx)
+	existing, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) (*ent.Channel, error) {
+		return svc.entFromContext(queryCtx).Channel.Query().Where(channel.IDEQ(id)).
+			Select(channel.FieldType, channel.FieldStatus, channel.FieldEndpoints, channel.FieldSettings).
+			Only(queryCtx)
+	})
 	if err != nil {
 		return fmt.Errorf("failed to load channel for routability validation: %w", err)
 	}

@@ -91,7 +91,7 @@ function JsonNode({ name, data, parentData, isRoot = false, isArrayItem = false,
 
   const handleToggle = () => setIsExpanded((v) => !v);
 
-  const copyToClipboard = (e: React.MouseEvent) => {
+  const copyToClipboard = async (e: React.MouseEvent) => {
     e.stopPropagation();
     // This vendored component has no toast/i18n in scope, so a failure just reverts the icon.
     copyTextToClipboard(JSON.stringify(data, null, 2)).catch(() => setIsCopied(false));

@@ -153,15 +153,20 @@ export function RequestBodyDrawer({
   const [curlCommand, setCurlCommand] = useState('');
 
   const copyBody = useCallback(
-    (data: any) => {
+    async (data: any) => {
       let text: string;
       try {
         text = JSON.stringify(data, null, 2);
       } catch {
         text = String(data);
       }
-      copyTextToClipboard(text).catch(() => toast.error(t('common.errors.copyFailed')));
-      toast.success(t('requests.actions.copy'));
+
+      try {
+        await copyTextToClipboard(text);
+        toast.success(t('requests.actions.copy'));
+      } catch {
+        toast.error(t('common.errors.copyFailed'));
+      }
     },
     [t]
   );

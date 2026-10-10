@@ -11,7 +11,8 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 )
 
-// DuplicateChannel creates a new channel from input and copies current model prices
+// DuplicateChannel creates a new channel from input, inherits the source custom
+// endpoints when the input does not specify them, and copies current model prices
 // from the source channel in the same transaction.
 func (svc *ChannelService) DuplicateChannel(ctx context.Context, sourceID int, input ent.CreateChannelInput) (*ent.Channel, error) {
 	var duplicated *ent.Channel

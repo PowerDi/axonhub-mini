@@ -62,7 +62,7 @@ func TestBuildChannelWithTransformer_ZenMuxUsesProtocolTransformerAndDefaultBase
 	}
 }
 
-func TestBuildChannelWithOutbounds_ZenMuxNativeVideoIsBoundOnlyToZenMux(t *testing.T) {
+func TestBuildChannelWithOutbounds_ZenMuxNativeVideoSupportsAllZenMuxTypes(t *testing.T) {
 	client := enttest.NewEntClient(t, "sqlite3", "file:zenmux_video_outbounds?mode=memory&_fk=0")
 	t.Cleanup(func() { client.Close() })
 	svc := NewChannelServiceForTest(client)
@@ -80,6 +80,41 @@ func TestBuildChannelWithOutbounds_ZenMuxNativeVideoIsBoundOnlyToZenMux(t *testi
 		require.Same(t, ch.Outbound, ch.Outbounds[llm.APIFormatOpenAIChatCompletion.String()])
 		require.Same(t, ch.Outbound, ch.Outbounds[llm.APIFormatOpenAIVideo.String()])
 		require.IsType(t, &zenmuxtransformer.OutboundTransformer{}, ch.Outbounds[llm.APIFormatZenmuxVideo.String()])
+	})
+
+	for _, channelType := range []channel.Type{
+		channel.TypeZenmux,
+		channel.TypeZenmuxResponses,
+		channel.TypeZenmuxAnthropic,
+		channel.TypeZenmuxGemini,
+	} {
+		t.Run(string(channelType), func(t *testing.T) {
+			ch, err := svc.buildChannelWithOutbounds(&ent.Channel{
+				ID:          10,
+				Name:        "ZenMux custom video",
+				Type:        channelType,
+				Credentials: objects.ChannelCredentials{APIKey: "test-key"},
+				Endpoints: []objects.ChannelEndpoint{{
+					APIFormat: llm.APIFormatZenmuxVideo.String(),
+				}},
+			})
+
+			require.NoError(t, err)
+			require.IsType(t, &zenmuxtransformer.OutboundTransformer{}, ch.Outbounds[llm.APIFormatZenmuxVideo.String()])
+		})
+	}
+
+	t.Run("ZenMux video uses its dedicated default endpoint", func(t *testing.T) {
+		ch, err := svc.buildChannelWithOutbounds(&ent.Channel{
+			ID:          11,
+			Name:        "ZenMux video",
+			Type:        channel.TypeZenmuxVideo,
+			Credentials: objects.ChannelCredentials{APIKey: "test-key"},
+		})
+
+		require.NoError(t, err)
+		require.IsType(t, &zenmuxtransformer.OutboundTransformer{}, ch.Outbound)
+		require.Same(t, ch.Outbound, ch.Outbounds[llm.APIFormatZenmuxVideo.String()])
 	})
 
 	t.Run("unrelated channel rejects a persisted ZenMux video endpoint", func(t *testing.T) {

@@ -127,7 +127,7 @@ func TestPopulateAPIFormatSingleEntryPolicy(t *testing.T) {
 		{Channel: ch, Models: []biz.ChannelModelEntry{entry}},
 	}
 
-	populated := populateAPIFormat(candidates, req)
+	populated := populateAPIFormat(context.Background(), candidates, req)
 	require.Len(t, populated, 1)
 	require.Equal(t, llm.APIFormatOpenAIChatCompletion.String(), populated[0].APIFormat)
 }
@@ -154,7 +154,7 @@ func TestPopulateAPIFormatMultipleEntriesFallbackUnfiltered(t *testing.T) {
 		{Channel: ch, Models: []biz.ChannelModelEntry{deepseek, claude}},
 	}
 
-	populated := populateAPIFormat(candidates, req)
+	populated := populateAPIFormat(context.Background(), candidates, req)
 	require.Len(t, populated, 1)
 	// Channel-level format still prefers the inbound format; per-entry
 	// resolution happens later in apiFormatForEntry.
@@ -240,7 +240,7 @@ func TestPopulateAPIFormatSkipsStarvedSingleEntryCandidate(t *testing.T) {
 		{Channel: ch, Models: []biz.ChannelModelEntry{entry}},
 	}
 
-	populated := populateAPIFormat(candidates, req)
+	populated := populateAPIFormat(context.Background(), candidates, req)
 	require.Empty(t, populated)
 }
 

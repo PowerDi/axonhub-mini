@@ -357,6 +357,7 @@ func (p *pipeline) stream(
 
 		return nil, WrapUpstreamError(err)
 	}
+	responseHeaders := httpclient.MergeForwardResponseHeaders(nil, httpclient.GetResponseHeaders(outboundStream))
 
 	// Apply raw stream middlewares
 	rawStream := outboundStream
@@ -442,6 +443,9 @@ func (p *pipeline) stream(
 		firstEventGuard.stop()
 	}
 
+	llmStream = streams.MapErr(llmStream, func(resp *llm.Response) (*llm.Response, error) {
+		return withTransformerMetadata(request.TransformerMetadata, resp), nil
+	})
 	inboundStream, err := p.Inbound.TransformStream(ctx, llmStream)
 	if err != nil {
 		llmStream.Close()
@@ -481,5 +485,5 @@ func (p *pipeline) stream(
 		}
 	}
 
-	return inboundStream, nil
+	return httpclient.WithResponseHeaders(inboundStream, responseHeaders), nil
 }

@@ -677,6 +677,86 @@ func TestWebSocketExecutorReconnectsForDifferentExplicitPreviousResponseID(t *te
 	require.Equal(t, int32(2), upgrades.Load())
 }
 
+func TestWebSocketExecutorKeepsConnectionForMatchingExplicitPreviousResponseID(t *testing.T) {
+	upgrader := websocket.Upgrader{}
+	var upgrades atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upgrades.Add(1)
+		conn, err := upgrader.Upgrade(w, r, nil)
+		require.NoError(t, err)
+		defer conn.Close()
+
+		var first map[string]any
+		require.NoError(t, conn.ReadJSON(&first))
+		require.NoError(t, conn.WriteJSON(map[string]any{
+			"type": "response.completed",
+			"response": map[string]any{
+				"id":     "resp_1",
+				"object": "response",
+				"status": "completed",
+				"output": []any{},
+			},
+		}))
+
+		var second map[string]any
+		require.NoError(t, conn.ReadJSON(&second))
+		require.Equal(t, "resp_1", second["previous_response_id"])
+		input, ok := second["input"].([]any)
+		require.True(t, ok)
+		require.Len(t, input, 1)
+		require.Equal(t, "tool_1", input[0].(map[string]any)["id"])
+		require.NoError(t, conn.WriteJSON(map[string]any{
+			"type": "response.completed",
+			"response": map[string]any{
+				"id":     "resp_2",
+				"object": "response",
+				"status": "completed",
+				"output": []any{},
+			},
+		}))
+	}))
+	defer server.Close()
+
+	executor := NewWebSocketExecutor(nil)
+	ctx := webSocketTestContext()
+	for _, body := range [][]byte{
+		[]byte(`{"model":"gpt-5","input":[{"id":"user_1","type":"message","role":"user"}]}`),
+		[]byte(`{"model":"gpt-5","previous_response_id":"resp_1","input":[{"id":"tool_1","type":"function_call_output","call_id":"call_1","output":"ok"}]}`),
+	} {
+		stream, err := executor.DoStream(ctx, &httpclient.Request{
+			Method: http.MethodPost,
+			URL:    "http" + strings.TrimPrefix(server.URL, "http") + "/v1/responses",
+			Headers: http.Header{
+				webSocketSessionHeader: []string{"matching-explicit-previous"},
+			},
+			Auth: &httpclient.AuthConfig{Type: httpclient.AuthTypeBearer, APIKey: "test-key"},
+			Body: body,
+		})
+		require.NoError(t, err)
+		require.True(t, stream.Next())
+		require.Equal(t, "response.completed", stream.Current().Type)
+		require.False(t, stream.Next())
+		require.NoError(t, stream.Err())
+		require.NoError(t, stream.Close())
+	}
+
+	require.Equal(t, int32(1), upgrades.Load())
+}
+
+func TestPrepareWebSocketPayloadChecksExplicitPreviousIDWithEmptyCachedInput(t *testing.T) {
+	pooled := &pooledWebSocketConn{lastResponseID: "resp_cached"}
+	lease := &webSocketLease{pooled: pooled, reused: true}
+	payload := map[string]any{
+		"model":                "gpt-5",
+		"previous_response_id": "resp_other",
+		"input":                []any{map[string]any{"type": "message", "role": "user", "content": "next"}},
+	}
+
+	err := prepareWebSocketPayloadForLease(payload, lease)
+	var reconnectErr *webSocketReconnectRequiredError
+	require.ErrorAs(t, err, &reconnectErr)
+}
+
 func TestRestorePayloadMapRestoresMutatedPayload(t *testing.T) {
 	originalInput := []any{
 		map[string]any{"id": "user_1", "type": "message", "role": "user"},
@@ -968,17 +1048,7 @@ func TestWebSocketExecutorSendsOnlyNewInputOnReusedSession(t *testing.T) {
 		require.True(t, ok)
 		require.Len(t, firstInput, 1)
 		require.NotContains(t, first, "previous_response_id")
-		require.NoError(t, conn.WriteJSON(map[string]any{
-			"type": "response.completed",
-			"response": map[string]any{
-				"id":         "resp_1",
-				"object":     "response",
-				"created_at": 1700000000,
-				"model":      "gpt-5",
-				"status":     "completed",
-				"output":     []any{},
-			},
-		}))
+		require.NoError(t, conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.completed","response":{"id":"resp_1","object":"response","created_at":1700000000,"model":"gpt-5","status":"completed","output":[{"id":"fc_1","type":"function_call","call_id":"call_1","name":"run","arguments":"{}"}]}}`)))
 
 		var second map[string]any
 		require.NoError(t, conn.ReadJSON(&second))
@@ -1005,7 +1075,7 @@ func TestWebSocketExecutorSendsOnlyNewInputOnReusedSession(t *testing.T) {
 
 	executor := NewWebSocketExecutor(nil)
 	firstBody := []byte(`{"model":"gpt-5","input":[{"id":"first","type":"message","role":"user","content":[{"type":"input_text","text":"first"}]}]}`)
-	secondBody := []byte(`{"model":"gpt-5","input":[{"id":"first","type":"message","role":"user","content":[{"type":"input_text","text":"first"}]},{"id":"second","type":"message","role":"user","content":[{"type":"input_text","text":"second"}]}]}`)
+	secondBody := []byte(`{"model":"gpt-5","input":[{"id":"first","type":"message","role":"user","content":[{"type":"input_text","text":"first"}]},{"id":"fc_1","type":"function_call","call_id":"call_1","name":"run","arguments":"{}"},{"id":"second","type":"message","role":"user","content":[{"type":"input_text","text":"second"}]}]}`)
 
 	for _, body := range [][]byte{firstBody, secondBody} {
 		stream, err := executor.DoStream(webSocketTestContext(), &httpclient.Request{
@@ -1377,4 +1447,40 @@ func TestToWebSocketURL(t *testing.T) {
 	got, err = toWebSocketURL("http://localhost:8080/v1/responses")
 	require.NoError(t, err)
 	require.Equal(t, "ws://localhost:8080/v1/responses", got)
+}
+
+func TestWebSocketExecutorObservesHandshakeHeaders(t *testing.T) {
+	upgrader := websocket.Upgrader{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, err := upgrader.Upgrade(w, r, http.Header{"X-Handshake-ID": {"review"}})
+		require.NoError(t, err)
+		defer conn.Close()
+		var payload map[string]any
+		require.NoError(t, conn.ReadJSON(&payload))
+		require.NoError(t, conn.WriteJSON(map[string]any{
+			"type":     "response.completed",
+			"response": map[string]any{"id": "resp_review", "object": "response", "status": "completed", "output": []any{}},
+		}))
+	}))
+	defer server.Close()
+
+	executor := NewWebSocketExecutor(nil)
+	defer executor.Close()
+	observed := 0
+	stream, err := executor.DoStream(webSocketTestContext(), &httpclient.Request{
+		Method: http.MethodPost,
+		URL:    server.URL + "/v1/responses",
+		Body:   []byte(`{"model":"gpt-5","stream":true}`),
+		OnResponseHeaders: func(_ context.Context, headers http.Header) {
+			observed++
+			require.Equal(t, "review", headers.Get("X-Handshake-Id"))
+		},
+	})
+	require.NoError(t, err)
+	defer stream.Close()
+	for stream.Next() {
+		_ = stream.Current()
+	}
+	require.NoError(t, stream.Err())
+	require.Equal(t, 1, observed)
 }

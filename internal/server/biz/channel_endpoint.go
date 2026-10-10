@@ -27,11 +27,13 @@ var SupportedAPIFormats = map[string]struct{}{
 	llm.APIFormatOpenAITranslation.String():     {},
 	llm.APIFormatOpenAIModeration.String():      {},
 	llm.APIFormatOpenAIAlphaSearch.String():     {},
+	llm.APIFormatOpenAIDecisions.String():       {},
 	llm.APIFormatAnthropicMessage.String():      {},
 	llm.APIFormatGeminiContents.String():        {},
 	llm.APIFormatGeminiEmbedding.String():       {},
 	llm.APIFormatJinaRerank.String():            {},
 	llm.APIFormatJinaEmbedding.String():         {},
+	llm.APIFormatTypeSafeSystemOne.String():     {},
 }
 
 // ValidateEndpoints validates channel endpoint configurations.
@@ -104,6 +106,11 @@ var openAIChatOnlyDefaultEndpoints = []objects.ChannelEndpoint{
 	{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
 }
 
+var minimaxDefaultEndpoints = []objects.ChannelEndpoint{
+	{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+	{APIFormat: llm.APIFormatOpenAIImageGeneration.String()},
+}
+
 // defaultEndpointsForChannelType defines the built-in default endpoints for
 // each channel type.
 //
@@ -160,6 +167,7 @@ var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 		{APIFormat: llm.APIFormatGeminiContents.String()},
 		{APIFormat: llm.APIFormatGeminiEmbedding.String()},
 	},
+	channel.TypeZenmuxVideo: {{APIFormat: llm.APIFormatZenmuxVideo.String()}},
 	channel.TypeGeminiVertex: {
 		{APIFormat: llm.APIFormatGeminiContents.String()},
 		{APIFormat: llm.APIFormatGeminiEmbedding.String()},
@@ -201,15 +209,19 @@ var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 	channel.TypeVolcengineAnthropic: {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
 	channel.TypeLongcat:             {{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}},
 	channel.TypeLongcatAnthropic:    {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
-	channel.TypeMinimax:             openAIChatOnlyDefaultEndpoints,
+	channel.TypeMinimax:             minimaxDefaultEndpoints,
 	channel.TypeMinimaxAnthropic:    {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
 	channel.TypeAihubmix:            openAICompatibleDefaultEndpoints,
 	channel.TypeAihubmixAnthropic:   {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
 	channel.TypeBurncloud:           openAICompatibleDefaultEndpoints,
-	channel.TypeModelscope:          {{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}},
-	channel.TypeBailian:             {{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}},
-	channel.TypeBailianAnthropic:    {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
-	channel.TypeMoonshotCoding:      {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
+	channel.TypeModelscope: {
+		{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+		{APIFormat: llm.APIFormatModelScopeImage.String()},
+	},
+	channel.TypeBailian:          {{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}},
+	channel.TypeBailianResponses: {{APIFormat: llm.APIFormatOpenAIResponse.String()}},
+	channel.TypeBailianAnthropic: {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
+	channel.TypeMoonshotCoding:   {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
 	channel.TypeJina: {
 		{APIFormat: llm.APIFormatJinaRerank.String()},
 		{APIFormat: llm.APIFormatJinaEmbedding.String()},
@@ -234,6 +246,9 @@ var defaultEndpointsForChannelType = map[channel.Type][]objects.ChannelEndpoint{
 	},
 	channel.TypeCommandcode:          openAIChatOnlyDefaultEndpoints,
 	channel.TypeCommandcodeAnthropic: {{APIFormat: llm.APIFormatAnthropicMessage.String()}},
+	channel.TypeTypesafe: {
+		{APIFormat: llm.APIFormatTypeSafeSystemOne.String()},
+	},
 }
 
 func validateEndpointsForChannelType(channelType channel.Type, endpoints []objects.ChannelEndpoint) error {
@@ -241,13 +256,27 @@ func validateEndpointsForChannelType(channelType channel.Type, endpoints []objec
 		return err
 	}
 
-	if channelType == channel.TypeZenmux {
+	if channelType == channel.TypeTypesafe {
+		for _, endpoint := range endpoints {
+			if endpoint.APIFormat != llm.APIFormatTypeSafeSystemOne.String() {
+				return fmt.Errorf("channel type %q only supports api_format %q", channelType, llm.APIFormatTypeSafeSystemOne.String())
+			}
+		}
+	}
+
+	for _, endpoint := range endpoints {
+		if endpoint.APIFormat == llm.APIFormatTypeSafeSystemOne.String() && channelType != channel.TypeTypesafe {
+			return fmt.Errorf("api_format %q is only supported by TypeSafe channel types", endpoint.APIFormat)
+		}
+	}
+
+	if isZenmuxChannelType(channelType) {
 		return nil
 	}
 
 	for _, endpoint := range endpoints {
 		if endpoint.APIFormat == llm.APIFormatZenmuxVideo.String() {
-			return fmt.Errorf("api_format %q is only supported by channel type %q", endpoint.APIFormat, channel.TypeZenmux)
+			return fmt.Errorf("api_format %q is only supported by ZenMux channel types", endpoint.APIFormat)
 		}
 	}
 
@@ -322,6 +351,23 @@ func (c *Channel) ResolveEndpoints() []objects.ChannelEndpoint {
 	}
 
 	return mergeEndpoints(DefaultEndpointsForChannelType(c.Type), c.Endpoints)
+}
+
+// ForcedAPIFormats returns the api formats force-specified for the given request
+// model, or nil when the model has no override. Results are in configured
+// priority order. Backed by the per-model API format policies: an entry's
+// "allow" list is the set of formats the model is restricted to.
+func (c *Channel) ForcedAPIFormats(model string) []string {
+	if c == nil || c.Channel == nil || c.Settings == nil || model == "" {
+		return nil
+	}
+
+	policy := c.Settings.GetModelAPIFormatPolicy(model)
+	if policy == nil || len(policy.Allow) == 0 {
+		return nil
+	}
+
+	return policy.Allow
 }
 
 func (c *Channel) platformTypeForGeminiEndpoint() string {

@@ -53,19 +53,41 @@ export function getApiFormatsForProvider(provider: string, configs: ProtocolConf
   return formats;
 }
 
+// Every channel type that belongs to the ZenMux family. The backend accepts the
+// native video api_format on all of them, so the endpoints dialog must offer it
+// everywhere in the family and nowhere else.
+const ZENMUX_CHANNEL_TYPES: readonly ChannelType[] = [
+  'zenmux',
+  'zenmux_responses',
+  'zenmux_anthropic',
+  'zenmux_gemini',
+  'zenmux_video',
+];
+
 /**
  * Custom endpoint formats the endpoints dialog may offer for a channel.
- * Native video is a ZenMux channel type, so it must not be offered on other
- * channel types. Other custom endpoint formats remain available everywhere.
+ * Native video is only offered inside the ZenMux family; the SystemOne endpoint is
+ * exclusive to the TypeSafe channel type, and OpenAI Decisions is opt-in for the
+ * OpenAI channel only (the backend still accepts manual configuration elsewhere).
+ * Other custom endpoint formats remain available everywhere.
  */
 export function getConfigurableApiFormatsForChannelType(
   channelType: ChannelType,
   configurableFormats: readonly string[]
 ): string[] {
-  if (channelType === 'zenmux') {
-    return [...configurableFormats];
+  if (channelType === 'typesafe') {
+    return ['typesafe/systemone'];
   }
-  return configurableFormats.filter((format) => format !== 'zenmux/video');
+
+  const filtered = configurableFormats
+    .filter((format) => format !== 'typesafe/systemone')
+    .filter((format) => channelType === 'openai' || format !== 'openai/decisions');
+
+  if (ZENMUX_CHANNEL_TYPES.includes(channelType)) {
+    return [...filtered];
+  }
+
+  return filtered.filter((format) => format !== 'zenmux/video');
 }
 
 export function getChannelTypeForApiFormat(provider: string, apiFormat: ApiFormat, configs: ProtocolConfigs): ChannelType | undefined {

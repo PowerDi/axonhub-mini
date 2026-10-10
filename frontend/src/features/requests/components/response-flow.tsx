@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CopyIcon } from 'lucide-react';
-import { toast } from 'sonner';
 import { copyTextToClipboard } from '@/lib/clipboard';
 import { Reasoning, ReasoningTrigger, ReasoningContent } from '@/components/ai-elements/reasoning';
 import { Response as UIResponse } from '@/components/ai-elements/response';
@@ -92,11 +91,15 @@ export function ResponseFlow({ chunks, body, isLive, reasoningDurationMs }: Resp
                         <button
                           type='button'
                           className='text-muted-foreground hover:text-foreground text-xs flex items-center gap-1 transition-colors cursor-pointer'
-                          onClick={() => {
+                          onClick={async () => {
                             const text = typeof tc.function?.arguments === 'string'
                               ? tc.function.arguments
                               : JSON.stringify(parseJson(tc.function?.arguments || '{}'), null, 2);
-                            copyTextToClipboard(text).catch(() => toast.error(t('common.errors.copyFailed')));
+                            try {
+                              await copyTextToClipboard(text);
+                            } catch (error) {
+                              console.error('Failed to copy tool parameters:', error);
+                            }
                           }}
                         >
                           <CopyIcon className='size-3' />
