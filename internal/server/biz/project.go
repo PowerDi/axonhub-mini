@@ -36,6 +36,9 @@ type ProjectService struct {
 
 	ProjectCache        xcache.Cache[xcache.Entry[ent.Project]]
 	permissionValidator *PermissionValidator
+
+	// Bound by FX after construction to avoid the User -> APIKey -> Project cycle.
+	invalidateUserCache func(context.Context, int)
 }
 
 func NewProjectService(params ProjectServiceParams) *ProjectService {
@@ -45,12 +48,27 @@ func NewProjectService(params ProjectServiceParams) *ProjectService {
 		},
 		ProjectCache:        xcache.NewFromConfig[xcache.Entry[ent.Project]](params.CacheConfig),
 		permissionValidator: NewPermissionValidator(),
+		// Initialization and migrations create projects before user caching is active.
+		invalidateUserCache: func(context.Context, int) {},
 	}
 }
 
 // CreateProject creates a new project with owner role and assigns the creator as owner.
 // It also creates three default project-level roles: admin, developer, and viewer.
 func (s *ProjectService) CreateProject(ctx context.Context, input ent.CreateProjectInput) (*ent.Project, error) {
+	var proj *ent.Project
+	err := s.RunInTransaction(ctx, func(txCtx context.Context) error {
+		var err error
+		proj, err = s.createProject(txCtx, input)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return proj, nil
+}
+
+func (s *ProjectService) createProject(ctx context.Context, input ent.CreateProjectInput) (*ent.Project, error) {
 	currentUser, ok := contexts.GetUser(ctx)
 	if !ok || currentUser == nil {
 		return nil, fmt.Errorf("user not found in context")
@@ -152,6 +170,10 @@ func (s *ProjectService) CreateProject(ctx context.Context, input ent.CreateProj
 	if err != nil {
 		return nil, fmt.Errorf("failed to assign user to project: %w", err)
 	}
+
+	runAfterCommit(ctx, func(ctx context.Context) {
+		s.invalidateUserCache(ctx, currentUser.ID)
+	})
 
 	return proj, nil
 }

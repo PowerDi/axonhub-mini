@@ -36,6 +36,9 @@ var Module = fx.Module("biz",
 	fx.Provide(NewOIDCService),
 	fx.Provide(NewAPIKeyProfileTemplateService),
 	fx.Provide(NewCatalogService),
+	fx.Invoke(func(projectSvc *ProjectService, userSvc *UserService) {
+		projectSvc.invalidateUserCache = userSvc.invalidateUserCache
+	}),
 	fx.Invoke(func(channelSvc *ChannelService, quotaSvc *ProviderQuotaService) {
 		channelSvc.SetChannelProviderQuotaInvalidator(quotaSvc)
 	}),
