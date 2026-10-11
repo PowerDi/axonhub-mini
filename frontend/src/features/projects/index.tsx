@@ -98,8 +98,8 @@ export default function ProjectsPage() {
   return (
     <ProjectsProvider>
       <Header fixed>
-        <div className='flex flex-1 items-center justify-between'>
-          <div>
+        <div className='flex min-w-0 w-full flex-col gap-2 md:flex-row md:items-center md:justify-between'>
+          <div className='min-w-0'>
             <h2 className='text-lg font-normal tracking-tight'>{t('projects.title')}</h2>
             <p className='text-sm text-muted-foreground'>{t('projects.description')}</p>
           </div>

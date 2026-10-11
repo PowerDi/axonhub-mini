@@ -356,7 +356,7 @@ export function ChannelsTable({
           </TableBody>
         </Table>
       </div>
-      <div className='flex-shrink-0'>
+      <div className='flex-shrink-0' data-testid='channels-pagination'>
         <ServerSidePagination
           pageInfo={pageInfo}
           pageSize={pageSize}

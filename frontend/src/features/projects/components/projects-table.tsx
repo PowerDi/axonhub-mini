@@ -152,7 +152,7 @@ export function ProjectsTable({
           </TableBody>
         </Table>
       </div>
-      <div className='flex-shrink-0'>
+      <div className='flex-shrink-0' data-testid='pagination'>
         <ServerSidePagination
           pageInfo={pageInfo}
           pageSize={pageSize}
@@ -162,7 +162,6 @@ export function ProjectsTable({
           onNextPage={onNextPage}
           onPreviousPage={onPreviousPage}
           onPageSizeChange={onPageSizeChange}
-          data-testid='pagination'
         />
       </div>
     </div>

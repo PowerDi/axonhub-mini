@@ -42,7 +42,7 @@ export function AuthenticatedLayout({ children }: Props) {
               Left margin is kept (no ml-0): flush against the sidebar, the ring line
               sits under the sidebar rail strip and its hover bar and reads as covered. */}
           <div className='ring-foreground/10 m-2 flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl bg-background ring-1 dark:ring-border'>
-            <div className='flex min-h-0 flex-1 flex-col overflow-auto has-[main.fixed-main]:overflow-hidden'>
+            <div className='page-content flex min-h-0 flex-1 flex-col overflow-auto has-[main.fixed-main]:overflow-hidden'>
               <OnboardingProvider>{children ? children : <Outlet />}</OnboardingProvider>
             </div>
           </div>

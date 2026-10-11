@@ -592,8 +592,11 @@ const HHMMTimePicker = memo(function HHMMTimePicker({
           type='button'
           data-testid={testId}
           className={cn(
-            'bg-popover text-popover-foreground absolute top-[calc(100%+8px)] left-0 z-50 flex h-[220px] w-full overflow-hidden rounded-lg',
-            'shadow-md ring-1 ring-foreground/10'
+            'border-input bg-transparent',
+            'flex h-8 w-full items-center justify-between rounded-md border px-2.5 text-xs',
+            'focus:ring-ring focus:ring-2 focus:ring-offset-2 focus:outline-none',
+            'disabled:cursor-not-allowed disabled:opacity-50',
+            open && 'ring-ring ring-2 ring-offset-2'
           )}
         >
           <span>{displayValue}</span>

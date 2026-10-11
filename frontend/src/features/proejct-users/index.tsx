@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Main } from '@/components/layout/main';
@@ -33,7 +34,20 @@ function UsersContent() {
     ...paginationArgs,
   });
 
-  const projectUsers = data?.edges?.map((edge) => edge.node) || [];
+  const [nameFilter, setNameFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [roleFilter, setRoleFilter] = useState<string[]>([]);
+  const debouncedNameFilter = useDebounce(nameFilter, 300);
+  // Project.projectUsers returns the complete membership list without filter
+  // arguments. Filter that list here while preserving project-specific scopes.
+  const projectUsers = useMemo(() => {
+    const search = debouncedNameFilter.trim().toLowerCase();
+    return (data?.edges?.map((edge) => edge.node) || []).filter((user) =>
+      (!search || `${user.firstName} ${user.lastName} ${user.email}`.toLowerCase().includes(search)) &&
+      (statusFilter.length === 0 || statusFilter.includes(user.status)) &&
+      (roleFilter.length === 0 || user.roles?.edges?.some(({ node }) => roleFilter.includes(node.id)))
+    );
+  }, [data, debouncedNameFilter, statusFilter, roleFilter]);
   const pageInfo = data?.pageInfo;
 
   const handleNextPage = () => {
@@ -63,12 +77,12 @@ function UsersContent() {
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         onPageSizeChange={handlePageSizeChange}
-        nameFilter={''}
-        statusFilter={[]}
-        roleFilter={[]}
-        onNameFilterChange={() => {}}
-        onStatusFilterChange={() => {}}
-        onRoleFilterChange={() => {}}
+        nameFilter={nameFilter}
+        statusFilter={statusFilter}
+        roleFilter={roleFilter}
+        onNameFilterChange={setNameFilter}
+        onStatusFilterChange={setStatusFilter}
+        onRoleFilterChange={setRoleFilter}
       />
     </div>
   );

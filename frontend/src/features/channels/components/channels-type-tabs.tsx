@@ -111,6 +111,8 @@ export const ChannelsTypeTabs = memo(function ChannelsTypeTabs({ typeCounts, sel
           return (
             <button
               key={prefix}
+              data-testid={`channel-provider-${prefix}`}
+              aria-pressed={selectedTab === prefix}
               onClick={() => onTabChange(prefix)}
               className={cn(
                 'flex shrink-0 items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium whitespace-nowrap transition-all',
