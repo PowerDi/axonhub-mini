@@ -8,26 +8,6 @@ test.describe('Admin Models Management', () => {
 
     const modelsTable = page.getByTestId('models-table')
     await modelsTable.waitFor({ state: 'visible', timeout: 20000 })
-
-    // Handle driver.js onboarding overlay (it has allowClose: false, so Escape won't work)
-    const driverOverlay = page.locator('#driver-popover-content')
-    if (await driverOverlay.isVisible().catch(() => false)) {
-      // Click the highlighted settings button to dismiss the onboarding
-      const settingsButton = page.locator('[data-settings-button]')
-      if (await settingsButton.isVisible().catch(() => false)) {
-        await settingsButton.click()
-        await page.waitForTimeout(500)
-      }
-      // Wait for driver overlay to disappear
-      await expect(driverOverlay).not.toBeVisible({ timeout: 5000 }).catch(() => {})
-    }
-
-    // Close any dialog that may have opened (e.g., settings dialog from clicking the button)
-    const settingsDialog = page.getByRole('dialog').filter({ hasText: /Model Settings|模型设置/i })
-    if (await settingsDialog.isVisible().catch(() => false)) {
-      await page.keyboard.press('Escape')
-      await expect(settingsDialog).not.toBeVisible({ timeout: 5000 })
-    }
   })
 
   test('can create, edit, filter, toggle status, and delete a model', async ({ page }) => {
@@ -37,7 +17,7 @@ test.describe('Admin Models Management', () => {
 
     // Open create dialog
     const createButton = page
-      .getByRole('button', { name: /Add Model|创建模型|新增模型|创建|Add/i })
+      .getByRole('button', { name: /^(Add Model|创建模型|新增模型)$/i })
       .first()
     await expect(createButton).toBeVisible()
     await createButton.click()
@@ -47,20 +27,13 @@ test.describe('Admin Models Management', () => {
 
     // Select developer
     const developerCombo = dialog.locator('[role="combobox"]').first()
-    await developerCombo.click()
-    const developerOption = page
-      .getByRole('option', { name: /Moonshot AI|Moonshot/i })
-      .or(page.getByRole('option', { name: /OpenAI/i }))
-      .first()
-    await developerOption.click()
+    await developerCombo.fill('OpenAI')
+    await developerCombo.press('ArrowDown')
+    await page.getByRole('option', { name: 'OpenAI', exact: true }).click()
 
-    // Select a modelId from provider list
-    const modelIdInput = dialog.getByPlaceholder(/model id/i).first()
-    await modelIdInput.click()
-    await modelIdInput.fill('kimi')
-    const modelOption = page.getByRole('option', { name: /kimi-k2-thinking/i }).first()
-    await expect(modelOption).toBeVisible()
-    await modelOption.click()
+    // A custom ID avoids depending on the remote catalog's current model list.
+    await dialog.getByPlaceholder(/model id/i).fill(`pw-model-id-${uniqueSuffix}`)
+    await dialog.getByPlaceholder(/model id/i).press('Escape')
 
     // Override default name/group with deterministic values
     const nameInput = dialog.getByLabel(/Name|名称/i)
@@ -77,7 +50,6 @@ test.describe('Admin Models Management', () => {
       dialog.getByRole('button', { name: /Create|创建|保存|Save/i }).last().click(),
     ])
     await expect(dialog).not.toBeVisible({ timeout: 20000 })
-    await waitForGraphQLOperation(page, 'GetModels')
 
     const modelsTable = page.getByTestId('models-table')
     const createdRow = modelsTable.locator('tbody tr').filter({ hasText: baseName })
@@ -99,7 +71,6 @@ test.describe('Admin Models Management', () => {
       editDialog.getByRole('button', { name: /Save|保存|Update|更新/i }).last().click(),
     ])
     await expect(editDialog).not.toBeVisible({ timeout: 20000 })
-    await waitForGraphQLOperation(page, 'GetModels')
 
     const updatedRow = modelsTable.locator('tbody tr').filter({ hasText: updatedName })
     await expect(updatedRow).toBeVisible({ timeout: 20000 })
@@ -125,7 +96,6 @@ test.describe('Admin Models Management', () => {
       confirmStatusButton.click(),
     ])
     await expect(statusDialog).not.toBeVisible({ timeout: 20000 })
-    await waitForGraphQLOperation(page, 'GetModels')
 
     // Delete the created model
     const actionsAfterToggle = updatedRow.getByTestId('row-actions').first()
@@ -141,7 +111,6 @@ test.describe('Admin Models Management', () => {
       deleteButton.click(),
     ])
     await expect(deleteDialog).not.toBeVisible({ timeout: 20000 })
-    await waitForGraphQLOperation(page, 'GetModels')
 
     await expect(modelsTable.locator('tbody tr').filter({ hasText: updatedName })).toHaveCount(0)
   })

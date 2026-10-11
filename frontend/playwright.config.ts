@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import { adminAuthFile } from './tests/auth-state'
 
 // Set default test environment variables
 process.env.AXONHUB_ADMIN_EMAIL = process.env.AXONHUB_ADMIN_EMAIL || 'my@example.com'
@@ -55,7 +56,7 @@ export default defineConfig({
       name: 'chromium',
       testIgnore: '**/setup.spec.ts',
       dependencies: ['setup'],
-      use: { ...devices['Desktop Chrome'] },
+      use: { ...devices['Desktop Chrome'], storageState: adminAuthFile },
     },
 
     // {

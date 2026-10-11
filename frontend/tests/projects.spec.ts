@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { gotoAndEnsureAuth, waitForGraphQLOperation } from './auth.utils'
+import { adminGraphQL, gotoAndEnsureAuth, waitForGraphQLOperation } from './auth.utils'
 
 test.describe('Admin Projects Management', () => {
   test.beforeEach(async ({ page }) => {
@@ -79,7 +79,7 @@ test.describe('Admin Projects Management', () => {
     await expect(archiveDialog).toContainText(/归档|Archive/i)
     
     await Promise.all([
-      waitForGraphQLOperation(page, 'ArchiveProject'),
+      waitForGraphQLOperation(page, 'UpdateProjectStatus'),
       archiveDialog.getByRole('button', { name: /归档|Archive|确认|Confirm/i }).click()
     ])
 
@@ -105,7 +105,7 @@ test.describe('Admin Projects Management', () => {
     await expect(activateDialog).toContainText(/激活|Activate/i)
     
     await Promise.all([
-      waitForGraphQLOperation(page, 'ActivateProject'),
+      waitForGraphQLOperation(page, 'UpdateProjectStatus'),
       activateDialog.getByRole('button', { name: /激活|Activate|确认|Confirm/i }).click()
     ])
 
@@ -197,33 +197,28 @@ test.describe('Admin Projects Management', () => {
   })
 
   test('can navigate between pages', async ({ page }) => {
-    const projectsTable = page.locator('table[data-testid="projects-table"]')
-    await expect(projectsTable).toBeVisible()
-
-    const nextButton = page.getByRole('button', { name: /下一页|Next|Go to next page/i })
-
-    if (await nextButton.count() === 0) {
-      test.skip(true, 'No pagination controls found')
-      return
+    const prefix = `pw-project-pages-${Date.now()}`
+    const ids: string[] = []
+    try {
+      for (let i = 0; i < 11; i++) {
+        const data = await adminGraphQL(page, 'mutation($input: CreateProjectInput!) { createProject(input: $input) { id } }', { input: { name: `${prefix}-${i}` } })
+        ids.push(data.createProject.id)
+      }
+      await page.reload()
+      await page.getByPlaceholder(/Search projects|搜索项目/i).fill(prefix)
+      await page.getByTestId('pagination').getByRole('combobox').click()
+      await page.getByRole('option', { name: '10', exact: true }).click()
+      const rows = page.getByTestId('projects-table').locator('tbody tr')
+      await expect(rows).toHaveCount(10)
+      const firstPage = await rows.first().innerText()
+      await page.getByRole('button', { name: 'Go to next page', exact: true }).click()
+      await expect(rows).toHaveCount(1)
+      await expect.poll(() => rows.first().innerText()).not.toBe(firstPage)
+      await page.getByRole('button', { name: 'Go to previous page', exact: true }).click()
+      await expect(rows).toHaveCount(10)
+      await expect.poll(() => rows.first().innerText()).toBe(firstPage)
+    } finally {
+      if (!page.isClosed()) for (const id of ids) await adminGraphQL(page, 'mutation($id: ID!) { deleteProject(id: $id) }', { id })
     }
-
-    const isEnabled = await nextButton.isEnabled().catch(() => false)
-    if (!isEnabled) {
-      test.skip(true, 'Not enough data for pagination')
-      return
-    }
-
-    const firstPageContent = await projectsTable.locator('tbody tr').first().textContent()
-
-    await nextButton.click()
-    await page.waitForTimeout(500)
-
-    const secondPageContent = await projectsTable.locator('tbody tr').first().textContent()
-    expect(firstPageContent).not.toBe(secondPageContent)
-
-    const prevButton = page.getByRole('button', { name: /上一页|Previous|Go to previous page/i })
-    await expect(prevButton).toBeEnabled()
-    await prevButton.click()
-    await page.waitForTimeout(500)
   })
 })

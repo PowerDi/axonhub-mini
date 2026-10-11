@@ -198,7 +198,8 @@ test.describe('Channel model price schedule', () => {
       if (!picker || !list) return -1
       return list.getBoundingClientRect().bottom - picker.getBoundingClientRect().bottom
     })
-    expect(roomBelowPicker).toBeGreaterThan(0)
+    // Zero space is the most constrained valid case: the trigger touches the list bottom.
+    expect(roomBelowPicker).toBeGreaterThanOrEqual(0)
     expect(roomBelowPicker).toBeLessThan(228)
 
     // ---------- start time 22:30 (hours 22/23 used to be unreachable) -------

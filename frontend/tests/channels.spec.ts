@@ -1,5 +1,13 @@
-import { test, expect } from '@playwright/test'
-import { gotoAndEnsureAuth, waitForGraphQLOperation } from './auth.utils'
+import { createServer } from 'node:http'
+import { test, expect, type Page } from '@playwright/test'
+import { adminGraphQL, gotoAndEnsureAuth, waitForGraphQLOperation } from './auth.utils'
+
+async function createFixtureChannel(page: Page, name: string, baseURL = 'http://127.0.0.1:1/v1') {
+  const data = await adminGraphQL(page, 'mutation($input: CreateChannelInput!) { createChannel(input: $input) { id } }', {
+    input: { name, type: 'openai', baseURL, credentials: { apiKeys: ['e2e-test-key'] }, supportedModels: ['gpt-4o'], defaultTestModel: 'gpt-4o' },
+  })
+  return data.createChannel.id as string
+}
 
 test.describe('Admin Channels Management', () => {
   test.beforeEach(async ({ page }) => {
@@ -209,7 +217,7 @@ test.describe('Admin Channels Management', () => {
 
     const createDialog = page.getByRole('dialog')
     await createDialog.getByTestId('provider-codex').click()
-    await createDialog.getByRole('tab', { name: /Third Party|第三方/i }).click()
+    await createDialog.getByRole('tab', { name: /Third[- ]party|第三方/i }).click()
     await createDialog.getByTestId('channel-name-input').fill(name)
     await createDialog.getByTestId('channel-base-url-input').fill(baseURL)
     await createDialog.getByTestId('channel-api-key-input').fill(`sk-test-key-${uniqueSuffix}`)
@@ -240,26 +248,37 @@ test.describe('Admin Channels Management', () => {
   })
 
   test('can test a channel', async ({ page }) => {
-    // Wait for table to load
-    await page.waitForTimeout(1000)
-
-    // Find the first enabled channel with a test button
-    const testButton = page.getByRole('button', { name: /Test|测试/i }).first()
-
-    // Check if test button exists
-    const testButtonCount = await testButton.count()
-    if (testButtonCount === 0) {
-      test.skip()
-      return
+    const name = `pw-channel-test-${Date.now()}`
+    const provider = createServer(async (request, response) => {
+      let body = ''
+      for await (const chunk of request) body += chunk
+      const input = JSON.parse(body)
+      const common = { id: 'chatcmpl-test', created: Math.floor(Date.now() / 1000), model: input.model }
+      if (input.stream) {
+        response.writeHead(200, { 'Content-Type': 'text/event-stream' })
+        response.end(`data: ${JSON.stringify({ ...common, object: 'chat.completion.chunk', choices: [{ index: 0, delta: { role: 'assistant', content: 'Channel test succeeded' }, finish_reason: null }] })}\n\ndata: ${JSON.stringify({ ...common, object: 'chat.completion.chunk', choices: [{ index: 0, delta: {}, finish_reason: 'stop' }], usage: { prompt_tokens: 3, completion_tokens: 4, total_tokens: 7 } })}\n\ndata: [DONE]\n\n`)
+      } else {
+        response.writeHead(200, { 'Content-Type': 'application/json' })
+        response.end(JSON.stringify({ ...common, object: 'chat.completion', choices: [{ index: 0, message: { role: 'assistant', content: 'Channel test succeeded' }, finish_reason: 'stop' }], usage: { prompt_tokens: 3, completion_tokens: 4, total_tokens: 7 } }))
+      }
+    })
+    await new Promise<void>((resolve) => provider.listen(0, '127.0.0.1', resolve))
+    let id: string | undefined
+    try {
+      id = await createFixtureChannel(page, name, `http://127.0.0.1:${(provider.address() as { port: number }).port}/v1`)
+      await page.reload()
+      await page.getByPlaceholder('Search by name', { exact: true }).fill(name)
+      const row = page.getByTestId('channels-table').getByRole('row').filter({ hasText: name })
+      const [result] = await Promise.all([
+        waitForGraphQLOperation(page, 'TestChannel'),
+        row.locator('td:last-child button').nth(1).click(),
+      ])
+      expect(result.testChannel.success, result.testChannel.error).toBe(true)
+      expect(result.testChannel.message).toContain('Channel test succeeded')
+    } finally {
+      await new Promise<void>((resolve, reject) => provider.close((error) => error ? reject(error) : resolve()))
+      if (id) await adminGraphQL(page, 'mutation($id: ID!) { deleteChannel(id: $id) }', { id })
     }
-
-    await expect(testButton).toBeVisible()
-
-    // Click test button
-    await Promise.all([waitForGraphQLOperation(page, 'TestChannel'), testButton.click()])
-
-    // Wait for toast notification (success or error)
-    await page.waitForTimeout(2000)
   })
 
   test('can search channels by name', async ({ page }) => {
@@ -349,46 +368,18 @@ test.describe('Admin Channels Management', () => {
   })
 
   test('can filter channels by type', async ({ page }) => {
-    // Wait for table to load
-    await page.waitForTimeout(1000)
-
-    // Look for type filter button/dropdown
-    const typeFilterButton = page
-      .getByRole('button', { name: /Type|类型/i })
-      .or(page.locator('button').filter({ hasText: /Type|类型/i }))
-
-    const typeFilterCount = await typeFilterButton.count()
-    if (typeFilterCount === 0) {
-      test.skip()
-      return
-    }
-
-    await typeFilterButton.first().click()
-
-    // Wait for filter menu
-    await page.waitForTimeout(500)
-
-    // Select OpenAI filter - it's a CommandItem with role="option"
-    const openaiFilter = page
-      .getByRole('option', { name: /OpenAI/i })
-      .or(page.locator('[role="option"]').filter({ hasText: /OpenAI/i }))
-
-    const openaiFilterCount = await openaiFilter.count()
-    if (openaiFilterCount > 0) {
-      await openaiFilter.first().click()
-
-      // Wait for filter to apply
-      await page.waitForTimeout(1000)
-
-      // Verify filtered results
-      const rows = page.locator('tbody tr')
-      const rowCount = await rows.count()
-
-      if (rowCount > 0) {
-        // Check that visible rows contain OpenAI type
-        const firstRow = rows.first()
-        await expect(firstRow).toContainText(/OpenAI/i)
-      }
+    const name = `pw-provider-filter-${Date.now()}`
+    const id = await createFixtureChannel(page, name)
+    try {
+      await page.reload()
+      await page.getByTestId('channel-provider-openai').click()
+      await page.getByPlaceholder('Search by name', { exact: true }).fill(name)
+      const row = page.getByTestId('channels-table').getByRole('row').filter({ hasText: name })
+      await expect(row).toBeVisible()
+      await expect(row).toContainText('OpenAI')
+      await expect(page.getByTestId('channel-provider-openai')).toHaveAttribute('aria-pressed', 'true')
+    } finally {
+      await adminGraphQL(page, 'mutation($id: ID!) { deleteChannel(id: $id) }', { id })
     }
   })
 
@@ -481,50 +472,25 @@ test.describe('Admin Channels Management', () => {
   })
 
   test('can navigate between pages', async ({ page }) => {
-    // Wait for table to load
-    await page.waitForTimeout(1000)
-
-    // Look for pagination controls
-    const pagination = page
-      .locator('[data-testid="pagination"]')
-      .or(page.locator('nav').filter({ hasText: /页|Page|Previous|Next/i }))
-
-    // Check if pagination exists
-    const paginationCount = await pagination.count()
-    if (paginationCount === 0) {
-      test.skip()
-      return
-    }
-
-    // Check if Next button exists and is enabled
-    const nextButton = pagination.getByRole('button', { name: /下一页|Next/i })
-    const nextButtonCount = await nextButton.count()
-
-    if (nextButtonCount === 0) {
-      test.skip()
-      return
-    }
-
-    // Only test pagination if there are multiple pages
-    const isEnabled = await nextButton.isEnabled().catch(() => false)
-    if (isEnabled) {
-      const firstPageContent = await page.locator('tbody tr').first().textContent()
-
-      await nextButton.click()
-      await page.waitForTimeout(1000)
-
-      const secondPageContent = await page.locator('tbody tr').first().textContent()
-
-      // Content should be different on the second page
-      expect(firstPageContent).not.toBe(secondPageContent)
-
-      // Go back to previous page
-      const prevButton = pagination.getByRole('button', { name: /上一页|Previous/i })
-      await expect(prevButton).toBeEnabled()
-      await prevButton.click()
-      await page.waitForTimeout(1000)
-    } else {
-      test.skip()
+    const prefix = `pw-channel-pages-${Date.now()}`
+    const ids: string[] = []
+    try {
+      for (let i = 0; i < 11; i++) ids.push(await createFixtureChannel(page, `${prefix}-${i}`))
+      await page.reload()
+      await page.getByPlaceholder('Search by name', { exact: true }).fill(prefix)
+      await page.getByTestId('channels-pagination').getByRole('combobox').click()
+      await page.getByRole('option', { name: '10', exact: true }).click()
+      const rows = page.getByTestId('channels-table').locator('tbody tr')
+      await expect(rows).toHaveCount(10)
+      const firstPage = await rows.first().innerText()
+      await page.getByRole('button', { name: 'Go to next page', exact: true }).click()
+      await expect(rows).toHaveCount(1)
+      await expect.poll(() => rows.first().innerText()).not.toBe(firstPage)
+      await page.getByRole('button', { name: 'Go to previous page', exact: true }).click()
+      await expect(rows).toHaveCount(10)
+      await expect.poll(() => rows.first().innerText()).toBe(firstPage)
+    } finally {
+      if (!page.isClosed()) for (const id of ids) await adminGraphQL(page, 'mutation($id: ID!) { deleteChannel(id: $id) }', { id })
     }
   })
 
@@ -804,6 +770,8 @@ test.describe('Admin Channels Management', () => {
     await firstOption.click()
     await page.waitForTimeout(300)
 
+    await createDialog.getByPlaceholder('Add tags...').fill(tagName)
+    await createDialog.getByPlaceholder('Add tags...').press('Enter')
     await Promise.all([
       waitForGraphQLOperation(page, 'CreateChannel'),
       createDialog.getByTestId('channel-submit-button').click(),
@@ -841,29 +809,11 @@ test.describe('Admin Channels Management', () => {
       .and(page.locator('[aria-haspopup="dialog"]'))
       .first()
 
-    const tagsFilterCount = await tagsFilterButton.count()
-    if (tagsFilterCount === 0) {
-      test.skip()
-      return
-    }
-
     await tagsFilterButton.click()
-    await page.waitForTimeout(500)
-
-    // Select the tag filter
-    const tagFilter = page
-      .getByRole('option', { name: new RegExp(tagName, 'i') })
-      .or(page.locator('[role="option"]').filter({ hasText: new RegExp(tagName, 'i') }))
-
-    const tagFilterCount2 = await tagFilter.count()
-    if (tagFilterCount2 > 0) {
-      await tagFilter.click()
-      await page.waitForTimeout(1000)
-
-      // Verify filtered results
-      const channelsTable = page.locator('[data-testid="channels-table"]')
-      const filteredRow = channelsTable.locator('tbody tr').filter({ hasText: `Channel-${tagName}` })
-      await expect(filteredRow).toBeVisible()
-    }
+    await page.getByRole('option', { name: new RegExp(tagName) }).click()
+    await page.keyboard.press('Escape')
+    const filteredRows = page.getByTestId('channels-table').locator('tbody tr')
+    await expect(filteredRows).toHaveCount(1)
+    await expect(filteredRows.first()).toContainText(`Channel-${tagName}`)
   })
 })

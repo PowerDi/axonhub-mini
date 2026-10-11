@@ -1,407 +1,125 @@
 import { test, expect } from '@playwright/test'
-import { gotoAndEnsureAuth } from './auth.utils'
+import { gotoAndEnsureAuth, waitForGraphQLOperation } from './auth.utils'
 
+const START = '**/admin/copilot/oauth/start'
+const POLL = '**/admin/copilot/oauth/poll'
+const startResult = {
+  session_id: 'test-session-id',
+  user_code: 'ABCD-EFGH',
+  verification_uri: 'https://github.com/login/device',
+  expires_in: 900,
+  interval: 1,
+}
+
+// OAuth responses are simulated; login, channel storage and reload use the real backend.
 test.describe('GitHub Copilot Device Flow', () => {
   test.beforeEach(async ({ page }) => {
-    test.setTimeout(60000)
+    await page.route(START, (route) => route.fulfill({ json: startResult }))
+    await page.route(POLL, (route) => route.fulfill({ json: { status: 'pending' } }))
     await gotoAndEnsureAuth(page, '/channels')
-    await page.waitForTimeout(2000)
-    const channelsTable = page.locator('[data-testid="channels-table"]')
-    await channelsTable.waitFor({ state: 'visible', timeout: 15000 })
+    await page.getByTestId('add-channel-button').click()
+    await page.getByTestId('provider-github_copilot').click()
   })
 
-  test('device flow shows initial state with start button', async ({ page }) => {
-    // Open create channel dialog
-    const createButton = page.getByTestId('add-channel-button')
-    await expect(createButton).toBeVisible({ timeout: 10000 })
-    await createButton.click()
-
-    const createDialog = page.getByRole('dialog')
-    await expect(createDialog).toBeVisible()
-
-    // Select GitHub Copilot provider
-    const copilotProviderRadio = createDialog.getByTestId('provider-github_copilot')
-    await copilotProviderRadio.click()
-
-    // Verify device flow component shows start button
-    const startButton = createDialog.getByText(/Connect to GitHub Copilot/i)
-    await expect(startButton).toBeVisible()
-    await expect(startButton).toBeEnabled()
+  test('shows an enabled connect button initially', async ({ page }) => {
+    await expect(page.getByRole('button', { name: 'Connect to GitHub Copilot' })).toBeEnabled()
   })
 
-  test('device flow shows loading state when starting', async ({ page }) => {
-    // Intercept the OAuth start API call
-    await page.route('**/api/copilot/oauth/start', async (route) => {
-      // Delay response to test loading state
+  test('shows loading until the start response arrives', async ({ page }) => {
+    await page.route(START, async (route) => {
       await new Promise((resolve) => setTimeout(resolve, 1000))
-      await route.fulfill({
-        status: 200,
-        body: JSON.stringify({
-          device_code: 'test-device-code',
-          user_code: 'ABCD-EFGH',
-          verification_uri: 'https://github.com/login/device',
-          expires_in: 900,
-          interval: 5,
-          session_id: 'test-session-id',
-        }),
-      })
+      await route.fulfill({ json: startResult })
     })
-
-    // Open create channel dialog
-    const createButton = page.getByTestId('add-channel-button')
-    await createButton.click()
-
-    const createDialog = page.getByRole('dialog')
-    const copilotProviderRadio = createDialog.getByTestId('provider-github_copilot')
-    await copilotProviderRadio.click()
-
-    // Click start button
-    const startButton = createDialog.getByText(/Connect to GitHub Copilot/i)
-    await startButton.click()
-
-    // Verify loading state
-    const loadingText = createDialog.getByText(/Starting.../i)
-    await expect(loadingText).toBeVisible()
-
-    // Wait for user code to appear
-    await expect(createDialog.getByText('ABCD-EFGH')).toBeVisible({ timeout: 5000 })
+    const dialog = page.getByRole('dialog')
+    await dialog.getByRole('button', { name: 'Connect to GitHub Copilot' }).click()
+    await expect(dialog.getByText('Starting...')).toBeVisible()
+    await expect(dialog.getByText(startResult.user_code)).toBeVisible()
   })
 
-  test('device flow displays user code and verification URL', async ({ page }) => {
-    // Mock OAuth start response
-    await page.route('**/api/copilot/oauth/start', async (route) => {
-      await route.fulfill({
-        status: 200,
-        body: JSON.stringify({
-          device_code: 'test-device-code',
-          user_code: 'WXYZ-1234',
-          verification_uri: 'https://github.com/login/device',
-          expires_in: 900,
-          interval: 5,
-          session_id: 'test-session-id',
-        }),
-      })
-    })
-
-    // Open create channel dialog
-    const createButton = page.getByTestId('add-channel-button')
-    await createButton.click()
-
-    const createDialog = page.getByRole('dialog')
-    const copilotProviderRadio = createDialog.getByTestId('provider-github_copilot')
-    await copilotProviderRadio.click()
-
-    // Start device flow
-    const startButton = createDialog.getByText(/Connect to GitHub Copilot/i)
-    await startButton.click()
-
-    // Verify user code is displayed
-    const userCode = createDialog.getByText('WXYZ-1234')
-    await expect(userCode).toBeVisible({ timeout: 5000 })
-
-    // Verify verification URL is displayed
-    const verificationUrl = createDialog.getByText('https://github.com/login/device')
-    await expect(verificationUrl).toBeVisible()
-
-    // Verify "Open GitHub" button exists
-    const openGitHubButton = createDialog.getByText(/Open GitHub/i)
-    await expect(openGitHubButton).toBeVisible()
-
-    // Verify instructions are shown
-    const instructions = createDialog.getByText(/Waiting for you to authorize/i)
-    await expect(instructions).toBeVisible()
+  test('displays the code, verification URL and waiting instructions', async ({ page }) => {
+    const dialog = page.getByRole('dialog')
+    await dialog.getByRole('button', { name: 'Connect to GitHub Copilot' }).click()
+    await expect(dialog.getByText(startResult.user_code)).toBeVisible()
+    await expect(dialog.getByText(startResult.verification_uri)).toBeVisible()
+    await expect(dialog.getByRole('button', { name: 'Open GitHub' })).toBeEnabled()
+    await expect(dialog.getByText(/Waiting for you to authorize/i)).toBeVisible()
   })
 
-  test('device flow handles error state', async ({ page }) => {
-    // Mock OAuth start to fail
-    await page.route('**/api/copilot/oauth/start', async (route) => {
-      await route.fulfill({
-        status: 500,
-        body: JSON.stringify({ error: 'Failed to start device flow' }),
-      })
-    })
-
-    // Open create channel dialog
-    const createButton = page.getByTestId('add-channel-button')
-    await createButton.click()
-
-    const createDialog = page.getByRole('dialog')
-    const copilotProviderRadio = createDialog.getByTestId('provider-github_copilot')
-    await copilotProviderRadio.click()
-
-    // Start device flow
-    const startButton = createDialog.getByText(/Connect to GitHub Copilot/i)
-    await startButton.click()
-
-    // Verify error state is shown
-    const errorMessage = createDialog.getByText(/Failed to start device flow|Error/i)
-    await expect(errorMessage).toBeVisible({ timeout: 5000 })
-
-    // Verify retry button is available
-    const retryButton = createDialog.getByText(/Retry/i)
-    await expect(retryButton).toBeVisible()
-    await expect(retryButton).toBeEnabled()
+  test('shows a start error and allows retry', async ({ page }) => {
+    await page.route(START, (route) => route.fulfill({ status: 500, json: { error: 'Failed to start device flow' } }), { times: 1 })
+    const dialog = page.getByRole('dialog')
+    await dialog.getByRole('button', { name: 'Connect to GitHub Copilot' }).click()
+    await expect(dialog.getByText('Failed to start device flow', { exact: true })).toBeVisible()
+    await dialog.getByRole('button', { name: 'Retry', exact: true }).click()
+    await dialog.getByRole('button', { name: 'Connect to GitHub Copilot' }).click()
+    await expect(dialog.getByText(startResult.user_code)).toBeVisible()
   })
 
-  test('device flow can be reset', async ({ page }) => {
-    // Mock OAuth start response
-    await page.route('**/api/copilot/oauth/start', async (route) => {
-      await route.fulfill({
-        status: 200,
-        body: JSON.stringify({
-          device_code: 'test-device-code',
-          user_code: 'RESET-TEST',
-          verification_uri: 'https://github.com/login/device',
-          expires_in: 900,
-          interval: 5,
-          session_id: 'test-session-id',
-        }),
-      })
-    })
-
-    // Open create channel dialog
-    const createButton = page.getByTestId('add-channel-button')
-    await createButton.click()
-
-    const createDialog = page.getByRole('dialog')
-    const copilotProviderRadio = createDialog.getByTestId('provider-github_copilot')
-    await copilotProviderRadio.click()
-
-    // Start device flow
-    const startButton = createDialog.getByText(/Connect to GitHub Copilot/i)
-    await startButton.click()
-
-    // Wait for user code to appear
-    await expect(createDialog.getByText('RESET-TEST')).toBeVisible({ timeout: 5000 })
-
-    // Click retry/reset button
-    const retryButton = createDialog.getByText(/Retry/i)
-    await retryButton.click()
-
-    // Verify we're back to initial state (start button visible)
-    await expect(createDialog.getByText(/Connect to GitHub Copilot/i)).toBeVisible()
+  test('can reset a pending authorization', async ({ page }) => {
+    const dialog = page.getByRole('dialog')
+    await dialog.getByRole('button', { name: 'Connect to GitHub Copilot' }).click()
+    await expect(dialog.getByText(startResult.user_code)).toBeVisible()
+    await dialog.getByRole('button', { name: 'Retry', exact: true }).click()
+    await expect(dialog.getByText(startResult.user_code)).toBeHidden()
+    await expect(dialog.getByRole('button', { name: 'Connect to GitHub Copilot' })).toBeEnabled()
   })
 
-  test('device flow shows already connected state with existing credentials', async ({ page }) => {
-    // Open create channel dialog
-    const createButton = page.getByTestId('add-channel-button')
-    await createButton.click()
-
-    const createDialog = page.getByRole('dialog')
-    const copilotProviderRadio = createDialog.getByTestId('provider-github_copilot')
-    await copilotProviderRadio.click()
-
-    // Fill in channel name
-    await createDialog.getByTestId('channel-name-input').fill('Test Copilot Channel')
-
-    // Fill in API key (simulating existing credentials)
-    const apiKeyInput = createDialog.getByTestId('channel-api-key-input')
-    await apiKeyInput.fill('{"access_token":"test-token","token_type":"Bearer"}')
-
-    // Click away to trigger validation
-    await createDialog.getByTestId('channel-name-input').click()
-
-    // Should show "Already connected" state
-    await expect(createDialog.getByText(/Already connected to GitHub Copilot/i)).toBeVisible()
-
-    // Verify re-authenticate button is available
-    const reauthButton = createDialog.getByText(/Re-authenticate/i)
-    await expect(reauthButton).toBeVisible()
-    await expect(reauthButton).toBeEnabled()
+  test('uses system authentication without inheriting project context', async ({ page }) => {
+    const requestPromise = page.waitForRequest('**/admin/copilot/oauth/start')
+    await page.getByRole('button', { name: 'Connect to GitHub Copilot' }).click()
+    const request = await requestPromise
+    expect(request.headers().authorization).toMatch(/^Bearer .+/)
+    expect(request.headers()['x-project-id']).toBeUndefined()
+    await expect(page.getByRole('dialog').getByText(startResult.user_code)).toBeVisible()
   })
 
-  test('device flow requires project selection', async ({ page }) => {
-    // Navigate to channels without project context
-    await page.goto('/channels?project=none')
-    await page.waitForTimeout(2000)
+  test('stores authorized credentials and shows them as connected after reopening', async ({ page }) => {
+    test.setTimeout(60000)
+    let polls = 0
+    await page.route(POLL, (route) => {
+      expect(route.request().postDataJSON()).toEqual({ session_id: startResult.session_id })
+      return route.fulfill({ json: ++polls >= 2 ? { access_token: 'test-copilot-token', token_type: 'Bearer' } : { status: 'pending' } })
+    })
+    const dialog = page.getByRole('dialog')
+    await dialog.getByRole('button', { name: 'Connect to GitHub Copilot' }).click()
+    await expect(dialog.getByText(/Connected successfully|credentials imported/i).first()).toBeVisible({ timeout: 10000 })
+    expect(polls).toBeGreaterThanOrEqual(2)
 
-    // Try to open create dialog
-    const createButton = page.getByTestId('add-channel-button')
-    if (await createButton.isVisible().catch(() => false)) {
-      await createButton.click()
-
-      const createDialog = page.getByRole('dialog')
-      const copilotProviderRadio = createDialog.getByTestId('provider-github_copilot')
-      await copilotProviderRadio.click()
-
-      // Try to start OAuth without project
-      const startButton = createDialog.getByText(/Connect to GitHub Copilot/i)
-      await startButton.click()
-
-      // Should show error about project required
-      const errorMessage = createDialog.getByText(/project required|Please select a project/i)
-      await expect(errorMessage).toBeVisible()
-    }
+    const name = `pw-copilot-${Date.now()}`
+    await dialog.getByTestId('channel-name-input').fill(name)
+    await dialog.getByPlaceholder('Model ID', { exact: true }).fill('gpt-4o')
+    await dialog.getByPlaceholder('Model ID', { exact: true }).locator('..').getByRole('button', { name: 'Add', exact: true }).click()
+    await dialog.getByTestId('default-test-model-select').click()
+    await page.getByRole('option', { name: 'gpt-4o', exact: true }).click()
+    await Promise.all([
+      waitForGraphQLOperation(page, 'CreateChannel'),
+      dialog.getByTestId('channel-submit-button').click(),
+    ])
+    await expect(dialog).toBeHidden()
+    await page.reload()
+    const row = page.getByTestId('channels-table').getByRole('row').filter({ hasText: name })
+    await row.locator('td:last-child button').first().click()
+    await expect(dialog.getByText(/Already connected to GitHub Copilot/i)).toBeVisible()
+    await expect(dialog.getByRole('button', { name: /Re-authenticate/i })).toBeEnabled()
   })
 
-  test('device flow polling handles success response', async ({ page }) => {
-    let pollCount = 0
-
-    // Mock OAuth start
-    await page.route('**/api/copilot/oauth/start', async (route) => {
-      await route.fulfill({
-        status: 200,
-        body: JSON.stringify({
-          device_code: 'test-device-code',
-          user_code: 'POLL-TEST',
-          verification_uri: 'https://github.com/login/device',
-          expires_in: 900,
-          interval: 1, // Short interval for testing
-          session_id: 'test-session-id',
-        }),
-      })
+  test('backs off polling after slow_down', async ({ page }) => {
+    const polls: number[] = []
+    await page.route(POLL, (route) => {
+      polls.push(Date.now())
+      return route.fulfill({ json: { status: polls.length === 1 ? 'slow_down' : 'pending' } })
     })
-
-    // Mock OAuth polling - return success on second poll
-    await page.route('**/api/copilot/oauth/poll', async (route) => {
-      pollCount++
-      if (pollCount >= 2) {
-        await route.fulfill({
-          status: 200,
-          body: JSON.stringify({
-            access_token: 'test-access-token',
-            token_type: 'Bearer',
-            expires_in: 3600,
-            refresh_token: 'test-refresh-token',
-            scope: 'read:user',
-          }),
-        })
-      } else {
-        await route.fulfill({
-          status: 200,
-          body: JSON.stringify({ status: 'pending' }),
-        })
-      }
-    })
-
-    // Open create channel dialog
-    const createButton = page.getByTestId('add-channel-button')
-    await createButton.click()
-
-    const createDialog = page.getByRole('dialog')
-    const copilotProviderRadio = createDialog.getByTestId('provider-github_copilot')
-    await copilotProviderRadio.click()
-
-    // Start device flow
-    const startButton = createDialog.getByText(/Connect to GitHub Copilot/i)
-    await startButton.click()
-
-    // Wait for user code
-    await expect(createDialog.getByText('POLL-TEST')).toBeVisible({ timeout: 5000 })
-
-    // Wait for success state (credentials imported)
-    await expect(createDialog.getByText(/Connected successfully|credentials imported/i)).toBeVisible({
-      timeout: 10000,
-    })
-
-    expect(pollCount).toBeGreaterThanOrEqual(2)
+    await page.getByRole('button', { name: 'Connect to GitHub Copilot' }).click()
+    await expect.poll(() => polls.length, { timeout: 10000 }).toBeGreaterThanOrEqual(2)
+    expect(polls[1] - polls[0]).toBeGreaterThanOrEqual(1900)
+    await expect(page.getByRole('dialog').getByText(/Waiting for you to authorize/i)).toBeVisible()
   })
 
-  test('device flow polling handles slow_down response', async ({ page }) => {
-    let pollCount = 0
-
-    // Mock OAuth start
-    await page.route('**/api/copilot/oauth/start', async (route) => {
-      await route.fulfill({
-        status: 200,
-        body: JSON.stringify({
-          device_code: 'test-device-code',
-          user_code: 'SLOW-TEST',
-          verification_uri: 'https://github.com/login/device',
-          expires_in: 900,
-          interval: 1,
-          session_id: 'test-session-id',
-        }),
-      })
-    })
-
-    // Mock OAuth polling - return slow_down then pending
-    await page.route('**/api/copilot/oauth/poll', async (route) => {
-      pollCount++
-      if (pollCount === 1) {
-        await route.fulfill({
-          status: 200,
-          body: JSON.stringify({ status: 'slow_down' }),
-        })
-      } else {
-        await route.fulfill({
-          status: 200,
-          body: JSON.stringify({ status: 'pending' }),
-        })
-      }
-    })
-
-    // Open create channel dialog
-    const createButton = page.getByTestId('add-channel-button')
-    await createButton.click()
-
-    const createDialog = page.getByRole('dialog')
-    const copilotProviderRadio = createDialog.getByTestId('provider-github_copilot')
-    await copilotProviderRadio.click()
-
-    // Start device flow
-    const startButton = createDialog.getByText(/Connect to GitHub Copilot/i)
-    await startButton.click()
-
-    // Wait for user code
-    await expect(createDialog.getByText('SLOW-TEST')).toBeVisible({ timeout: 5000 })
-
-    // Wait a bit to ensure polling continues
-    await page.waitForTimeout(3000)
-
-    // Verify we're still in waiting state
-    await expect(createDialog.getByText(/Waiting for you to authorize/i)).toBeVisible()
-  })
-
-  test('device flow handles expired session', async ({ page }) => {
-    // Mock OAuth start
-    await page.route('**/api/copilot/oauth/start', async (route) => {
-      await route.fulfill({
-        status: 200,
-        body: JSON.stringify({
-          device_code: 'test-device-code',
-          user_code: 'EXP-TEST',
-          verification_uri: 'https://github.com/login/device',
-          expires_in: 2, // Very short expiration
-          interval: 1,
-          session_id: 'test-session-id',
-        }),
-      })
-    })
-
-    // Mock OAuth polling - return expired
-    await page.route('**/api/copilot/oauth/poll', async (route) => {
-      await route.fulfill({
-        status: 400,
-        body: JSON.stringify({
-          error: 'expired_token',
-          error_description: 'The device code has expired',
-        }),
-      })
-    })
-
-    // Open create channel dialog
-    const createButton = page.getByTestId('add-channel-button')
-    await createButton.click()
-
-    const createDialog = page.getByRole('dialog')
-    const copilotProviderRadio = createDialog.getByTestId('provider-github_copilot')
-    await copilotProviderRadio.click()
-
-    // Start device flow
-    const startButton = createDialog.getByText(/Connect to GitHub Copilot/i)
-    await startButton.click()
-
-    // Wait for user code
-    await expect(createDialog.getByText('EXP-TEST')).toBeVisible({ timeout: 5000 })
-
-    // Wait for error state
-    await expect(createDialog.getByText(/expired|Device flow expired/i)).toBeVisible({
-      timeout: 10000,
-    })
-
-    // Verify retry button is available
-    const retryButton = createDialog.getByText(/Retry/i)
-    await expect(retryButton).toBeVisible()
+  test('shows an expired session error with a retry action', async ({ page }) => {
+    await page.route(POLL, (route) => route.fulfill({ status: 400, json: { error: 'expired_token' } }))
+    await page.getByRole('button', { name: 'Connect to GitHub Copilot' }).click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.getByText('expired_token', { exact: true })).toBeVisible()
+    await expect(dialog.getByRole('button', { name: 'Retry', exact: true })).toBeEnabled()
   })
 })

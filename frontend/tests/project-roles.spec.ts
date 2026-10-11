@@ -39,7 +39,7 @@ test.describe('Project Roles Management', () => {
     await page.keyboard.press('Escape')
 
     await Promise.all([
-      waitForGraphQLOperation(page, 'CreateProjectRole'),
+      waitForGraphQLOperation(page, 'CreateRole'),
       dialog.getByRole('button', { name: /保存|Save|创建|Create/i }).click()
     ])
     
@@ -68,7 +68,7 @@ test.describe('Project Roles Management', () => {
     await editDialog.getByLabel(/角色名称|Role Name|名称/i).fill(updatedName)
 
     await Promise.all([
-      waitForGraphQLOperation(page, 'UpdateProjectRole'),
+      waitForGraphQLOperation(page, 'UpdateRole'),
       editDialog.getByRole('button', { name: /保存|Save|更新|Update/i }).click()
     ])
     
@@ -101,7 +101,7 @@ test.describe('Project Roles Management', () => {
     await expect(deleteDialog).toContainText(/删除角色|Delete Role|删除|Delete/i)
 
     await Promise.all([
-      waitForGraphQLOperation(page, 'DeleteProjectRole'),
+      waitForGraphQLOperation(page, 'DeleteRole'),
       deleteDialog.getByRole('button', { name: /删除|Delete|确认|Confirm/i }).click()
     ])
 
@@ -139,7 +139,7 @@ test.describe('Project Roles Management', () => {
     await page.keyboard.press('Escape')
 
     await Promise.all([
-      waitForGraphQLOperation(page, 'CreateProjectRole'),
+      waitForGraphQLOperation(page, 'CreateRole'),
       createDialog.getByRole('button', { name: /保存|Save|创建|Create/i }).click()
     ])
     
@@ -177,7 +177,7 @@ test.describe('Project Roles Management', () => {
 
     const deleteDialog = page.getByRole('alertdialog').or(page.getByRole('dialog'))
     await Promise.all([
-      waitForGraphQLOperation(page, 'DeleteProjectRole'),
+      waitForGraphQLOperation(page, 'DeleteRole'),
       deleteDialog.getByRole('button', { name: /删除|Delete|确认|Confirm/i }).click()
     ])
 

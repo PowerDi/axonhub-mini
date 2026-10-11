@@ -162,7 +162,7 @@ test.describe('Admin API Keys Management', () => {
     await expect(secondProfileInput).toHaveAttribute('aria-invalid', 'true')
 
     // Check that Save button is disabled
-    const saveButton = profilesDialog.getByRole('button', { name: /保存|Save/i })
+    const saveButton = profilesDialog.getByRole('button', { name: /^(保存|Save)$/i })
     await expect(saveButton).toBeDisabled()
 
     // Change to a unique name
@@ -254,7 +254,7 @@ test.describe('Admin API Keys Management', () => {
     await expect(secondProfileInput).toHaveAttribute('aria-invalid', 'true')
     
     // Save button should be disabled
-    const saveButton = profilesDialog.getByRole('button', { name: /保存|Save/i })
+    const saveButton = profilesDialog.getByRole('button', { name: /^(保存|Save)$/i })
     await expect(saveButton).toBeDisabled()
     
     // Try with whitespace: " default "
@@ -332,11 +332,7 @@ test.describe('Admin API Keys Management', () => {
     await activeProfileSelect.click()
     await page.getByRole('option', { name: /default/i }).first().click()
 
-    const expandButton = profilesDialog.locator('button[aria-expanded="false"]').first()
-    if (await expandButton.isVisible().catch(() => false)) {
-      await expandButton.click()
-      await page.waitForTimeout(300)
-    }
+    await profilesDialog.getByRole('button', { name: /^(展开配置|Expand Profile)$/i }).click()
 
     const quotaSwitch = profilesDialog.getByRole('switch').first()
     await quotaSwitch.click()
@@ -359,10 +355,18 @@ test.describe('Admin API Keys Management', () => {
     await unitSelect.click()
     await page.getByRole('option', { name: /分钟|Minute/i }).first().click()
 
-    const saveButton = profilesDialog.getByRole('button', { name: /保存|Save/i })
+    const saveButton = profilesDialog.getByRole('button', { name: /^(保存|Save)$/i })
     await expect(saveButton).toBeEnabled()
 
     await Promise.all([waitForGraphQLOperation(page, 'UpdateAPIKeyProfiles'), saveButton.click()])
     await expect(profilesDialog).not.toBeVisible({ timeout: 10000 })
+
+    await page.reload()
+    await actionsTrigger.click()
+    await page.getByRole('menuitem', { name: /配置|Profiles/i }).click()
+    await expect(profilesDialog.getByRole('switch').first()).toBeChecked()
+    await expect(profilesDialog.getByLabel(/请求次数|Request Count/i)).toHaveValue('1')
+    await expect(periodSelect).toContainText(/过去一段时间|Past duration/i)
+    await expect(unitSelect).toContainText(/分钟|Minute/i)
   })
 })

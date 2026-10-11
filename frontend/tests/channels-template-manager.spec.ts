@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { signInAsAdmin, waitForGraphQLOperation } from './auth.utils'
+import { gotoAndEnsureAuth, waitForGraphQLOperation } from './auth.utils'
 
 const CREATE_OPERATION = 'mutation CreateChannelOverrideTemplate('
 
@@ -16,9 +16,7 @@ function templateItem(page: Page, name: string) {
 }
 
 async function openManager(page: Page) {
-  await page.goto('/sign-in')
-  await signInAsAdmin(page)
-  await page.goto('/channels')
+  await gotoAndEnsureAuth(page, '/channels')
   await page.getByTestId('manage-templates-button').click()
   await expect(managerDialog(page)).toBeVisible()
 }
