@@ -21,7 +21,7 @@ jobs:
         include:
           - arch: amd64
             platform: linux/amd64
-            runner: ubuntu-latest
+            runner: ubuntu-24.04
           - arch: arm64
             platform: linux/arm64
             runner: ubuntu-24.04-arm
@@ -80,7 +80,7 @@ jobs:
   create_manifests:
     name: Create multi-arch manifests (Docker Hub)
     needs: [build_single_arch]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: github.repository_owner == 'looplj' && startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Extract tag

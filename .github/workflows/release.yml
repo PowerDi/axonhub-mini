@@ -14,7 +14,7 @@ jobs:
     # Upstream-only: goreleaser publishes to looplj's Homebrew tap and release
     # assets. This fork never releases on upstream's behalf.
     if: github.repository_owner == 'looplj'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v7

@@ -27,7 +27,7 @@ on:
 jobs:
   prepare:
     name: Pin commit & plan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     outputs:
@@ -60,13 +60,13 @@ jobs:
 
           case "$ARCH" in
             amd64)
-              MATRIX='[{"arch":"amd64","platform":"linux/amd64","runner":"ubuntu-latest"}]'
+              MATRIX='[{"arch":"amd64","platform":"linux/amd64","runner":"ubuntu-24.04"}]'
               ;;
             arm64)
               MATRIX='[{"arch":"arm64","platform":"linux/arm64","runner":"ubuntu-24.04-arm"}]'
               ;;
             both)
-              MATRIX='[{"arch":"amd64","platform":"linux/amd64","runner":"ubuntu-latest"},{"arch":"arm64","platform":"linux/arm64","runner":"ubuntu-24.04-arm"}]'
+              MATRIX='[{"arch":"amd64","platform":"linux/amd64","runner":"ubuntu-24.04"},{"arch":"arm64","platform":"linux/arm64","runner":"ubuntu-24.04-arm"}]'
               ;;
             *)
               echo "Unsupported arch: $ARCH" >&2
@@ -242,7 +242,7 @@ jobs:
   create_manifest:
     name: Create manifest
     needs: [prepare, build_single_arch]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
