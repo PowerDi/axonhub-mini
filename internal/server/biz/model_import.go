@@ -329,9 +329,10 @@ func (svc *ModelService) appendImportedAssociations(
 // explicit, which the tag- and regex-based types cannot express because every
 // channel a single rule matches shares one priority.
 //
-// Priorities are clamped to MaxModelAssociations, matching the ceiling the
-// association dialog accepts, so appending onto already high priorities cannot
-// produce a value the editor would reject.
+// Priorities continue after the highest existing one, so imported rules run
+// after everything already configured. They are deliberately not capped here:
+// validateModelSettings renumbers the whole list into dense tiers afterwards,
+// so an append onto an already high priority cannot jump in front of it.
 func buildImportedAssociations(
 	requestModelID string,
 	sources []*ImportModelSource,
@@ -378,7 +379,7 @@ func buildImportedAssociations(
 
 		associations = append(associations, &objects.ModelAssociation{
 			Type:     associationTypeChannelModel,
-			Priority: min(nextPriority+len(associations), MaxModelAssociations),
+			Priority: nextPriority + len(associations),
 			ChannelModel: &objects.ChannelModelAssociation{
 				ChannelID: source.ChannelID,
 				ModelID:   source.UpstreamModelID,

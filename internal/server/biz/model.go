@@ -60,6 +60,10 @@ func validateModelSettings(settings *objects.ModelSettings) error {
 	}
 
 	settings.NormalizeRoutingPolicy()
+	// Priorities are a derived tier index. Renumbering them here keeps stored
+	// rules dense whatever the caller sent, matching what the association dialog
+	// shows: tiers run 0..n-1, and rules sharing a tier stay load balanced.
+	objects.NormalizeAssociationPriorities(settings.Associations)
 	if !objects.IsValidLoadBalancerStrategy(settings.LoadBalancerStrategy) {
 		return fmt.Errorf("invalid load balancer strategy %q", settings.LoadBalancerStrategy)
 	}

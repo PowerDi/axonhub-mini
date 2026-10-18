@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useModels } from '../context/models-context';
+import { countPriorityTiers } from '../data/association-priority';
 import { MAX_ASSOCIATIONS } from '../data/constants';
 import { buildProviderModelIndex, compareModelIds, deriveModelMetadata, normalizeModelKey } from '../data/model-metadata';
 import {
@@ -86,14 +87,13 @@ function countAssociations(model?: Model) {
 }
 
 /**
- * Priority the next appended association gets, mirroring what the backend
- * computes so the preview shows the priorities the import will actually write.
+ * Priority the next imported rule gets: one past the last tier, which mirrors
+ * the dense numbering the backend writes after normalizing the model rules.
  */
 function nextPriorityFor(model?: Model) {
   const associations = model?.settings?.associations || [];
-  if (associations.length === 0) return 0;
 
-  return Math.max(...associations.map((association) => association.priority ?? 0)) + 1;
+  return countPriorityTiers(associations, (association) => association.priority);
 }
 
 export function ModelsUnassociatedDialog() {
@@ -486,7 +486,7 @@ export function ModelsUnassociatedDialog() {
                               {group.sources.map((source, index) => (
                                 <div key={source.key} className='flex flex-wrap items-center gap-1.5 text-xs'>
                                   <Badge variant='outline' className='shrink-0 font-mono text-[10px]'>
-                                    P{Math.min(basePriority + index, MAX_ASSOCIATIONS)}
+                                    P{basePriority + index}
                                   </Badge>
                                   <span className='text-muted-foreground'>{source.channelName}</span>
                                   <span className='text-muted-foreground'>→</span>

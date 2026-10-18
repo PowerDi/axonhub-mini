@@ -309,14 +309,14 @@ func TestImportUnassociatedModels_CreateAtAssociationLimitSucceeds(t *testing.T)
 // appendImportedAssociations
 //
 
-func TestImportUnassociatedModels_AppendStartsAfterMaxExistingPriority(t *testing.T) {
+func TestImportUnassociatedModels_AppendKeepsExistingRulesAhead(t *testing.T) {
 	svc, ctx, client := setupImportTest(t, "file:import_append?mode=memory&_fk=0")
 
 	ch1 := createImportChannel(t, ctx, client, "Channel A", []string{"gpt-4"})
 	ch2 := createImportChannel(t, ctx, client, "Channel B", []string{"gpt-4-mirror", "gpt-4-backup"})
 
-	// Existing priorities are deliberately out of order so the append must use
-	// max(existing)+1, not len(existing).
+	// Existing priorities are deliberately out of order and not dense, so the
+	// append has to sort after max(existing)+1 rather than after len(existing).
 	target := createImportModel(t, ctx, client, "gpt-4", model.StatusEnabled, []*objects.ModelAssociation{
 		channelModelAssoc(ch1.ID, "gpt-4", 3),
 		channelModelAssoc(ch1.ID, "gpt-4-alias", 1),
@@ -338,8 +338,12 @@ func TestImportUnassociatedModels_AppendStartsAfterMaxExistingPriority(t *testin
 	associations := result.Models[0].Settings.Associations
 	require.Len(t, associations, 4)
 
-	// Existing rules keep their priorities; new ones continue from max+1.
-	require.Equal(t, []int{3, 1, 4, 5}, assocPriorities(associations))
+	// The stored rules are renumbered into dense tiers. The existing rule that
+	// already ran first (priority 1) keeps the first tier, and the appended
+	// rules stay behind both existing ones.
+	require.Equal(t, []int{0, 1, 2, 3}, assocPriorities(associations))
+	require.Equal(t, "gpt-4-alias", associations[0].ChannelModel.ModelID)
+	require.Equal(t, "gpt-4", associations[1].ChannelModel.ModelID)
 	require.Equal(t, "gpt-4-mirror", associations[2].ChannelModel.ModelID)
 	require.Equal(t, associationTypeChannelModel, associations[2].Type)
 	require.Equal(t, "gpt-4-backup", associations[3].ChannelModel.ModelID)
@@ -501,15 +505,16 @@ func TestImportUnassociatedModels_AppendDuplicatesDoNotCountTowardLimit(t *testi
 	require.Len(t, result.Models[0].Settings.Associations, 10)
 }
 
-func TestImportUnassociatedModels_AppendClampsPriorityToMax(t *testing.T) {
-	svc, ctx, client := setupImportTest(t, "file:import_clamp?mode=memory&_fk=0")
+func TestImportUnassociatedModels_AppendAfterHighPriorityKeepsOrder(t *testing.T) {
+	svc, ctx, client := setupImportTest(t, "file:import_high_priority?mode=memory&_fk=0")
 
 	ch := createImportChannel(t, ctx, client, "Channel A", []string{"a", "b", "c", "d", "e"})
 
-	// Existing priorities already sit at the ceiling the association dialog accepts.
-	target := createImportModel(t, ctx, client, "clamped", model.StatusEnabled, []*objects.ModelAssociation{
+	// An existing rule that sits above the association cap used to be the trap:
+	// imported priorities were clamped to the cap, so they jumped in front of it.
+	target := createImportModel(t, ctx, client, "appended", model.StatusEnabled, []*objects.ModelAssociation{
 		channelModelAssoc(ch.ID, "a", 9),
-		channelModelAssoc(ch.ID, "b", MaxModelAssociations),
+		channelModelAssoc(ch.ID, "b", 50),
 	})
 
 	result, err := svc.ImportUnassociatedModels(ctx, []*ImportUnassociatedModelItem{
@@ -527,12 +532,11 @@ func TestImportUnassociatedModels_AppendClampsPriorityToMax(t *testing.T) {
 	associations := result.Models[0].Settings.Associations
 	require.Len(t, associations, 5)
 
-	// nextPriority would be 11, 12, 13 without clamping.
-	require.Equal(t, []int{9, MaxModelAssociations, MaxModelAssociations, MaxModelAssociations, MaxModelAssociations},
-		assocPriorities(associations))
-
-	for _, assoc := range associations {
-		require.LessOrEqual(t, assoc.Priority, MaxModelAssociations)
+	// Dense renumbering keeps the failover order intact: the rule at 50 still
+	// runs before the imported ones instead of losing to a clamped priority.
+	require.Equal(t, []int{0, 1, 2, 3, 4}, assocPriorities(associations))
+	for i, want := range []string{"a", "b", "c", "d", "e"} {
+		require.Equal(t, want, associations[i].ChannelModel.ModelID)
 	}
 }
 
@@ -895,7 +899,7 @@ func TestBuildImportedAssociations(t *testing.T) {
 		require.Equal(t, "a is already associated with model 'my-model' on channel 1, skipped", warnings[0])
 	})
 
-	t.Run("priorities are clamped to the maximum", func(t *testing.T) {
+	t.Run("append continues past a high existing priority", func(t *testing.T) {
 		existing := []*objects.ModelAssociation{channelModelAssoc(1, "a", 50)}
 
 		associations, _ := buildImportedAssociations("req", []*ImportModelSource{
@@ -903,7 +907,9 @@ func TestBuildImportedAssociations(t *testing.T) {
 			{ChannelID: 1, UpstreamModelID: "c"},
 		}, existing, channels)
 
-		require.Equal(t, []int{MaxModelAssociations, MaxModelAssociations}, assocPriorities(associations))
+		// Deliberately unclamped: the caller renumbers the whole list afterwards,
+		// so the imported rules must sort after the existing 50, not ahead of it.
+		require.Equal(t, []int{51, 52}, assocPriorities(associations))
 	})
 
 	t.Run("no sources yields empty non-nil results", func(t *testing.T) {

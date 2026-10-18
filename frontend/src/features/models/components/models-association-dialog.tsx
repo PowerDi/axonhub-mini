@@ -1,20 +1,23 @@
-import { useEffect, useMemo, useCallback, useState, useRef } from 'react';
+import { Fragment, useEffect, useMemo, useCallback, useState, useRef } from 'react';
 import { z } from 'zod';
 import { useForm, useFieldArray, useWatch, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { IconPlus, IconTrash, IconChevronDown, IconChevronUp, IconInfoCircle } from '@tabler/icons-react';
-// Rows are draggable and priority tiers are droppable, rather than one sortable
-// list: dragging only ever moves a rule between tiers, and the order inside a
-// tier carries no meaning because rules sharing a priority are load-balanced.
+// Rows are draggable and the tiers plus the gaps between them are droppable,
+// rather than one sortable list: priority is derived from the tier a rule sits
+// in, and the order inside a tier carries no meaning because rules sharing a
+// tier are load-balanced.
 import {
   DndContext,
   KeyboardSensor,
   PointerSensor,
   closestCenter,
+  pointerWithin,
   useDraggable,
   useDroppable,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
 } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
@@ -43,10 +46,13 @@ import { useQueryModelChannelConnections, ModelAssociationInput, ModelChannelCon
 import { useUpdateModel } from '../data/models';
 import { ModelAssociation, normalizeModelRoutingPolicyValue } from '../data/schema';
 import {
-  MAX_ASSOCIATION_PRIORITY,
   associationPrioritySchema,
-  hasInvalidAssociationPriority,
-  nextAssociationPriority,
+  buildPriorityTiers,
+  countPriorityTiers,
+  insertRowAsNewTier,
+  moveRowToTier,
+  priorityByRow,
+  type PriorityTiers,
 } from '../data/association-priority';
 import { toast } from 'sonner';
 import { ChannelModelsList } from './channel-models-list';
@@ -685,60 +691,34 @@ function sortAssociationsByPriority<T extends { priority?: number }>(association
   return [...associations].sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
 }
 
-/**
- * One priority tier. Rules sharing a priority are load-balanced against each
- * other, so a tier is the unit the router picks between, and the tier order is
- * the failover order.
- */
-interface PriorityGroup {
-  priority: number;
-  /** Indices into the `useFieldArray` fields, which is what AssociationRow needs. */
-  rows: { id: string; index: number }[];
-}
-
-/**
- * Buckets rows by priority so the UI can show what the router actually does:
- * one box per tier, tried top to bottom.
- *
- * Rows are keyed by field id rather than by array position because the field
- * array is never reordered — only the priority values change.
- */
-function groupRowsByPriority(rows: { id: string; index: number }[], priorityOf: (index: number) => number): PriorityGroup[] {
-  const buckets = new Map<number, { id: string; index: number }[]>();
-
-  for (const row of rows) {
-    const priority = priorityOf(row.index);
-    const bucket = buckets.get(priority);
-    if (bucket) {
-      bucket.push(row);
-    } else {
-      buckets.set(priority, [row]);
-    }
-  }
-
-  return [...buckets.entries()].sort(([a], [b]) => a - b).map(([priority, groupRows]) => ({ priority, rows: groupRows }));
-}
-
 const DROP_ID_TIER_PREFIX = 'priority-tier:';
-const DROP_ID_NEW_TIER = 'priority-tier:new';
+const DROP_ID_GAP_PREFIX = 'priority-gap:';
 
 /**
- * Resolves the priority a drop target stands for, or undefined when the id is
- * not a tier at all. A new tier lands one past the current last one, clamped so
- * it can never exceed what the priority input accepts.
+ * Prefers whatever is under the pointer, so the thin gap strips between tiers
+ * can be aimed at directly, and falls back to the nearest droppable for the
+ * keyboard sensor, which has no pointer.
  */
-function priorityFromDropID(dropID: string, maxPriority: number): number | undefined {
-  if (dropID === DROP_ID_NEW_TIER) {
-    return Math.min(maxPriority + 1, MAX_ASSOCIATION_PRIORITY);
-  }
+const tierCollisionDetection: CollisionDetection = (args) => {
+  const collisions = pointerWithin(args);
 
-  if (!dropID.startsWith(DROP_ID_TIER_PREFIX)) {
-    return undefined;
-  }
+  return collisions.length > 0 ? collisions : closestCenter(args);
+};
 
-  const parsed = Number(dropID.slice(DROP_ID_TIER_PREFIX.length));
+/**
+ * Renumbers rows so their priorities are the tiers they already sit in: rules
+ * that shared a priority keep sharing one and the gaps left by removed tiers
+ * close up. Priorities are a derived value here, never something to type.
+ */
+function normalizeAssociationPriorities(rows: AssociationFormRow[]): AssociationFormRow[] {
+  const tiers = buildPriorityTiers(
+    rows.map((row, index) => ({ id: String(index), priority: row.priority })),
+    (row) => row.id,
+    (row) => row.priority
+  );
+  const priorities = priorityByRow(tiers);
 
-  return Number.isInteger(parsed) ? parsed : undefined;
+  return rows.map((row, index) => ({ ...row, priority: priorities.get(String(index)) ?? 0 }));
 }
 
 function buildDeveloperChannelPreview(associations: AssociationFormRow[], channelOptions: ChannelOption[]): ModelChannelConnection[] {
@@ -797,6 +777,7 @@ export function ModelsAssociationDialog() {
   const { mutateAsync: queryConnections } = useQueryModelChannelConnections();
   const [connections, setConnections] = useState<ModelChannelConnection[]>([]);
   const [channelFilter, setChannelFilter] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
   const dialogContentRef = useRef<HTMLDivElement>(null);
 
   const isOpen = open === 'association' || open === 'developerAssociation';
@@ -877,18 +858,15 @@ export function ModelsAssociationDialog() {
   // Serialize to string for stable comparison in debounce
   const associationsString = JSON.stringify(watchedAssociations);
   const debouncedAssociationsString = useDebounce(associationsString, 500);
-  const debouncedPriorities = useDebounce(
-    JSON.stringify(watchedAssociations.map((assoc) => assoc.priority ?? null)),
-    500
-  );
   const debouncedAssociations = useMemo(() => {
     try {
       const rows: AssociationFormRow[] = JSON.parse(debouncedAssociationsString) || [];
-      return { rows, hasInvalidPriority: hasInvalidAssociationPriority(JSON.parse(debouncedPriorities) || []) };
+
+      return Array.isArray(rows) ? rows : [];
     } catch {
-      return { rows: [], hasInvalidPriority: true };
+      return [];
     }
-  }, [debouncedAssociationsString, debouncedPriorities]);
+  }, [debouncedAssociationsString]);
 
   // Query connections when associations change
   useEffect(() => {
@@ -897,13 +875,7 @@ export function ModelsAssociationDialog() {
       return;
     }
 
-    const { rows, hasInvalidPriority } = debouncedAssociations;
-
-    // A fractional or out-of-range priority is rejected by the GraphQL Int input,
-    // so the preview stays on the last valid result until the input is corrected.
-    if (hasInvalidPriority) {
-      return;
-    }
+    const rows = debouncedAssociations;
 
     const fetchConnections = async () => {
       try {
@@ -944,9 +916,11 @@ export function ModelsAssociationDialog() {
         traceStickyMode: isDeveloperMode
           ? 'default'
           : normalizeModelRoutingPolicyValue(currentRow?.settings?.traceStickyMode),
-        associations: associations
-          .filter((assoc) => !isDeveloperMode || assoc.type === 'channel_model' || assoc.type === 'channel_tags_model')
-          .map((assoc) => modelAssociationToFormRow(assoc, isDeveloperMode)),
+        associations: normalizeAssociationPriorities(
+          associations
+            .filter((assoc) => !isDeveloperMode || assoc.type === 'channel_model' || assoc.type === 'channel_tags_model')
+            .map((assoc) => modelAssociationToFormRow(assoc, isDeveloperMode))
+        ),
       });
     }
   }, [isOpen, isDeveloperMode, currentRow, developerAssociations, form]);
@@ -1003,16 +977,67 @@ export function ModelsAssociationDialog() {
     form.reset();
     setConnections([]);
     setChannelFilter('');
+    setIsDragging(false);
   }, [setOpen, setCurrentDeveloper, form]);
+
+  const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
+
+  // Rows are keyed by field id rather than by array position because the field
+  // array is never reordered — only the priorities, which are derived from it.
+  const rows = useMemo(() => fields.map((field, index) => ({ id: field.id, index })), [fields]);
+  const rowByID = useMemo(() => new Map(rows.map((row) => [row.id, row])), [rows]);
+
+  // Priority comes from the watched values rather than form.getValues so the
+  // tiers re-render as they are rewritten, not only when a row is added.
+  const priorityTiers = useMemo(
+    () => buildPriorityTiers(rows, (row) => row.id, (row) => watchedAssociations?.[row.index]?.priority),
+    [rows, watchedAssociations]
+  );
+
+  /**
+   * Writes the dense tier index of every row back into the form. Rows whose
+   * priority is already correct are left alone, so a drag that changes nothing
+   * does not mark the form dirty.
+   */
+  const writeAssociationPriorities = useCallback(
+    (priorities: Map<string, number>, skipRowID?: string) => {
+      rows.forEach((row) => {
+        if (row.id === skipRowID) {
+          return;
+        }
+
+        const priority = priorities.get(row.id);
+        if (priority === undefined) {
+          return;
+        }
+
+        if (form.getValues(`associations.${row.index}.priority`) === priority) {
+          return;
+        }
+
+        form.setValue(`associations.${row.index}.priority`, priority, { shouldDirty: true });
+      });
+    },
+    [form, rows]
+  );
+
+  const applyPriorityTiers = useCallback(
+    (tiers: PriorityTiers) => writeAssociationPriorities(priorityByRow(tiers)),
+    [writeAssociationPriorities]
+  );
 
   const handleAddAssociation = useCallback(() => {
     if (fields.length >= 10) return;
 
+    // Read the live values, not the memo, so two quick clicks cannot hand out
+    // the same priority before the next render.
     const currentAssociations = form.getValues('associations') || [];
 
     append({
       type: 'channel_model',
-      priority: nextAssociationPriority(currentAssociations.map((a) => a.priority)),
+      // A new rule starts as its own tier at the end of the list. Tiers are
+      // numbered 0..n-1, so the tier count is exactly the next dense priority.
+      priority: countPriorityTiers(currentAssociations, (assoc) => assoc.priority),
       disabled: false,
       whenEnabled: false,
       whenCondition: DEFAULT_WHEN_CONDITION,
@@ -1027,26 +1052,29 @@ export function ModelsAssociationDialog() {
     });
   }, [append, fields.length, form, isDeveloperMode]);
 
-  const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
+  const handleRemoveAssociation = useCallback(
+    (rowID: string) => {
+      const index = rows.findIndex((row) => row.id === rowID);
+      if (index === -1) {
+        return;
+      }
 
-  // Read priorities from the watched values rather than form.getValues so the
-  // groups re-render when a priority input changes, not only when a row is added.
-  const priorityGroups = useMemo(
-    () =>
-      groupRowsByPriority(
-        fields.map((field, index) => ({ id: field.id, index })),
-        (index) => watchedAssociations?.[index]?.priority ?? 0
-      ),
-    [fields, watchedAssociations]
+      // Renumber the survivors at their current indices before the removal
+      // shifts them, so losing the last rule of a tier closes that tier up
+      // instead of leaving its priority behind for good.
+      const remaining = priorityTiers.map((tier) => tier.filter((id) => id !== rowID)).filter((tier) => tier.length > 0);
+      writeAssociationPriorities(priorityByRow(remaining), rowID);
+
+      remove(index);
+    },
+    [priorityTiers, remove, rows, writeAssociationPriorities]
   );
 
-  const maxPriority = priorityGroups.length > 0 ? priorityGroups[priorityGroups.length - 1].priority : 0;
-
   /**
-   * Moves a rule to the tier it was dropped on by rewriting its priority. The
-   * field array itself is left alone: priority is the only thing that decides
-   * routing order, and reordering the array would invalidate the indices every
-   * row's form field name is built from.
+   * Dropping a rule on a tier makes it share that tier; dropping it in a gap
+   * pulls it out into a tier of its own. Both routes renumber the tiers densely
+   * afterwards, so the first tier is always P0 and the last gap can always grow
+   * a brand new lowest-priority tier.
    */
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
@@ -1055,26 +1083,33 @@ export function ModelsAssociationDialog() {
         return;
       }
 
-      const index = fields.findIndex((field) => field.id === active.id);
-      if (index === -1) {
+      const rowID = String(active.id);
+      if (!priorityTiers.some((tier) => tier.includes(rowID))) {
         return;
       }
 
-      const target = priorityFromDropID(String(over.id), maxPriority);
-      if (target === undefined) {
+      const overID = String(over.id);
+
+      if (overID.startsWith(DROP_ID_TIER_PREFIX)) {
+        const targetTier = Number(overID.slice(DROP_ID_TIER_PREFIX.length));
+        if (!Number.isInteger(targetTier)) {
+          return;
+        }
+
+        applyPriorityTiers(moveRowToTier(priorityTiers, rowID, targetTier));
         return;
       }
 
-      const current = form.getValues(`associations.${index}.priority`) ?? 0;
-      if (current === target) {
-        return;
-      }
+      if (overID.startsWith(DROP_ID_GAP_PREFIX)) {
+        const gapIndex = Number(overID.slice(DROP_ID_GAP_PREFIX.length));
+        if (!Number.isInteger(gapIndex)) {
+          return;
+        }
 
-      // shouldDirty keeps the save button enabled; shouldValidate re-runs the
-      // 0..MAX_ASSOCIATION_PRIORITY check that the number input also enforces.
-      form.setValue(`associations.${index}.priority`, target, { shouldDirty: true, shouldValidate: true });
+        applyPriorityTiers(insertRowAsNewTier(priorityTiers, rowID, gapIndex));
+      }
     },
-    [fields, form, maxPriority]
+    [applyPriorityTiers, priorityTiers]
   );
 
   // Filter connections by channel name
@@ -1243,29 +1278,56 @@ export function ModelsAssociationDialog() {
                   )}
 
                   {fields.length > 0 && (
-                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                      <div className='flex flex-col gap-3'>
-                        {priorityGroups.map((group) => (
-                          <PriorityTier key={group.priority} priority={group.priority} isOnlyTier={priorityGroups.length === 1}>
-                            {group.rows.map(({ id, index }) => (
-                              <AssociationRow
-                                key={id}
-                                rowID={id}
-                                index={index}
-                                form={form}
-                                isDeveloperMode={isDeveloperMode}
-                                channelOptions={channelOptions}
-                                allModelOptions={allModelOptions}
-                                allTags={allTags}
-                                onRemove={() => remove(index)}
-                                portalContainer={dialogContentRef.current}
-                              />
-                            ))}
-                          </PriorityTier>
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={tierCollisionDetection}
+                      onDragStart={() => setIsDragging(true)}
+                      onDragEnd={(event) => {
+                        setIsDragging(false);
+                        handleDragEnd(event);
+                      }}
+                      onDragCancel={() => setIsDragging(false)}
+                    >
+                      <div className='flex flex-col gap-1'>
+                        {priorityTiers.map((tier, tierIndex) => (
+                          <Fragment key={tierIndex}>
+                            {/* Splitting only makes sense with more than one rule. */}
+                            {fields.length > 1 && <PriorityTierGap gapIndex={tierIndex} isDragging={isDragging} />}
+                            <PriorityTier priority={tierIndex} isOnlyTier={priorityTiers.length === 1}>
+                              {tier.map((id) => {
+                                const row = rowByID.get(id);
+                                if (!row) {
+                                  return null;
+                                }
+
+                                return (
+                                  <AssociationRow
+                                    key={row.id}
+                                    rowID={row.id}
+                                    index={row.index}
+                                    priority={tierIndex}
+                                    form={form}
+                                    isDeveloperMode={isDeveloperMode}
+                                    channelOptions={channelOptions}
+                                    allModelOptions={allModelOptions}
+                                    allTags={allTags}
+                                    onRemove={() => handleRemoveAssociation(row.id)}
+                                    portalContainer={dialogContentRef.current}
+                                  />
+                                );
+                              })}
+                            </PriorityTier>
+                          </Fragment>
                         ))}
 
-                        {/* Only worth showing when splitting a tier is possible at all. */}
-                        {fields.length > 1 && maxPriority < MAX_ASSOCIATION_PRIORITY && <NewPriorityTierDropZone />}
+                        {/* The last gap always adds a new lowest-priority tier. */}
+                        {fields.length > 1 && (
+                          <PriorityTierGap
+                            gapIndex={priorityTiers.length}
+                            isDragging={isDragging}
+                            label={t('models.dialogs.association.newTierDropZone')}
+                          />
+                        )}
                       </div>
                     </DndContext>
                   )}
@@ -1445,8 +1507,8 @@ function buildAssociationWhen(enabled?: boolean, value?: FilterBuilderGroupListV
 }
 
 /**
- * A droppable priority tier. Dropping a rule here rewrites its priority to this
- * tier's, which is what makes the rule share the tier's load-balancing group.
+ * A droppable priority tier. The tier's position in the list is its priority,
+ * so dropping a rule here makes it share the tier's load-balancing group.
  */
 function PriorityTier({ priority, isOnlyTier, children }: { priority: number; isOnlyTier: boolean; children: React.ReactNode }) {
   const { t } = useTranslation();
@@ -1470,21 +1532,32 @@ function PriorityTier({ priority, isOnlyTier, children }: { priority: number; is
 }
 
 /**
- * Trailing drop zone that splits a rule out into a tier of its own, which is the
- * only way to create a new priority level by dragging.
+ * A droppable slot between two tiers. Dropping a rule here splits it out into a
+ * tier of its own at that position, which is how dragging creates a new priority
+ * level. The trailing slot is the same slot, labelled so it is discoverable.
+ *
+ * The strips stay transparent until a drag starts, then show up as dashed lines
+ * so the insertion points are visible exactly when they matter.
  */
-function NewPriorityTierDropZone() {
-  const { t } = useTranslation();
-  const { setNodeRef, isOver } = useDroppable({ id: DROP_ID_NEW_TIER });
+function PriorityTierGap({ gapIndex, isDragging, label }: { gapIndex: number; isDragging: boolean; label?: string }) {
+  const { setNodeRef, isOver } = useDroppable({ id: `${DROP_ID_GAP_PREFIX}${gapIndex}` });
 
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-lg border border-dashed py-3 text-center text-xs transition-colors ${
-        isOver ? 'border-primary bg-primary/5 text-primary' : 'text-muted-foreground'
+      className={`flex shrink-0 items-center justify-center rounded-lg border border-dashed text-center text-xs transition-colors ${
+        label ? 'py-2' : 'h-2'
+      } ${
+        isOver
+          ? 'border-primary bg-primary/5 text-primary'
+          : label
+            ? 'border-muted-foreground/25 text-muted-foreground'
+            : isDragging
+              ? 'border-muted-foreground/25'
+              : 'border-transparent'
       }`}
     >
-      {t('models.dialogs.association.newTierDropZone')}
+      {label}
     </div>
   );
 }
@@ -1493,6 +1566,8 @@ interface AssociationRowProps {
   /** Field-array id, stable across priority changes, used as the drag id. */
   rowID: string;
   index: number;
+  /** Tier the row sits in, which is also its priority. */
+  priority: number;
   form: ReturnType<typeof useForm<AssociationFormData>>;
   isDeveloperMode: boolean;
   channelOptions: ChannelOption[];
@@ -1526,7 +1601,7 @@ function AssociationTypeSelectContent({ isDeveloperMode }: { isDeveloperMode: bo
   );
 }
 
-function AssociationRow({ rowID, index, form, isDeveloperMode, channelOptions, allModelOptions, allTags, onRemove, portalContainer }: AssociationRowProps) {
+function AssociationRow({ rowID, index, priority, form, isDeveloperMode, channelOptions, allModelOptions, allTags, onRemove, portalContainer }: AssociationRowProps) {
   const { t } = useTranslation();
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: rowID });
 
@@ -1616,8 +1691,8 @@ function AssociationRow({ rowID, index, form, isDeveloperMode, channelOptions, a
       }`}
     >
       <div className='grid grid-cols-[1.25rem_2.5rem_4rem_1fr_2.5rem] sm:grid-cols-[1.25rem_2.25rem_3rem_14rem_1fr_2.25rem] items-center gap-2'>
-        {/* Drag handle — moves the rule to another priority tier. The priority
-            input beside it does the same thing without a pointer. */}
+        {/* Drag handle — drop the rule on another tier to join it, or in a gap
+            between tiers to give it a priority tier of its own. */}
         <div
           className='text-muted-foreground hover:text-foreground flex cursor-grab items-center justify-center active:cursor-grabbing'
           aria-label={t('models.dialogs.association.dragToReprioritize')}
@@ -1636,34 +1711,12 @@ function AssociationRow({ rowID, index, form, isDeveloperMode, channelOptions, a
           />
         </div>
 
-        {/* Priority Input */}
-        <FormField
-          control={form.control}
-          name={`associations.${index}.priority`}
-          render={({ field }) => (
-            <FormItem className='min-w-0 gap-0'>
-              <FormControl>
-                <Input
-                  type='number'
-                  min={0}
-                  max={MAX_ASSOCIATION_PRIORITY}
-                  {...field}
-                  value={field.value ?? ''}
-                  onChange={(e) => {
-                    // Keep the raw input so the schema reports out-of-range values instead of clamping them.
-                    // An empty input becomes null (not undefined) so react-hook-form does not fall back to the default value.
-                    field.onChange(e.target.value ? Number(e.target.value) : null);
-                    // The form only validates on submit, but Save is disabled while invalid, so surface the error now.
-                    void form.trigger(field.name);
-                  }}
-                  className='h-10 sm:h-9 text-center [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:hidden [&::-webkit-inner-spin-button]:appearance-none'
-                  placeholder='0'
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {/* Priority is derived from the tier, so it is shown, never typed. */}
+        <div className='flex items-center justify-center'>
+          <Badge variant='outline' className='font-mono text-[10px] font-normal'>
+            P{priority}
+          </Badge>
+        </div>
 
         {/* Type Select */}
         <FormField

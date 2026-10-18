@@ -42,8 +42,9 @@ If multiple models from the same developer should use the same channel rules, co
 
 By default, a model inherits developer rules from the same developer and merges them with rules configured directly on the model:
 
-- Smaller `priority` values run first.
+- Rules run in priority order, from the smallest priority value up.
 - When priorities tie, model-level rules take precedence over inherited developer rules.
+- Rules that share a priority form one tier and are load balanced against each other.
 - Enable **Do not inherit developer settings** in a model's association dialog when that model should use only its own rules.
 
 ## Model Association Types
@@ -126,23 +127,31 @@ Model associations are "routing rules." AxonHub supports 6 rule types:
 
 **Scenario**: "Find gpt-4 series models in OpenAI or Azure channels"
 
-## Priority Settings
+## Priority Tiers
 
-**Smaller priority value = Higher priority**
+Associations are grouped into **priority tiers**. Rules inside one tier are load
+balanced against each other, and a tier is only left behind once every channel
+in it has failed. Tiers are tried from the top down, so their order is the
+failover order, and smaller priority values run first.
 
-Recommended settings:
-- **Primary channels**: Priority 0-10
-- **Backup channels**: Priority 10-50
-- **Emergency channels**: Priority 50-100
+The association dialog derives the numbers from the list order, so there is no
+priority field to type into:
+
+- Rules shown in the same box share a tier, numbered `P0`, `P1`, … from the top down.
+- **Drag a rule onto another tier** to make it join that tier.
+- **Drag a rule into a gap between two tiers** — or onto the trailing "Drop here
+  to move to a new, lower priority tier" strip — to give it a tier of its own at
+  that position.
+- Tiers are renumbered automatically: the first tier is always `P0` while any
+  rule remains, and removing a rule closes its tier up instead of leaving a hole.
+- **Add Rule** appends a new rule as its own lowest-priority tier.
 
 Example configuration in Admin UI:
-- Association 1: Priority 0 (Highest priority: Primary)
-  - Type: Specific Channel Model
-  - Channel: OpenAI
-  - Model: gpt-4o
-- Association 2: Priority 10 (Lower priority: Backup)
-  - Type: Global Model Match
-  - Model: gpt-4
+- Tier P0 (tried first)
+  - Specific Channel Model: OpenAI / gpt-4o
+  - Global Model Match: gpt-4
+- Tier P1 (backup)
+  - Specific Channel Model: DeepSeek / deepseek-chat
 
 ## System Settings
 
@@ -188,7 +197,7 @@ No, the system automatically deduplicates.
 ## Best Practices
 
 1. **Naming Convention**: Use standardized model names like `gpt-4`, `claude-3-opus`
-2. **Priority Planning**: Primary 0-10, backup 10-50, emergency 50-100
+2. **Priority Planning**: Keep primary channels in the first tier and add backup tiers below it; the dialog numbers the tiers for you
 3. **Use Tags**: Tag channels (e.g., production, test) for batch management
 4. **Test Before Enabling**: Verify request routing in the console after configuration
 5. **Regular Review**: Clean up unused models and association rules

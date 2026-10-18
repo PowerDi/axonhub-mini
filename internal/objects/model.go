@@ -1,5 +1,7 @@
 package objects
 
+import "sort"
+
 type ModelCardReasoning struct {
 	Supported bool `json:"supported"`
 	Default   bool `json:"default"`
@@ -77,6 +79,48 @@ type ModelAssociation struct {
 	ModelID          *ModelIDAssociation          `json:"modelId"`
 	ChannelTagsModel *ChannelTagsModelAssociation `json:"channelTagsModel"`
 	ChannelTagsRegex *ChannelTagsRegexAssociation `json:"channelTagsRegex"`
+}
+
+// NormalizeAssociationPriorities rewrites association priorities into dense
+// tiers that start at 0. Rules that already shared a priority keep sharing one,
+// and the tiers keep their relative order, so the failover order and the
+// load-balancing groups the router reads out of Priority are unchanged while
+// the values stay small and contiguous.
+//
+// The slice is reordered to match the priority order; nil entries are dropped.
+func NormalizeAssociationPriorities(associations []*ModelAssociation) {
+	items := make([]*ModelAssociation, 0, len(associations))
+	for _, assoc := range associations {
+		if assoc != nil {
+			items = append(items, assoc)
+		}
+	}
+
+	for i := len(items); i < len(associations); i++ {
+		associations[i] = nil
+	}
+
+	if len(items) == 0 {
+		return
+	}
+
+	sort.SliceStable(items, func(i, j int) bool {
+		return items[i].Priority < items[j].Priority
+	})
+
+	tier := 0
+	previous := items[0].Priority
+
+	for i, assoc := range items {
+		if i > 0 && assoc.Priority != previous {
+			tier++
+			previous = assoc.Priority
+		}
+
+		assoc.Priority = tier
+	}
+
+	copy(associations, items)
 }
 
 type ModelAssociationWhen struct {
