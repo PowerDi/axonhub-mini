@@ -22,6 +22,7 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/biz"
+	"github.com/looplj/axonhub/internal/server/orchestrator"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/samber/lo"
 )
@@ -123,6 +124,15 @@ func (r *channelResolver) LiveLimiterStats(ctx context.Context, obj *ent.Channel
 	}, nil
 }
 
+// LiveCircuitBreakerStats is the resolver for the liveCircuitBreakerStats field.
+func (r *channelResolver) LiveCircuitBreakerStats(ctx context.Context, obj *ent.Channel) ([]*ChannelCircuitBreakerStats, error) {
+	if obj == nil || !scopes.UserHasScope(ctx, scopes.ScopeReadChannels) {
+		return nil, nil
+	}
+
+	return channelCircuitBreakerStats(orchestrator.SharedModelCircuitBreaker().GetChannelModelCircuitBreakerStats(ctx, obj.ID)), nil
+}
+
 // HeaderOverrideOperations is the resolver for the headerOverrideOperations field.
 func (r *channelSettingsResolver) HeaderOverrideOperations(ctx context.Context, obj *objects.ChannelSettings) ([]*objects.OverrideOperation, error) {
 	if obj == nil {
@@ -203,6 +213,26 @@ func (r *mutationResolver) DetectChannelEndpoints(ctx context.Context, input biz
 // UpdateChannelStatus is the resolver for the updateChannelStatus field.
 func (r *mutationResolver) UpdateChannelStatus(ctx context.Context, id objects.GUID, status channel.Status) (*ent.Channel, error) {
 	return r.channelService.UpdateChannelStatus(ctx, id.ID, status)
+}
+
+// ResetChannelModelCircuitBreakers is the resolver for the resetChannelModelCircuitBreakers field.
+func (r *mutationResolver) ResetChannelModelCircuitBreakers(ctx context.Context, channelID objects.GUID) (bool, error) {
+	if !scopes.UserHasScope(ctx, scopes.ScopeWriteChannels) {
+		return false, ErrNotOwner
+	}
+
+	modelCircuitBreaker := orchestrator.SharedModelCircuitBreaker()
+	for _, item := range modelCircuitBreaker.GetChannelModelCircuitBreakerStats(ctx, channelID.ID) {
+		if item == nil {
+			continue
+		}
+
+		if err := modelCircuitBreaker.ResetModelStatus(ctx, channelID.ID, item.ModelID); err != nil {
+			return false, err
+		}
+	}
+
+	return true, nil
 }
 
 // DeleteChannel is the resolver for the deleteChannel field.

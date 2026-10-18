@@ -181,6 +181,16 @@ type BulkUpdateChannelOrderingResult struct {
 	Channels []*ent.Channel `json:"channels"`
 }
 
+// ChannelCircuitBreakerStats is a point-in-time snapshot of one model circuit
+// breaker state for a channel.
+type ChannelCircuitBreakerStats struct {
+	ModelID             string                     `json:"modelID"`
+	State               ChannelCircuitBreakerState `json:"state"`
+	ConsecutiveFailures int                        `json:"consecutiveFailures"`
+	LastFailureAt       *time.Time                 `json:"lastFailureAt,omitempty"`
+	NextProbeAt         *time.Time                 `json:"nextProbeAt,omitempty"`
+}
+
 // ChannelLimiterStats is a point-in-time snapshot of the per-channel concurrency limiter.
 type ChannelLimiterStats struct {
 	// Number of requests currently holding a capacity slot.
@@ -676,6 +686,63 @@ type VersionCheck struct {
 	LatestVersion  string `json:"latestVersion"`
 	HasUpdate      bool   `json:"hasUpdate"`
 	ReleaseURL     string `json:"releaseUrl"`
+}
+
+type ChannelCircuitBreakerState string
+
+const (
+	ChannelCircuitBreakerStateClosed   ChannelCircuitBreakerState = "closed"
+	ChannelCircuitBreakerStateHalfOpen ChannelCircuitBreakerState = "half_open"
+	ChannelCircuitBreakerStateOpen     ChannelCircuitBreakerState = "open"
+)
+
+var AllChannelCircuitBreakerState = []ChannelCircuitBreakerState{
+	ChannelCircuitBreakerStateClosed,
+	ChannelCircuitBreakerStateHalfOpen,
+	ChannelCircuitBreakerStateOpen,
+}
+
+func (e ChannelCircuitBreakerState) IsValid() bool {
+	switch e {
+	case ChannelCircuitBreakerStateClosed, ChannelCircuitBreakerStateHalfOpen, ChannelCircuitBreakerStateOpen:
+		return true
+	}
+	return false
+}
+
+func (e ChannelCircuitBreakerState) String() string {
+	return string(e)
+}
+
+func (e *ChannelCircuitBreakerState) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ChannelCircuitBreakerState(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ChannelCircuitBreakerState", str)
+	}
+	return nil
+}
+
+func (e ChannelCircuitBreakerState) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ChannelCircuitBreakerState) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ChannelCircuitBreakerState) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type DiagnosticsTarget string

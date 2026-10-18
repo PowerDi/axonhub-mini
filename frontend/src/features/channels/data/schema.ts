@@ -314,6 +314,16 @@ export const channelLimiterStatsSchema = z.object({
 });
 export type ChannelLimiterStats = z.infer<typeof channelLimiterStatsSchema>;
 
+// Live snapshot of one model circuit breaker for a channel.
+export const channelCircuitBreakerStatsSchema = z.object({
+  modelID: z.string(),
+  state: z.enum(['closed', 'half_open', 'open']),
+  consecutiveFailures: z.number().int().nonnegative(),
+  lastFailureAt: z.string().optional().nullable(),
+  nextProbeAt: z.string().optional().nullable(),
+});
+export type ChannelCircuitBreakerStats = z.infer<typeof channelCircuitBreakerStatsSchema>;
+
 export const retryableErrorPatternSchema = z.object({
   pattern: z.string().min(1),
   regex: z.boolean().optional().nullable(),
@@ -470,6 +480,7 @@ export const channelSchema = z.object({
   remark: z.string().optional().nullable(),
   allModelEntries: z.array(channelModelEntrySchema).optional(),
   liveLimiterStats: channelLimiterStatsSchema.optional().nullable(),
+  liveCircuitBreakerStats: z.array(channelCircuitBreakerStatsSchema).optional().default([]),
   endpoints: z.array(channelEndpointSchema).optional().default([]).nullable(),
   defaultEndpoints: z.array(channelEndpointSchema).optional().default([]).nullable(),
 });

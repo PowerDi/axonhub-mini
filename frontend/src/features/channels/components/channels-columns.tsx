@@ -46,7 +46,7 @@ import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DataTableColumnHeader } from '@/components/data-table-column-header';
 import { useChannels } from '../context/channels-context';
-import { useTestChannel, useUpdateChannel } from '../data/channels';
+import { useResetChannelModelCircuitBreakers, useTestChannel, useUpdateChannel } from '../data/channels';
 import { CHANNEL_CONFIGS, getProvider } from '../data/config_channels';
 import { Channel } from '../data/schema';
 import { parseQuotaLimits } from '../../system/data/quotas';
@@ -54,6 +54,7 @@ import type { QuotaRoutingMode } from '../../system/data/system';
 import { getChannelQuotaRoutingIndicator } from '../utils/quota-routing-status';
 import { ChannelHealthCell } from './channel-health-cell';
 import { ChannelLimiterCell } from './channel-limiter-cell';
+import { ChannelCircuitBreakerCell } from './channel-circuit-breaker-cell';
 import { ChannelsStatusDialog } from './channels-status-dialog';
 import { ChatProtocolIcon, MessagesProtocolIcon, ResponsesProtocolIcon } from './endpoint-protocol-icons';
 import { RELAY_PROTOCOLS, RELAY_PROTOCOL_LABEL_KEYS, getChannelRelayProtocols, type RelayProtocol } from '../data/relay-protocols';
@@ -151,6 +152,8 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
   const { setOpen, setCurrentRow } = useChannels();
   const { channelPermissions } = usePermissions();
   const testChannel = useTestChannel();
+  const resetCircuitBreakers = useResetChannelModelCircuitBreakers();
+  const hasCircuitBreakerIssues = (channel.liveCircuitBreakerStats ?? []).length > 0;
   const isArchived = channel.status === 'archived';
   const hasError = channel.errorMessage != null;
   const hasDisabledAPIKeys = channelPermissions.canWrite && (channel.disabledAPIKeys?.length ?? 0) > 0;
@@ -200,6 +203,19 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
             <IconHistory size={16} className='mr-2' />
             {t('channels.actions.testHistory')}
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+
+          {channelPermissions.canWrite && hasCircuitBreakerIssues && (
+            <DropdownMenuItem
+              onClick={() => resetCircuitBreakers.mutate(channel.id)}
+              disabled={resetCircuitBreakers.isPending}
+              className='text-(--warning-soft-fg)! hover:bg-warning/10!'
+            >
+              <IconAlertTriangle size={16} className='mr-2' />
+              {t('channels.actions.resetCircuitBreakers')}
+            </DropdownMenuItem>
+          )}
+
           <DropdownMenuSeparator />
 
           <DropdownMenuItem
@@ -1100,10 +1116,12 @@ export const createColumns = (
       cell: ({ row }: { row: Row<Channel> }) => {
         const probePoints = (row.original as any).probePoints || [];
         const limiterStats = row.original.liveLimiterStats;
+        const circuitBreakerStats = row.original.liveCircuitBreakerStats ?? [];
         return (
           <div className='flex flex-col items-center gap-1'>
             <ChannelHealthCell points={probePoints} />
             {limiterStats ? <ChannelLimiterCell stats={limiterStats} /> : null}
+            <ChannelCircuitBreakerCell stats={circuitBreakerStats} />
           </div>
         );
       },

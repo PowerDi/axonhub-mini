@@ -369,6 +369,7 @@ type ComplexityRoot struct {
 		ErrorMessage            func(childComplexity int) int
 		Executions              func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.RequestExecutionOrder, where *ent.RequestExecutionWhereInput) int
 		ID                      func(childComplexity int) int
+		LiveCircuitBreakerStats func(childComplexity int) int
 		LiveLimiterStats        func(childComplexity int) int
 		ManualModels            func(childComplexity int) int
 		Name                    func(childComplexity int) int
@@ -384,6 +385,14 @@ type ComplexityRoot struct {
 		Type                    func(childComplexity int) int
 		UpdatedAt               func(childComplexity int) int
 		UsageLogs               func(childComplexity int, after *entgql.Cursor[int], first *int, before *entgql.Cursor[int], last *int, orderBy *ent.UsageLogOrder, where *ent.UsageLogWhereInput) int
+	}
+
+	ChannelCircuitBreakerStats struct {
+		ConsecutiveFailures func(childComplexity int) int
+		LastFailureAt       func(childComplexity int) int
+		ModelID             func(childComplexity int) int
+		NextProbeAt         func(childComplexity int) int
+		State               func(childComplexity int) int
 	}
 
 	ChannelConnection struct {
@@ -1064,6 +1073,7 @@ type ComplexityRoot struct {
 		PreviewPromptProtectionRule           func(childComplexity int, input PromptProtectionRulePreviewInput) int
 		RefreshProvidersCatalog               func(childComplexity int) int
 		RemoveUserFromProject                 func(childComplexity int, input RemoveUserFromProjectInput) int
+		ResetChannelModelCircuitBreakers      func(childComplexity int, channelID objects.GUID) int
 		ResetChannelQuotaNow                  func(childComplexity int, channelID objects.GUID) int
 		Restore                               func(childComplexity int, file graphql.Upload, input backup.RestoreOptions) int
 		RetainThread                          func(childComplexity int, id objects.GUID) int
@@ -2225,6 +2235,7 @@ type ChannelResolver interface {
 	Credentials(ctx context.Context, obj *ent.Channel) (*objects.ChannelCredentials, error)
 	DisabledAPIKeys(ctx context.Context, obj *ent.Channel) ([]*objects.DisabledAPIKey, error)
 	LiveLimiterStats(ctx context.Context, obj *ent.Channel) (*ChannelLimiterStats, error)
+	LiveCircuitBreakerStats(ctx context.Context, obj *ent.Channel) ([]*ChannelCircuitBreakerStats, error)
 }
 type ChannelModelPriceResolver interface {
 	ID(ctx context.Context, obj *ent.ChannelModelPrice) (*objects.GUID, error)
@@ -2274,6 +2285,7 @@ type MutationResolver interface {
 	SaveChannelEndpoints(ctx context.Context, input biz.SaveChannelEndpointsInput) (*ent.Channel, error)
 	DetectChannelEndpoints(ctx context.Context, input biz.DetectChannelEndpointsInput) (*biz.DetectChannelEndpointsPayload, error)
 	UpdateChannelStatus(ctx context.Context, id objects.GUID, status channel.Status) (*ent.Channel, error)
+	ResetChannelModelCircuitBreakers(ctx context.Context, channelID objects.GUID) (bool, error)
 	DeleteChannel(ctx context.Context, id objects.GUID) (bool, error)
 	BulkArchiveChannels(ctx context.Context, ids []*objects.GUID) (bool, error)
 	BulkDisableChannels(ctx context.Context, ids []*objects.GUID) (bool, error)
@@ -3665,6 +3677,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Channel.ID(childComplexity), true
+	case "Channel.liveCircuitBreakerStats":
+		if e.complexity.Channel.LiveCircuitBreakerStats == nil {
+			break
+		}
+
+		return e.complexity.Channel.LiveCircuitBreakerStats(childComplexity), true
 	case "Channel.liveLimiterStats":
 		if e.complexity.Channel.LiveLimiterStats == nil {
 			break
@@ -3765,6 +3783,37 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Channel.UsageLogs(childComplexity, args["after"].(*entgql.Cursor[int]), args["first"].(*int), args["before"].(*entgql.Cursor[int]), args["last"].(*int), args["orderBy"].(*ent.UsageLogOrder), args["where"].(*ent.UsageLogWhereInput)), true
+
+	case "ChannelCircuitBreakerStats.consecutiveFailures":
+		if e.complexity.ChannelCircuitBreakerStats.ConsecutiveFailures == nil {
+			break
+		}
+
+		return e.complexity.ChannelCircuitBreakerStats.ConsecutiveFailures(childComplexity), true
+	case "ChannelCircuitBreakerStats.lastFailureAt":
+		if e.complexity.ChannelCircuitBreakerStats.LastFailureAt == nil {
+			break
+		}
+
+		return e.complexity.ChannelCircuitBreakerStats.LastFailureAt(childComplexity), true
+	case "ChannelCircuitBreakerStats.modelID":
+		if e.complexity.ChannelCircuitBreakerStats.ModelID == nil {
+			break
+		}
+
+		return e.complexity.ChannelCircuitBreakerStats.ModelID(childComplexity), true
+	case "ChannelCircuitBreakerStats.nextProbeAt":
+		if e.complexity.ChannelCircuitBreakerStats.NextProbeAt == nil {
+			break
+		}
+
+		return e.complexity.ChannelCircuitBreakerStats.NextProbeAt(childComplexity), true
+	case "ChannelCircuitBreakerStats.state":
+		if e.complexity.ChannelCircuitBreakerStats.State == nil {
+			break
+		}
+
+		return e.complexity.ChannelCircuitBreakerStats.State(childComplexity), true
 
 	case "ChannelConnection.edges":
 		if e.complexity.ChannelConnection.Edges == nil {
@@ -6704,6 +6753,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.RemoveUserFromProject(childComplexity, args["input"].(RemoveUserFromProjectInput)), true
+	case "Mutation.resetChannelModelCircuitBreakers":
+		if e.complexity.Mutation.ResetChannelModelCircuitBreakers == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_resetChannelModelCircuitBreakers_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ResetChannelModelCircuitBreakers(childComplexity, args["channelID"].(objects.GUID)), true
 	case "Mutation.resetChannelQuotaNow":
 		if e.complexity.Mutation.ResetChannelQuotaNow == nil {
 			break
@@ -13324,6 +13384,17 @@ func (ec *executionContext) field_Mutation_removeUserFromProject_args(ctx contex
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_resetChannelModelCircuitBreakers_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "channelID", ec.unmarshalNID2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐGUID)
+	if err != nil {
+		return nil, err
+	}
+	args["channelID"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_resetChannelQuotaNow_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -19380,6 +19451,8 @@ func (ec *executionContext) fieldContext_ApplyChannelOverrideTemplatePayload_cha
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
+			case "liveCircuitBreakerStats":
+				return ec.fieldContext_Channel_liveCircuitBreakerStats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
 		},
@@ -20396,6 +20469,8 @@ func (ec *executionContext) fieldContext_BulkImportChannelsResult_channels(_ con
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
+			case "liveCircuitBreakerStats":
+				return ec.fieldContext_Channel_liveCircuitBreakerStats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
 		},
@@ -20549,6 +20624,8 @@ func (ec *executionContext) fieldContext_BulkUpdateChannelAutoDisablePayload_cha
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
+			case "liveCircuitBreakerStats":
+				return ec.fieldContext_Channel_liveCircuitBreakerStats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
 		},
@@ -20702,6 +20779,8 @@ func (ec *executionContext) fieldContext_BulkUpdateChannelOrderingResult_channel
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
+			case "liveCircuitBreakerStats":
+				return ec.fieldContext_Channel_liveCircuitBreakerStats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
 		},
@@ -21929,6 +22008,192 @@ func (ec *executionContext) fieldContext_Channel_liveLimiterStats(_ context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _Channel_liveCircuitBreakerStats(ctx context.Context, field graphql.CollectedField, obj *ent.Channel) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Channel_liveCircuitBreakerStats,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Channel().LiveCircuitBreakerStats(ctx, obj)
+		},
+		nil,
+		ec.marshalNChannelCircuitBreakerStats2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelCircuitBreakerStatsᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Channel_liveCircuitBreakerStats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Channel",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "modelID":
+				return ec.fieldContext_ChannelCircuitBreakerStats_modelID(ctx, field)
+			case "state":
+				return ec.fieldContext_ChannelCircuitBreakerStats_state(ctx, field)
+			case "consecutiveFailures":
+				return ec.fieldContext_ChannelCircuitBreakerStats_consecutiveFailures(ctx, field)
+			case "lastFailureAt":
+				return ec.fieldContext_ChannelCircuitBreakerStats_lastFailureAt(ctx, field)
+			case "nextProbeAt":
+				return ec.fieldContext_ChannelCircuitBreakerStats_nextProbeAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ChannelCircuitBreakerStats", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelCircuitBreakerStats_modelID(ctx context.Context, field graphql.CollectedField, obj *ChannelCircuitBreakerStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelCircuitBreakerStats_modelID,
+		func(ctx context.Context) (any, error) {
+			return obj.ModelID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelCircuitBreakerStats_modelID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelCircuitBreakerStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelCircuitBreakerStats_state(ctx context.Context, field graphql.CollectedField, obj *ChannelCircuitBreakerStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelCircuitBreakerStats_state,
+		func(ctx context.Context) (any, error) {
+			return obj.State, nil
+		},
+		nil,
+		ec.marshalNChannelCircuitBreakerState2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelCircuitBreakerState,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelCircuitBreakerStats_state(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelCircuitBreakerStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ChannelCircuitBreakerState does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelCircuitBreakerStats_consecutiveFailures(ctx context.Context, field graphql.CollectedField, obj *ChannelCircuitBreakerStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelCircuitBreakerStats_consecutiveFailures,
+		func(ctx context.Context) (any, error) {
+			return obj.ConsecutiveFailures, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelCircuitBreakerStats_consecutiveFailures(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelCircuitBreakerStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelCircuitBreakerStats_lastFailureAt(ctx context.Context, field graphql.CollectedField, obj *ChannelCircuitBreakerStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelCircuitBreakerStats_lastFailureAt,
+		func(ctx context.Context) (any, error) {
+			return obj.LastFailureAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelCircuitBreakerStats_lastFailureAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelCircuitBreakerStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelCircuitBreakerStats_nextProbeAt(ctx context.Context, field graphql.CollectedField, obj *ChannelCircuitBreakerStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelCircuitBreakerStats_nextProbeAt,
+		func(ctx context.Context) (any, error) {
+			return obj.NextProbeAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelCircuitBreakerStats_nextProbeAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelCircuitBreakerStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ChannelConnection_edges(ctx context.Context, field graphql.CollectedField, obj *ent.ChannelConnection) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -22258,6 +22523,8 @@ func (ec *executionContext) fieldContext_ChannelEdge_node(_ context.Context, fie
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
+			case "liveCircuitBreakerStats":
+				return ec.fieldContext_Channel_liveCircuitBreakerStats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
 		},
@@ -23148,6 +23415,8 @@ func (ec *executionContext) fieldContext_ChannelModelPrice_channel(_ context.Con
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
+			case "liveCircuitBreakerStats":
+				return ec.fieldContext_Channel_liveCircuitBreakerStats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
 		},
@@ -25108,6 +25377,8 @@ func (ec *executionContext) fieldContext_ChannelProbe_channel(_ context.Context,
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
+			case "liveCircuitBreakerStats":
+				return ec.fieldContext_Channel_liveCircuitBreakerStats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
 		},
@@ -27075,6 +27346,8 @@ func (ec *executionContext) fieldContext_ClearChannelOverrideTemplatesPayload_ch
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
+			case "liveCircuitBreakerStats":
+				return ec.fieldContext_Channel_liveCircuitBreakerStats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
 		},
@@ -32124,6 +32397,8 @@ func (ec *executionContext) fieldContext_ModelChannelConnection_channel(_ contex
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
+			case "liveCircuitBreakerStats":
+				return ec.fieldContext_Channel_liveCircuitBreakerStats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
 		},
@@ -33291,6 +33566,8 @@ func (ec *executionContext) fieldContext_Mutation_createChannel(ctx context.Cont
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
+			case "liveCircuitBreakerStats":
+				return ec.fieldContext_Channel_liveCircuitBreakerStats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
 		},
@@ -33398,6 +33675,8 @@ func (ec *executionContext) fieldContext_Mutation_duplicateChannel(ctx context.C
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
+			case "liveCircuitBreakerStats":
+				return ec.fieldContext_Channel_liveCircuitBreakerStats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
 		},
@@ -33505,6 +33784,8 @@ func (ec *executionContext) fieldContext_Mutation_bulkCreateChannels(ctx context
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
+			case "liveCircuitBreakerStats":
+				return ec.fieldContext_Channel_liveCircuitBreakerStats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
 		},
@@ -33612,6 +33893,8 @@ func (ec *executionContext) fieldContext_Mutation_updateChannel(ctx context.Cont
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
+			case "liveCircuitBreakerStats":
+				return ec.fieldContext_Channel_liveCircuitBreakerStats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
 		},
@@ -33719,6 +34002,8 @@ func (ec *executionContext) fieldContext_Mutation_saveChannelEndpoints(ctx conte
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
+			case "liveCircuitBreakerStats":
+				return ec.fieldContext_Channel_liveCircuitBreakerStats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
 		},
@@ -33871,6 +34156,8 @@ func (ec *executionContext) fieldContext_Mutation_updateChannelStatus(ctx contex
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
+			case "liveCircuitBreakerStats":
+				return ec.fieldContext_Channel_liveCircuitBreakerStats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
 		},
@@ -33883,6 +34170,47 @@ func (ec *executionContext) fieldContext_Mutation_updateChannelStatus(ctx contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_updateChannelStatus_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_resetChannelModelCircuitBreakers(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_resetChannelModelCircuitBreakers,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().ResetChannelModelCircuitBreakers(ctx, fc.Args["channelID"].(objects.GUID))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_resetChannelModelCircuitBreakers(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_resetChannelModelCircuitBreakers_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -44970,6 +45298,8 @@ func (ec *executionContext) fieldContext_ProviderQuotaStatus_channel(_ context.C
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
+			case "liveCircuitBreakerStats":
+				return ec.fieldContext_Channel_liveCircuitBreakerStats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
 		},
@@ -46358,6 +46688,8 @@ func (ec *executionContext) fieldContext_Query_allChannelSummarys(ctx context.Co
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
+			case "liveCircuitBreakerStats":
+				return ec.fieldContext_Channel_liveCircuitBreakerStats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
 		},
@@ -50675,6 +51007,8 @@ func (ec *executionContext) fieldContext_Request_channel(_ context.Context, fiel
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
+			case "liveCircuitBreakerStats":
+				return ec.fieldContext_Channel_liveCircuitBreakerStats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
 		},
@@ -51969,6 +52303,8 @@ func (ec *executionContext) fieldContext_RequestExecution_channel(_ context.Cont
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
+			case "liveCircuitBreakerStats":
+				return ec.fieldContext_Channel_liveCircuitBreakerStats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
 		},
@@ -59638,6 +59974,8 @@ func (ec *executionContext) fieldContext_UnassociatedChannel_channel(_ context.C
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
+			case "liveCircuitBreakerStats":
+				return ec.fieldContext_Channel_liveCircuitBreakerStats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
 		},
@@ -60752,6 +61090,8 @@ func (ec *executionContext) fieldContext_UsageLog_channel(_ context.Context, fie
 				return ec.fieldContext_Channel_disabledAPIKeys(ctx, field)
 			case "liveLimiterStats":
 				return ec.fieldContext_Channel_liveLimiterStats(ctx, field)
+			case "liveCircuitBreakerStats":
+				return ec.fieldContext_Channel_liveCircuitBreakerStats(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Channel", field.Name)
 		},
@@ -95488,6 +95828,95 @@ func (ec *executionContext) _Channel(ctx context.Context, sel ast.SelectionSet, 
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "liveCircuitBreakerStats":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Channel_liveCircuitBreakerStats(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var channelCircuitBreakerStatsImplementors = []string{"ChannelCircuitBreakerStats"}
+
+func (ec *executionContext) _ChannelCircuitBreakerStats(ctx context.Context, sel ast.SelectionSet, obj *ChannelCircuitBreakerStats) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, channelCircuitBreakerStatsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ChannelCircuitBreakerStats")
+		case "modelID":
+			out.Values[i] = ec._ChannelCircuitBreakerStats_modelID(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "state":
+			out.Values[i] = ec._ChannelCircuitBreakerStats_state(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "consecutiveFailures":
+			out.Values[i] = ec._ChannelCircuitBreakerStats_consecutiveFailures(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "lastFailureAt":
+			out.Values[i] = ec._ChannelCircuitBreakerStats_lastFailureAt(ctx, field, obj)
+		case "nextProbeAt":
+			out.Values[i] = ec._ChannelCircuitBreakerStats_nextProbeAt(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -100675,6 +101104,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "updateChannelStatus":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateChannelStatus(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "resetChannelModelCircuitBreakers":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_resetChannelModelCircuitBreakers(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -114554,6 +114990,70 @@ func (ec *executionContext) marshalNChannel2ᚖgithubᚗcomᚋloopljᚋaxonhub�
 		return graphql.Null
 	}
 	return ec._Channel(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNChannelCircuitBreakerState2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelCircuitBreakerState(ctx context.Context, v any) (ChannelCircuitBreakerState, error) {
+	var res ChannelCircuitBreakerState
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNChannelCircuitBreakerState2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelCircuitBreakerState(ctx context.Context, sel ast.SelectionSet, v ChannelCircuitBreakerState) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) marshalNChannelCircuitBreakerStats2ᚕᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelCircuitBreakerStatsᚄ(ctx context.Context, sel ast.SelectionSet, v []*ChannelCircuitBreakerStats) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNChannelCircuitBreakerStats2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelCircuitBreakerStats(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNChannelCircuitBreakerStats2ᚖgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋserverᚋgqlᚐChannelCircuitBreakerStats(ctx context.Context, sel ast.SelectionSet, v *ChannelCircuitBreakerStats) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ChannelCircuitBreakerStats(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNChannelConnection2githubᚗcomᚋloopljᚋaxonhubᚋinternalᚋentᚐChannelConnection(ctx context.Context, sel ast.SelectionSet, v ent.ChannelConnection) graphql.Marshaler {

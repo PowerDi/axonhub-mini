@@ -45,7 +45,7 @@ func NewChatCompletionOrchestrator(
 	}
 
 	// Initialize model circuit breaker
-	modelCircuitBreaker := biz.NewModelCircuitBreaker()
+	modelCircuitBreaker := sharedModelCircuitBreaker
 
 	rateLimitStrategy := NewRateLimitAwareStrategy(rateLimitTracker, channelLimiterManager)
 
@@ -141,6 +141,15 @@ type ChatCompletionOrchestrator struct {
 
 	responsesSessions *responsesSessionStore
 }
+
+// SharedModelCircuitBreaker returns the model circuit breaker used by chat
+// completion orchestration in this process. GraphQL introspection and manual
+// reset operations must observe the same health state as request routing.
+func SharedModelCircuitBreaker() *biz.ModelCircuitBreaker {
+	return sharedModelCircuitBreaker
+}
+
+var sharedModelCircuitBreaker = biz.NewModelCircuitBreaker()
 
 func (processor *ChatCompletionOrchestrator) WithChannelSelector(selector CandidateSelector) *ChatCompletionOrchestrator {
 	c := *processor

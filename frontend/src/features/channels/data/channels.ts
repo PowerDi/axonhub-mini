@@ -499,6 +499,12 @@ const UPDATE_CHANNEL_STATUS_MUTATION = `
   }
 `;
 
+const RESET_CHANNEL_MODEL_CIRCUIT_BREAKERS_MUTATION = `
+  mutation ResetChannelModelCircuitBreakers($channelID: ID!) {
+    resetChannelModelCircuitBreakers(channelID: $channelID)
+  }
+`;
+
 const BULK_ARCHIVE_CHANNELS_MUTATION = `
   mutation BulkArchiveChannels($ids: [ID!]!) {
     bulkArchiveChannels(ids: $ids)
@@ -1250,6 +1256,13 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
             capacity
             queueSize
           }
+          liveCircuitBreakerStats {
+            modelID
+            state
+            consecutiveFailures
+            lastFailureAt
+            nextProbeAt
+          }
           providerQuotaStatus {
             status
             nextResetAt
@@ -1322,6 +1335,13 @@ const CHANNEL_QUERY_HEALTH_SELECTION = `
             waiting
             capacity
             queueSize
+          }
+          liveCircuitBreakerStats {
+            modelID
+            state
+            consecutiveFailures
+            lastFailureAt
+            nextProbeAt
           }
 `;
 
@@ -1850,6 +1870,31 @@ export function useUpdateChannelStatus() {
       const messageKey = variables.status === 'archived' ? 'channels.messages.archiveSuccess' : 'channels.messages.statusUpdateSuccess';
 
       toast.success(variables.status === 'archived' ? t(messageKey) : t(messageKey, { status: statusText }));
+    },
+  });
+}
+
+export function useResetChannelModelCircuitBreakers() {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+  const { handleError } = useErrorHandler();
+
+  return useMutation({
+    mutationFn: async (channelID: string) => {
+      try {
+        const data = await graphqlRequest<{ resetChannelModelCircuitBreakers: boolean }>(
+          RESET_CHANNEL_MODEL_CIRCUIT_BREAKERS_MUTATION,
+          { channelID }
+        );
+        return data.resetChannelModelCircuitBreakers;
+      } catch (error) {
+        handleError(error, { context: t('channels.columns.circuitBreaker.reset') });
+        throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['channels'] });
+      toast.success(t('channels.columns.circuitBreaker.resetSuccess'));
     },
   });
 }
