@@ -818,28 +818,13 @@ func (svc *ModelService) CountModelAssociatedChannels(ctx context.Context, m *en
 }
 
 func (svc *ModelService) QueryUnassociatedChannels(ctx context.Context) ([]*UnassociatedChannel, error) {
-	allChannels, err := svc.entFromContext(ctx).Channel.Query().
-		Where(channel.StatusIn(channel.StatusEnabled, channel.StatusDisabled, channel.StatusArchived)).
+	// Only enabled channels contribute candidates. Disabled and archived channels
+	// keep their model configuration, but cannot hide models on other channels.
+	channels, err := svc.entFromContext(ctx).Channel.Query().
+		Where(channel.StatusEQ(channel.StatusEnabled)).
 		All(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query channels: %w", err)
-	}
-
-	// Disabled channels are masked exactly like archived ones: neither serves
-	// traffic, so they are dropped from the working set but their channel_model
-	// rules are still honored (via excludedChannelIDs below) so a sibling channel
-	// covering the same upstream model is not wrongly offered as unassociated.
-	// The channel's own supported/manual models are left untouched on the row, so
-	// re-enabling it restores the exact prior state with no cleanup needed.
-	channels := make([]*ent.Channel, 0, len(allChannels))
-	excludedChannelIDs := make(map[int]struct{})
-	for _, ch := range allChannels {
-		if ch.Status == channel.StatusArchived || ch.Status == channel.StatusDisabled {
-			excludedChannelIDs[ch.ID] = struct{}{}
-			continue
-		}
-
-		channels = append(channels, ch)
 	}
 
 	if len(channels) == 0 {
@@ -860,7 +845,7 @@ func (svc *ModelService) QueryUnassociatedChannels(ctx context.Context) ([]*Unas
 		allAssociations = append(allAssociations, EffectiveModelAssociations(systemSettings, m)...)
 	}
 
-	return findUnassociatedChannelsWithExcludedChannels(channels, allAssociations, excludedChannelIDs), nil
+	return findUnassociatedChannels(channels, allAssociations), nil
 }
 
 func (svc *ModelService) countAssociatedChannels(ctx context.Context, associations []*objects.ModelAssociation) (int, error) {
@@ -899,21 +884,9 @@ func (svc *ModelService) modelSettingsOrDefault(ctx context.Context) *SystemMode
 	return svc.systemService.ModelSettingsOrDefault(ctx)
 }
 
+// findUnassociatedChannels lists channel-side model IDs not covered by an active
+// association. Coverage is scoped to (channel ID, request model), never model ID alone.
 func findUnassociatedChannels(channels []*ent.Channel, associations []*objects.ModelAssociation) []*UnassociatedChannel {
-	return findUnassociatedChannelsWithExcludedChannels(channels, associations, nil)
-}
-
-// findUnassociatedChannelsWithExcludedChannels lists, per channel, the model IDs
-// on that channel that no model association covers. excludedChannelIDs are
-// channels (archived or disabled) intentionally kept out of `channels`: they do
-// not serve traffic, but their channel_model rules still mark the referenced
-// upstream model as configured so a sibling channel covering the same model is
-// not wrongly reported as unassociated.
-func findUnassociatedChannelsWithExcludedChannels(
-	channels []*ent.Channel,
-	associations []*objects.ModelAssociation,
-	excludedChannelIDs map[int]struct{},
-) []*UnassociatedChannel {
 	if len(channels) == 0 {
 		return []*UnassociatedChannel{}
 	}
@@ -924,27 +897,11 @@ func findUnassociatedChannelsWithExcludedChannels(
 		channelWrappers = append(channelWrappers, &Channel{Channel: ch})
 	}
 
-	// Use MatchAssociations to get all associated models
+	// Resolve active associations into concrete channel-model connections.
 	connections := MatchConnections(associations, channelWrappers)
 
 	// Build a map of associated (channelID, modelID) combinations
 	associatedMap := make(map[ChannelModelKey]bool)
-	// An excluded (archived or disabled) channel is intentionally absent from
-	// `channels`, so its channel_model rule cannot produce a connection. Keep the
-	// model ID marked as configured nevertheless; otherwise the same upstream
-	// model on a remaining channel is incorrectly offered as unassociated.
-	associatedModelIDs := make(map[string]bool)
-	for _, association := range associations {
-		if association == nil || association.Type != "channel_model" || association.ChannelModel == nil {
-			continue
-		}
-
-		if _, excluded := excludedChannelIDs[association.ChannelModel.ChannelID]; excluded && !lo.ContainsBy(channelWrappers, func(ch *Channel) bool {
-			return ch.ID == association.ChannelModel.ChannelID
-		}) {
-			associatedModelIDs[association.ChannelModel.ModelID] = true
-		}
-	}
 
 	for _, conn := range connections {
 		for _, entry := range conn.Models {
@@ -970,7 +927,7 @@ func findUnassociatedChannelsWithExcludedChannels(
 				ChannelID: ch.ID,
 				ModelID:   modelID,
 			}
-			if !associatedMap[key] && !associatedModelIDs[modelID] {
+			if !associatedMap[key] {
 				unassociatedModels = append(unassociatedModels, modelID)
 			}
 		}

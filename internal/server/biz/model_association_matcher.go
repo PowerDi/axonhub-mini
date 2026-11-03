@@ -65,6 +65,13 @@ func (k ChannelModelKey) String() string {
 	return fmt.Sprintf("%d:%s", k.ChannelID, k.ModelID)
 }
 
+// isActiveAssociation reports whether an association participates in
+// structural matching. Nil and disabled rules are inert everywhere so callers
+// share one definition of what counts.
+func isActiveAssociation(association *objects.ModelAssociation) bool {
+	return association != nil && !association.Disabled
+}
+
 // MatchConnections matches associations against channels and their supported models.
 // Returns ModelChannelConnection with priority for each match.
 // Results are ordered by the matching order of associations.
@@ -77,7 +84,7 @@ func MatchConnections(
 	tracker := NewDuplicateKeyTracker()
 
 	for _, assoc := range associations {
-		if assoc.Disabled {
+		if !isActiveAssociation(assoc) {
 			continue
 		}
 		connections := matchSingleAssociation(assoc, channels, tracker)
@@ -98,7 +105,7 @@ func MatchAssociations(
 	result := make([]*AssociationMatch, 0, len(associations))
 
 	for _, assoc := range associations {
-		if assoc == nil || assoc.Disabled {
+		if !isActiveAssociation(assoc) {
 			continue
 		}
 
