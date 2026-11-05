@@ -197,9 +197,11 @@ func TestLoadTemplate_HappyPath(t *testing.T) {
 		Save(ctx)
 	require.NoError(t, err)
 
-	// Create template with a different profile name
+	// Create template with a different profile name and a channel denylist.
 	templateProfile := &objects.APIKeyProfile{
-		Name: "Production",
+		Name:                "Production",
+		ChannelIDs:          []int{1, 2},
+		ChannelIDsMatchMode: objects.ChannelIDsMatchModeExclude,
 		ModelMappings: []objects.ModelMapping{
 			{From: "claude-3", To: "claude-3-opus"},
 		},
@@ -230,6 +232,8 @@ func TestLoadTemplate_HappyPath(t *testing.T) {
 
 	// Verify loaded profile is appended
 	require.Equal(t, "Production", updatedKey.Profiles.Profiles[1].Name)
+	require.Equal(t, []int{1, 2}, updatedKey.Profiles.Profiles[1].ChannelIDs)
+	require.Equal(t, objects.ChannelIDsMatchModeExclude, updatedKey.Profiles.Profiles[1].ChannelIDsMatchMode)
 	require.NotNil(t, updatedKey.Profiles.Profiles[1].TemplateID)
 	require.Equal(t, template.ID, *updatedKey.Profiles.Profiles[1].TemplateID)
 	require.Equal(t, template.Name, updatedKey.Profiles.Profiles[1].TemplateName)
@@ -292,8 +296,10 @@ func TestUpdateTemplatePublishesToLinkedAndUnchangedLegacyProfiles(t *testing.T)
 	require.Equal(t, 2, count)
 
 	_, err = svc.UpdateTemplate(ctx, template.ID, ent.UpdateAPIKeyProfileTemplateInput{}, &objects.APIKeyProfile{
-		Name:          "Production",
-		ModelMappings: []objects.ModelMapping{{From: "claude", To: "new-model"}},
+		Name:                "Production",
+		ModelMappings:       []objects.ModelMapping{{From: "claude", To: "new-model"}},
+		ChannelIDs:          []int{1, 2},
+		ChannelIDsMatchMode: objects.ChannelIDsMatchModeExclude,
 	})
 	require.NoError(t, err)
 
@@ -301,6 +307,8 @@ func TestUpdateTemplatePublishesToLinkedAndUnchangedLegacyProfiles(t *testing.T)
 		updated, getErr := client.APIKey.Get(ctx, key.ID)
 		require.NoError(t, getErr)
 		require.Equal(t, "new-model", updated.Profiles.Profiles[0].ModelMappings[0].To)
+		require.Equal(t, []int{1, 2}, updated.Profiles.Profiles[0].ChannelIDs)
+		require.Equal(t, objects.ChannelIDsMatchModeExclude, updated.Profiles.Profiles[0].ChannelIDsMatchMode)
 		require.NotNil(t, updated.Profiles.Profiles[0].TemplateID)
 		require.Equal(t, template.ID, *updated.Profiles.Profiles[0].TemplateID)
 	}

@@ -14,6 +14,7 @@ export const formSchemaFactory = (t: (key: string) => string) =>
           })
         ),
         channelIDs: z.array(z.number()).optional().nullable(),
+        channelIDsMatchMode: z.enum(['include', 'exclude']),
         channelTags: z.array(z.string()).optional().nullable(),
         channelTagsMatchMode: z.enum(['any', 'all', 'none']),
         modelIDs: z.array(z.string()).optional().nullable(),

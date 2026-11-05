@@ -71,6 +71,7 @@ export function ApiKeyEditTemplateDialog({ open, onOpenChange, template }: ApiKe
             to: m.to,
           })) ?? [],
         channelIDs: profile?.channelIDs ?? null,
+        channelIDsMatchMode: profile?.channelIDsMatchMode ?? 'include',
         channelTags: profile?.channelTags ?? null,
         channelTagsMatchMode: profile?.channelTagsMatchMode ?? 'any',
         modelIDs: profile?.modelIDs ?? null,
@@ -130,6 +131,7 @@ export function ApiKeyEditTemplateDialog({ open, onOpenChange, template }: ApiKe
 
   const channelTagsMatchMode = form.watch('profile.channelTagsMatchMode');
   const isExcludeMode = channelTagsMatchMode === 'none';
+  const isChannelExcludeMode = form.watch('profile.channelIDsMatchMode') === 'exclude';
   const hasQuota = form.watch('profile.quota') != null;
   const quotaPeriodType = form.watch('profile.quota.period.type');
 
@@ -346,8 +348,37 @@ export function ApiKeyEditTemplateDialog({ open, onOpenChange, template }: ApiKe
                 </div>
 
                 <div className='border-t pt-6'>
-                  <h4 className='mb-3 text-sm font-medium'>{t('apikeys.profiles.allowedChannels')}</h4>
-                  <p className='text-muted-foreground mb-3 text-xs'>{t('apikeys.profiles.allowedChannelsDescription')}</p>
+                  <div className='mb-3 flex items-start justify-between gap-3'>
+                    <div>
+                      <h4 className='text-sm font-medium'>
+                        {t(isChannelExcludeMode ? 'apikeys.profiles.excludedChannels' : 'apikeys.profiles.allowedChannels')}
+                      </h4>
+                      <p className='text-muted-foreground mt-1 text-xs'>
+                        {t(isChannelExcludeMode ? 'apikeys.profiles.excludedChannelsDescription' : 'apikeys.profiles.allowedChannelsDescription')}
+                      </p>
+                    </div>
+                    <FormField
+                      control={form.control}
+                      name='profile.channelIDsMatchMode'
+                      render={({ field }) => (
+                        <FormItem className='w-[180px]'>
+                          <FormLabel>{t('apikeys.profiles.channelIDsMatchMode')}</FormLabel>
+                          <FormControl>
+                            <Select value={field.value || 'include'} onValueChange={field.onChange}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value='include'>{t('apikeys.profiles.channelIDsMatchModeInclude')}</SelectItem>
+                                <SelectItem value='exclude'>{t('apikeys.profiles.channelIDsMatchModeExclude')}</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                   <FormField
                     control={form.control}
                     name='profile.channelIDs'
@@ -368,7 +399,7 @@ export function ApiKeyEditTemplateDialog({ open, onOpenChange, template }: ApiKe
                                 .filter((id) => !isNaN(id));
                               field.onChange(ids);
                             }}
-                            placeholder={t('apikeys.profiles.allowedChannels')}
+                            placeholder={t(isChannelExcludeMode ? 'apikeys.profiles.excludedChannels' : 'apikeys.profiles.allowedChannels')}
                             suggestions={channelsData?.edges?.map((edge) => edge.node.name) || []}
                             className='h-auto min-h-9 py-1'
                           />

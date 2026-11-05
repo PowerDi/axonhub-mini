@@ -679,7 +679,12 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, 
 
 		if profile != nil && len(profile.ChannelIDs) > 0 {
 			channels = lo.Filter(channels, func(ch *Channel, _ int) bool {
-				return lo.Contains(profile.ChannelIDs, ch.ID)
+				selected := lo.Contains(profile.ChannelIDs, ch.ID)
+				if profile.ChannelIDsMatchMode.OrDefault() == objects.ChannelIDsMatchModeExclude {
+					return !selected
+				}
+
+				return selected
 			})
 		}
 
