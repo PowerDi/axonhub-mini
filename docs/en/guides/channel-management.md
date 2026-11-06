@@ -210,7 +210,7 @@ https://custom-gateway.example.com/api##
 # Actual request: /api (no version or endpoint added)
 ```
 
-## Multi-Protocol Endpoints and Model Protocol Overrides
+## Multi-Protocol Endpoints and Per-Model Policies
 
 A single channel can host multiple outbound endpoints covering chat, responses, messages and other protocols, so different clients connect with their native protocol.
 
@@ -230,17 +230,78 @@ The **Endpoints** dialog can probe the upstream for the three relay protocols (`
 - A route is reported as supported when the upstream replies with anything other than `404`/`405`; `401`/`403` are reported as an authentication problem, and `5xx` or connection failures as errors.
 - The channel list **Endpoints** column summarizes the configured relay protocols as four icons, including the native Gemini Contents endpoint: colored when configured, dimmed otherwise.
 
-### Model Protocol Overrides (ModelProtocols)
+### Per-model endpoint policies (ModelAPIFormatPolicies)
 
-Force the available outbound protocols for a single model in the **Model Protocol Overrides** block:
+Keep multiple endpoints on one channel and restrict each model in the endpoint editor using **Allow** or **Exclude**:
 
 ```json
-{ "model": "glm-5.3-flash", "apiFormats": ["openai/responses", "openai/chat_completions"], "enabled": true }
+{ "model": "glm-5.3-flash", "allow": ["openai/responses", "openai/chat_completions"] }
 ```
 
-- `apiFormats` expresses priority in configuration order; when the client's inbound protocol is in the list it connects directly, otherwise the first listed protocol is used through the unified conversion pipeline.
-- Enabled overrides may only reference `api_format`s the channel already provides (default or custom endpoints), validated on save; overrides are cleaned up automatically when a model is removed from the channel's supported list.
-- Endpoints and protocol overrides are committed atomically in a single save.
+- A nonempty `allow` permits only the listed formats and takes precedence over `exclude`. With an empty or absent `allow`, every available format except those in `exclude` is permitted.
+- The lists are filters, **not ordered protocol priorities**. The request must use a capable endpoint permitted by the policy; if none exists, the channel is skipped rather than falling back to a forbidden endpoint.
+- Removing an endpoint or editing a policy is rejected if it leaves a model without a usable endpoint and no other enabled channel can serve it. Disabled channels may be edited without this availability check; runtime filtering still applies when they are used.
+- Endpoints and policies are saved atomically. This fork uses one policy system, not a separate upstream model-protocol editor.
+
+### Responses HTTP and WebSocket endpoints
+
+Responses has two distinct endpoint formats:
+
+| `api_format` | Transport | Default request path |
+|---|---|---|
+| `openai/responses` | HTTP | `/v1/responses` |
+| `openai/responses-ws` | WebSocket | `/v1/responses` |
+
+Configure both formats on the same channel when the channel can serve both
+transports. The endpoint format is the source of truth for the outbound
+transport. A WebSocket scheme in a legacy endpoint is normalized to
+`openai/responses-ws`; a legacy HTTP Responses endpoint remains
+`openai/responses`. Existing explicit HTTP-only and WebSocket-only endpoint
+sets remain single-mode until they are saved with a new configuration.
+
+For a request whose inbound format matches an allowed endpoint on the selected
+channel, AxonHub selects that exact format first. If no same-format endpoint is
+available, it selects the first allowed endpoint using the configured endpoint
+order and converts the Responses request, response, or event envelope between
+HTTP and WebSocket. This fallback does not change the channel ranking or make
+an Images or Models request a Responses request.
+
+For per-model endpoint policies, list the exact formats the model may use:
+
+```json
+{
+  "model": "gpt-5",
+  "allow": ["openai/responses", "openai/responses-ws"]
+}
+```
+
+Only available, capable endpoints permitted by the policy can be selected. Legacy
+Responses HTTP identities used for WebSocket transport are normalized in both
+`allow` and `exclude`. Use the same channel for a Responses continuation whenever possible.
+If the selected transport or channel changes and AxonHub cannot certify the
+complete prior input, the request is rejected before upstream dispatch rather
+than sent with incomplete history.
+
+### Responses continuation and bounded recovery
+
+`previous_response_id` is bound to the channel, endpoint origin, model,
+authentication identity, and WebSocket connection generation that produced it.
+Native WebSocket continuation sends the next delta on its matching live
+upstream session. A stale, missing, expired, or over-budget context cannot be
+silently replayed on another endpoint or channel.
+
+When the complete context is unavailable, AxonHub returns HTTP 400 or a
+WebSocket error with code `previous_response_not_found` and asks the client to
+resend the full input without `previous_response_id`. This recovery error does
+not enter ordinary channel failover. One failed WebSocket lane does not close
+unrelated lanes on the same downstream connection.
+
+The current bounded defaults are 16 MiB for one retained HTTP record or stream
+capture, 64 MiB for aggregate retained payload, and 128 MiB for one frame or
+queued frame per downstream connection. Exceeding a retention budget removes
+optional replay history, but keeps valid native response identity when the
+provider session can continue. If a later turn needs history that was not
+retained, the client must resend the full input.
 
 **Example** (GLM Coding Plan channel, three endpoints + override):
 

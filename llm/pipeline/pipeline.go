@@ -12,6 +12,7 @@ import (
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/streams"
 	"github.com/looplj/axonhub/llm/transformer"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // Retryable interface for transformers that support channel switching.
@@ -52,11 +53,33 @@ type SameChannelRetryBudget interface {
 	SameChannelRetryDelay() time.Duration
 }
 
+// ChannelSameChannelRetryLimit is an optional interface a ChannelRetryable may
+// also implement to override the global max same-channel retries for the current
+// channel. It is checked on every same-channel retry decision.
+type ChannelSameChannelRetryLimit interface {
+	// SameChannelRetryLimit returns the max same-channel retries for the current
+	// channel. ok is false when the channel sets no override, in which case the
+	// global retry policy value is used.
+	SameChannelRetryLimit() (limit int, ok bool)
+}
+
 // ChannelCustomizedExecutor interface for channel need custom the process of request.
 // The customized executor will be used to execute the request.
 // e.g. the aws bedrock process need a custom executor to handle the request.
 type ChannelCustomizedExecutor interface {
 	CustomizeExecutor(Executor) Executor
+}
+
+// ResponseTimeoutProvider lets an outbound transformer override the pipeline
+// response timeouts for the current attempt. It is how per-channel timeout
+// settings are applied: the outbound transformer knows which channel is
+// currently selected, including after a retry switches channels.
+//
+// A nil return value means "keep the pipeline default" for that timeout, so a
+// channel can override only one of the two timeouts. A non-nil zero duration
+// disables the corresponding timeout.
+type ResponseTimeoutProvider interface {
+	ResponseTimeouts(ctx context.Context) (streamFirstEventTimeout, nonStreamTimeout *time.Duration)
 }
 
 // Option defines a pipeline configuration option.
@@ -71,6 +94,15 @@ func WithRetry(maxChannelRetries, maxSameChannelRetries int, retryDelay time.Dur
 		p.maxChannelRetries = maxChannelRetries
 		p.maxSameChannelRetries = maxSameChannelRetries
 		p.retryDelay = retryDelay
+	}
+}
+
+// WithRetriesDisabled marks the pipeline as running with the global retry policy
+// switched off. A channel-level override only adjusts the retry count while the
+// policy is enabled; it must not switch retries back on.
+func WithRetriesDisabled() Option {
+	return func(p *pipeline) {
+		p.retriesDisabled = true
 	}
 }
 
@@ -138,6 +170,7 @@ type pipeline struct {
 	middlewares             []Middleware
 	maxChannelRetries       int
 	maxSameChannelRetries   int
+	retriesDisabled         bool
 	retryDelay              time.Duration
 	emptyResponseDetection  bool
 	streamFirstEventTimeout time.Duration
@@ -307,6 +340,12 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 		}
 
 		lastErr = err
+		if shared.IsResponsesRecoveryError(lastErr) {
+			return nil, shared.ResponsesRecoveryError()
+		}
+		if errors.Is(lastErr, transformer.ErrUnsupportedConversion) {
+			return nil, lastErr
+		}
 		if errors.Is(lastErr, ErrPreCommitBufferExceeded) || errors.Is(lastErr, httpclient.ErrStreamEventTooLarge) {
 			return nil, lastErr
 		}
@@ -323,12 +362,9 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 		// 1. Try same-channel retry first if supported
 		if !timeoutRetry {
 			if channelRetryable, ok := p.Outbound.(ChannelRetryable); ok {
-				// A transformer with its own same-channel budget (e.g. hammer
-				// retry) bypasses the pipeline-wide attempt limit.
 				budget, hasBudget := p.Outbound.(SameChannelRetryBudget)
-				overridden := hasBudget && budget.OverridesSameChannelLimit()
-
-				if (overridden || sameChannelRetries < p.getMaxSameChannelRetries()) && channelRetryable.CanRetry(lastErr) {
+				overridden := !p.retriesDisabled && hasBudget && budget.OverridesSameChannelLimit()
+				if (overridden || sameChannelRetries < p.maxSameChannelRetriesFor()) && channelRetryable.CanRetry(lastErr) {
 					if err := channelRetryable.PrepareForRetry(ctx); err == nil {
 						sameChannelRetries++
 						canRetry = true
@@ -339,7 +375,7 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 
 						slog.DebugContext(ctx, "retrying same channel",
 							slog.Int("same_channel_attempt", sameChannelRetries),
-							slog.Int("max_same_channel_retries", p.getMaxSameChannelRetries()),
+							slog.Int("max_same_channel_retries", p.maxSameChannelRetriesFor()),
 						)
 					} else {
 						slog.WarnContext(ctx, "failed to prepare same channel retry, will try channel switch", slog.Any("error", err))
@@ -373,15 +409,21 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 			break
 		}
 
-		// Add retry delay if configured. A same-channel delay set by a budget
-		// provider (hammer retry) takes precedence over the global delay.
+		// Same-channel contention delay takes precedence over the global delay.
 		delay := p.retryDelay
 		if sameChannelDelay > 0 {
 			delay = sameChannelDelay
 		}
-
 		if delay > 0 {
-			time.Sleep(delay)
+			timer := time.NewTimer(delay)
+			select {
+			case <-timer.C:
+			case <-ctx.Done():
+				if !timer.Stop() {
+					<-timer.C
+				}
+				return nil, lastErr
+			}
 		}
 
 		sameChannelDelay = 0
@@ -428,6 +470,10 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 
 	effectiveWantStream := request.Stream != nil && *request.Stream
 
+	// Resolve the timeouts after TransformRequest so the outbound transformer
+	// has selected the channel for this attempt and can apply channel overrides.
+	streamFirstEventTimeout, nonStreamTimeout := p.effectiveResponseTimeouts(ctx)
+
 	var result *Result
 	switch {
 	case originalWantStream:
@@ -435,7 +481,7 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 			Stream: true,
 		}
 
-		stream, err := p.stream(ctx, executor, httpReq, p.streamFirstEventTimeout)
+		stream, err := p.stream(ctx, executor, httpReq, streamFirstEventTimeout)
 		if err != nil {
 			return nil, fmt.Errorf("failed to stream request: %w", err)
 		}
@@ -446,11 +492,11 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 			Stream: false,
 		}
 
-		timeoutCtx, cancel := p.withNonStreamTimeout(ctx)
+		timeoutCtx, cancel := withNonStreamTimeout(ctx, nonStreamTimeout)
 		response, err := p.autoAggregateStream(timeoutCtx, executor, httpReq)
 		cancel()
 		if err != nil {
-			if p.isNonStreamTimeout(timeoutCtx) {
+			if isNonStreamTimeout(timeoutCtx, nonStreamTimeout) {
 				return nil, ErrNonStreamResponseTimeout
 			}
 
@@ -463,11 +509,11 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 			Stream: false,
 		}
 
-		timeoutCtx, cancel := p.withNonStreamTimeout(ctx)
+		timeoutCtx, cancel := withNonStreamTimeout(ctx, nonStreamTimeout)
 		response, err := p.notStream(timeoutCtx, executor, httpReq)
 		cancel()
 		if err != nil {
-			if p.isNonStreamTimeout(timeoutCtx) {
+			if isNonStreamTimeout(timeoutCtx, nonStreamTimeout) {
 				return nil, ErrNonStreamResponseTimeout
 			}
 
@@ -480,8 +526,49 @@ func (p *pipeline) processRequest(ctx context.Context, request *llm.Request) (*R
 	return result, nil
 }
 
+// effectiveResponseTimeouts returns the timeouts to use for the current attempt,
+// letting the outbound transformer override the pipeline-level defaults.
+func (p *pipeline) effectiveResponseTimeouts(ctx context.Context) (time.Duration, time.Duration) {
+	streamFirstEventTimeout := p.streamFirstEventTimeout
+	nonStreamTimeout := p.nonStreamTimeout
+
+	provider, ok := p.Outbound.(ResponseTimeoutProvider)
+	if !ok {
+		return streamFirstEventTimeout, nonStreamTimeout
+	}
+
+	streamOverride, nonStreamOverride := provider.ResponseTimeouts(ctx)
+	if streamOverride != nil {
+		streamFirstEventTimeout = *streamOverride
+	}
+
+	if nonStreamOverride != nil {
+		nonStreamTimeout = *nonStreamOverride
+	}
+
+	return streamFirstEventTimeout, nonStreamTimeout
+}
+
 // getMaxSameChannelRetries returns the maximum number of same-channel retries.
 func (p *pipeline) getMaxSameChannelRetries() int {
+	return p.maxSameChannelRetries
+}
+
+// maxSameChannelRetriesFor returns the effective same-channel retry limit: a
+// channel-level override when retries are enabled and the outbound transformer
+// provides one, otherwise the global retry policy value. The override only
+// adjusts the count; it cannot enable retries that the global policy disabled.
+func (p *pipeline) maxSameChannelRetriesFor() int {
+	if p.retriesDisabled {
+		return 0
+	}
+
+	if override, ok := p.Outbound.(ChannelSameChannelRetryLimit); ok {
+		if limit, ok := override.SameChannelRetryLimit(); ok {
+			return limit
+		}
+	}
+
 	return p.maxSameChannelRetries
 }
 
@@ -489,14 +576,14 @@ func isResponseTimeoutError(err error) bool {
 	return errors.Is(err, ErrStreamFirstEventTimeout) || errors.Is(err, ErrNonStreamResponseTimeout)
 }
 
-func (p *pipeline) withNonStreamTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
-	if p.nonStreamTimeout <= 0 {
+func withNonStreamTimeout(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
+	if timeout <= 0 {
 		return ctx, func() {}
 	}
 
-	return context.WithTimeoutCause(ctx, p.nonStreamTimeout, ErrNonStreamResponseTimeout)
+	return context.WithTimeoutCause(ctx, timeout, ErrNonStreamResponseTimeout)
 }
 
-func (p *pipeline) isNonStreamTimeout(ctx context.Context) bool {
-	return p.nonStreamTimeout > 0 && errors.Is(context.Cause(ctx), ErrNonStreamResponseTimeout)
+func isNonStreamTimeout(ctx context.Context, timeout time.Duration) bool {
+	return timeout > 0 && errors.Is(context.Cause(ctx), ErrNonStreamResponseTimeout)
 }

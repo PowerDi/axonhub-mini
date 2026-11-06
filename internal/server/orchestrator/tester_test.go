@@ -69,6 +69,18 @@ func TestChannelTestAPIFormatPrefersDecisionsEndpoint(t *testing.T) {
 	require.Equal(t, llm.APIFormatOpenAIDecisions, channelTestAPIFormat(ch, "gpt-6-luna"))
 }
 
+func TestChannelTestAPIFormatMixedEndpointsFallback(t *testing.T) {
+	ch := &biz.Channel{Channel: &ent.Channel{
+		Type:            channel.TypeOpenai,
+		SupportedModels: []string{"test-model"},
+		Endpoints: []objects.ChannelEndpoint{
+			{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+			{APIFormat: llm.APIFormatTypeSafeSystemOne.String(), Path: "/systemone"},
+		},
+	}}
+	require.Equal(t, llm.APIFormatOpenAIChatCompletion, channelTestAPIFormat(ch, "test-model"))
+}
+
 func TestParseDecisionsTestResponseRequiresAnswers(t *testing.T) {
 	message, err := parseDecisionsTestResponse([]byte(`{"model":"gpt-6-luna","answers":[{"name":"answer","probability":1}]}`))
 	require.NoError(t, err)
@@ -124,6 +136,26 @@ func TestChannelTestAPIFormatIgnoresStalePolicyFormats(t *testing.T) {
 	// The policy pins a format with no configured endpoint; the test must probe
 	// chat_completions rather than fail or probe the missing protocol.
 	require.Equal(t, llm.APIFormatOpenAIChatCompletion, channelTestAPIFormat(ch, "test-model"))
+}
+
+// TestChannelTestAPIFormatCloudflareChannel pins the format the channel test
+// speaks for each model of a Workers AI channel. System One is an extra surface
+// next to the OpenAI-compatible API there, so an unpinned chat or embedding model
+// must not be tested as System One.
+func TestChannelTestAPIFormatCloudflareChannel(t *testing.T) {
+	ch := &biz.Channel{Channel: &ent.Channel{
+		Type:            channel.TypeCloudflare,
+		SupportedModels: []string{"@cf/meta/llama-3.1-8b-instruct", "@cf/cloudflare/clef", "@cf/baai/bge-m3"},
+		Endpoints:       []objects.ChannelEndpoint{{APIFormat: llm.APIFormatTypeSafeSystemOne.String()}},
+		Settings: &objects.ChannelSettings{ModelAPIFormatPolicies: []objects.ModelAPIFormatPolicy{
+			{Model: "@cf/cloudflare/clef", Allow: []string{llm.APIFormatTypeSafeSystemOne.String()}},
+			{Model: "@cf/baai/bge-m3", Allow: []string{llm.APIFormatOpenAIEmbedding.String()}},
+		}},
+	}}
+
+	require.Equal(t, llm.APIFormatOpenAIChatCompletion, channelTestAPIFormat(ch, "@cf/meta/llama-3.1-8b-instruct"))
+	require.Equal(t, llm.APIFormatTypeSafeSystemOne, channelTestAPIFormat(ch, "@cf/cloudflare/clef"))
+	require.Equal(t, llm.APIFormatOpenAIEmbedding, channelTestAPIFormat(ch, "@cf/baai/bge-m3"))
 }
 
 // TestUsesResponsesWebSocket verifies explicit and URL-inferred WebSocket transports.

@@ -375,3 +375,44 @@ func TestValidateChannelModelRoutability_LowercaseFallbackChannel(t *testing.T) 
 		},
 	}))
 }
+
+func TestOtherChannelServesModel_ResolvesResponsesTransport(t *testing.T) {
+	h, w := llm.APIFormatOpenAIResponse.String(), llm.APIFormatOpenAIResponseWebSocket.String()
+	fallback := &ent.Channel{
+		Type: channel.TypeCodex, BaseURL: "https://example.test#", SupportedModels: []string{"test-model"},
+		Endpoints: []objects.ChannelEndpoint{{APIFormat: w}},
+		Settings:  &objects.ChannelSettings{ModelAPIFormatPolicies: []objects.ModelAPIFormatPolicy{{Model: "test-model", Allow: []string{h}}}},
+	}
+	// Codex defaults include HTTP only when the stored family selection allows it.
+	require.False(t, otherChannelServesModel([]*ent.Channel{fallback}, "test-model", llm.RequestTypeChat))
+	fallback.Settings.ModelAPIFormatPolicies[0].Allow = []string{w}
+	require.True(t, otherChannelServesModel([]*ent.Channel{fallback}, "test-model", llm.RequestTypeChat))
+	fallback.Type = channel.TypeOpenaiResponses
+	fallback.BaseURL = "wss://example.test/v1"
+	fallback.Endpoints = nil
+	fallback.Settings.ModelAPIFormatPolicies[0].Allow = []string{h}
+	require.True(t, otherChannelServesModel([]*ent.Channel{fallback}, "test-model", llm.RequestTypeChat))
+	require.Equal(t, []string{h}, fallback.Settings.ModelAPIFormatPolicies[0].Allow, "reads must not rewrite legacy storage")
+}
+
+func TestModelAPIFormatPolicy_LegacyAllowAndExcludeAreNotMutated(t *testing.T) {
+	h, w := llm.APIFormatOpenAIResponse.String(), llm.APIFormatOpenAIResponseWebSocket.String()
+	settings := &objects.ChannelSettings{ModelAPIFormatPolicies: []objects.ModelAPIFormatPolicy{{
+		Model: "test-model", Allow: []string{h, "anthropic/messages"}, Exclude: []string{h},
+	}}}
+	ch := &Channel{Channel: &ent.Channel{Type: channel.TypeOpenaiMultiprotocol, BaseURL: "https://example.test/v1",
+		Endpoints: []objects.ChannelEndpoint{{APIFormat: h, Transport: objects.ChannelEndpointTransportWebSocket}}, Settings: settings}}
+	policy := ch.ModelAPIFormatPolicy("test-model")
+	require.Equal(t, []string{w, "anthropic/messages"}, policy.Allow)
+	require.Equal(t, []string{w}, policy.Exclude)
+	require.True(t, policy.AllowsAPIFormat(w), "a nonempty Allow retains precedence over Exclude")
+	policy.Allow = nil
+	require.False(t, policy.AllowsAPIFormat(w))
+	policy = ch.ModelAPIFormatPolicy("test-model")
+	require.Equal(t, []string{h, "anthropic/messages"}, settings.ModelAPIFormatPolicies[0].Allow)
+	require.Equal(t, []string{h}, settings.ModelAPIFormatPolicies[0].Exclude)
+	policy.Allow[0] = "anthropic/messages"
+	policy.Exclude[0] = "anthropic/messages"
+	require.Equal(t, h, settings.ModelAPIFormatPolicies[0].Allow[0])
+	require.Equal(t, h, settings.ModelAPIFormatPolicies[0].Exclude[0])
+}

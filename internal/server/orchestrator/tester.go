@@ -199,8 +199,7 @@ func channelTestAPIFormat(channel *biz.Channel, model string) llm.APIFormat {
 		if endpoint, ok := lo.Find(endpoints, func(endpoint objects.ChannelEndpoint) bool {
 			return endpoint.APIFormat == format
 		}); ok {
-			endpoints = []objects.ChannelEndpoint{endpoint}
-			break
+			return llm.APIFormat(endpoint.APIFormat)
 		}
 	}
 
@@ -208,11 +207,17 @@ func channelTestAPIFormat(channel *biz.Channel, model string) llm.APIFormat {
 		if endpoint.APIFormat == llm.APIFormatOpenAIDecisions.String() {
 			return llm.APIFormatOpenAIDecisions
 		}
+	}
+	for _, endpoint := range endpoints {
+		if endpoint.APIFormat == llm.APIFormatOpenAIChatCompletion.String() {
+			return llm.APIFormatOpenAIChatCompletion
+		}
+	}
+	for _, endpoint := range endpoints {
 		if endpoint.APIFormat == llm.APIFormatTypeSafeSystemOne.String() {
 			return llm.APIFormatTypeSafeSystemOne
 		}
 	}
-
 	return llm.APIFormatOpenAIChatCompletion
 }
 
@@ -241,6 +246,9 @@ func usesResponsesWebSocket(channel *biz.Channel) bool {
 	}
 
 	for _, endpoint := range channel.ResolveEndpoints() {
+		if endpoint.APIFormat == llm.APIFormatOpenAIResponseWebSocket.String() {
+			return true
+		}
 		if endpoint.APIFormat != llm.APIFormatOpenAIResponse.String() && endpoint.APIFormat != llm.APIFormatOpenAIResponseCompact.String() {
 			continue
 		}
@@ -292,12 +300,54 @@ func (processor *TestChannelOrchestrator) buildChannelTestInput(ctx context.Cont
 		})
 		return typesafe.NewSystemOneInboundTransformer(), body, err
 	}
+	if apiFormat == llm.APIFormatOpenAIEmbedding {
+		if useStream {
+			return nil, nil, fmt.Errorf("embeddings do not support streaming")
+		}
+
+		// Protect role-scoped prompts before they are combined into the single
+		// embedding input, mirroring the System One branch.
+		prompts := buildChannelTestRequest(model, false, systemPrompt, userPrompt, false, llm.APIFormatOpenAIChatCompletion)
+		protected, err := processor.promptProtectionRuleService.Protect(ctx, prompts)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		// Mirror the /v1/embeddings path: the embedding inbound transformer
+		// consumes the OpenAI embedding payload.
+		body, err := json.Marshal(openai.EmbeddingRequest{
+			Model: model,
+			Input: llm.EmbeddingInput{String: lo.FromPtr(protected.Messages[0].Content.Content) + "\n\n" + lo.FromPtr(protected.Messages[1].Content.Content)},
+		})
+		if err != nil {
+			return nil, nil, err
+		}
+
+		return openai.NewEmbeddingInboundTransformer(), body, nil
+	}
 	request := buildChannelTestRequest(model, useStream, systemPrompt, userPrompt, responsesWebSocket, apiFormat)
 	body, err := json.Marshal(request)
 	return channelTestInbound(apiFormat), body, err
 }
 
 func channelTestResponseMessage(body []byte, apiFormat llm.APIFormat) (*string, error) {
+	if apiFormat == llm.APIFormatOpenAIEmbedding {
+		response, err := xjson.To[llm.EmbeddingResponse](body)
+		if err != nil {
+			return nil, err
+		}
+		if len(response.Data) == 0 {
+			return nil, fmt.Errorf("No embedding in response")
+		}
+		if dimensions := len(response.Data[0].Embedding.Embedding); dimensions > 0 {
+			return lo.ToPtr(fmt.Sprintf("Embedding OK: %d dimensions", dimensions)), nil
+		}
+		if response.Data[0].Embedding.Base64 != "" {
+			return lo.ToPtr("Embedding OK: base64 encoded vector"), nil
+		}
+
+		return nil, fmt.Errorf("Empty embedding vector in response")
+	}
 	if apiFormat == llm.APIFormatTypeSafeSystemOne {
 		response, err := xjson.To[llm.SystemOneResponse](body)
 		if err != nil {
@@ -472,6 +522,12 @@ func (processor *TestChannelOrchestrator) handleStreamResponse(
 
 	// Accumulate stream chunks
 	var accumulatedContent string
+	expectedChoices := 0
+	if expected, ok := stream.(interface{ ExpectedStreamChoices() int }); ok {
+		expectedChoices = expected.ExpectedStreamChoices()
+	}
+	terminalTracker := NewStreamTerminalTracker(expectedChoices)
+	terminalSeen := false
 
 	for stream.Next() {
 		select {
@@ -488,6 +544,9 @@ func (processor *TestChannelOrchestrator) handleStreamResponse(
 		event := stream.Current()
 		if event == nil {
 			continue
+		}
+		if !terminalSeen && terminalTracker.Observe(event) {
+			terminalSeen = true
 		}
 
 		// The stream may end with a "[DONE]" message which is not valid JSON.
@@ -536,6 +595,17 @@ func (processor *TestChannelOrchestrator) handleStreamResponse(
 			Message: lo.ToPtr(""),
 			Error:   lo.ToPtr("No content in stream response"),
 		}, nil
+	}
+	if !terminalSeen {
+		return &TestChannelResult{
+			Latency: latency,
+			Success: false,
+			Message: lo.ToPtr(accumulatedContent),
+			Error:   lo.ToPtr("Stream ended without terminal event"),
+		}, nil
+	}
+	if observer, ok := stream.(streams.DeliveryAcknowledger); ok {
+		observer.AcknowledgeDelivery()
 	}
 
 	return &TestChannelResult{

@@ -167,6 +167,11 @@ export function mergeChannelSettingsForUpdate(
     retryableErrorPatterns: pick('retryableErrorPatterns', existing?.retryableErrorPatterns ?? []),
     hammerRetry: pick('hammerRetry', existing?.hammerRetry ?? null),
     reasoningFilter: pick('reasoningFilter', existing?.reasoningFilter ?? false),
+    maxSingleChannelRetries: pick('maxSingleChannelRetries', existing?.maxSingleChannelRetries ?? null),
+
+    responseTimeout: pick('responseTimeout', existing?.responseTimeout ?? null),
+apiKeyStrategy: pick('apiKeyStrategy', existing?.apiKeyStrategy ?? null),
+    apiKeyRoundRobinSwitchAfter: pick('apiKeyRoundRobinSwitchAfter', existing?.apiKeyRoundRobinSwitchAfter ?? null),
     providerQuota: pick('providerQuota', existing?.providerQuota ?? null),
     quotaRoutingMode: pick('quotaRoutingMode', existing?.quotaRoutingMode ?? undefined),
   };

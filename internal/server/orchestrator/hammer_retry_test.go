@@ -196,9 +196,10 @@ func TestHammerCanRetryInCanRetry(t *testing.T) {
 	}
 	assert.False(t, outbound.CanRetry(newUpstream429()))
 
-	// On the last candidate there is nowhere to switch to, so the configured
-	// same-channel retry budget applies instead of failing after one attempt.
+	// Ordinary channels follow beta12's explicit 429 opt-in, even on the last candidate.
 	outbound = newHammerOutbound(nil)
+	assert.False(t, outbound.CanRetry(newUpstream429()))
+	outbound.state.CurrentCandidate.Channel.Settings = &objects.ChannelSettings{RetryableStatusCodes: []int{429}}
 	assert.True(t, outbound.CanRetry(newUpstream429()))
 }
 
@@ -317,9 +318,9 @@ func TestHammerRetryOnTraceStickyCandidate(t *testing.T) {
 	t.Run("sticky candidate without hammer follows the normal 429 rule", func(t *testing.T) {
 		outbound := newSticky(nil)
 
-		// Sticky candidates share the same-channel retry budget with normal
-		// candidates (#2469). On the last candidate a 429 falls back to a
-		// same-channel retry instead of failing after one attempt.
+		// Sticky channels use the same explicit 429 opt-in as ordinary channels.
+		assert.False(t, outbound.CanRetry(newUpstream429()))
+		outbound.state.CurrentCandidate.Channel.Settings = &objects.ChannelSettings{RetryableStatusCodes: []int{429}}
 		assert.True(t, outbound.CanRetry(newUpstream429()))
 		assert.Zero(t, outbound.state.HammerAttempts,
 			"a channel without hammer config must not consume a hammer budget")

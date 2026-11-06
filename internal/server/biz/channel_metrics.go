@@ -525,6 +525,8 @@ func (svc *ChannelService) RecordPerformance(ctx context.Context, perf *Performa
 
 	if perf.Success {
 		svc.clearAutoDisableCountsOnSuccess(perf)
+
+		svc.onAPIKeySuccess(perf.ChannelID, perf.APIKey)
 	} else if !perf.Canceled && !perf.Hammerable {
 		// Hammer channels reject most requests by design ("挤模式" contention);
 		// a hammerable failure is expected behaviour, not a health signal, so

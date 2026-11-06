@@ -148,7 +148,7 @@ func (s *DefaultSelector) selectChannelCadidates(ctx context.Context, req *llm.R
 			continue
 		}
 		apiFormat := SelectAPIFormatForModel(endpoints, req, entry.Policy)
-		if req.RequestType == llm.RequestTypeAlphaSearch && apiFormat == "" {
+		if requiresExplicitEndpoint(req.RequestType) && apiFormat == "" {
 			continue
 		}
 
@@ -1122,6 +1122,9 @@ func (s *SpecifiedChannelSelector) Select(ctx context.Context, req *llm.Request)
 		return nil, fmt.Errorf("model %s has no usable endpoint on channel %s after per-model policy filtering", req.Model, channel.Name)
 	}
 	apiFormat := SelectAPIFormatForModel(endpoints, req, entry.Policy)
+	if requiresExplicitEndpoint(req.RequestType) && apiFormat == "" {
+		return []*ChannelModelsCandidate{}, nil
+	}
 
 	candidate := &ChannelModelsCandidate{
 		Channel:   channel,

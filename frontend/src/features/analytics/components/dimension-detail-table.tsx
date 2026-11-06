@@ -127,22 +127,22 @@ export function DimensionDetailTable({
                 {currentData.map((item) => (
                   <tr key={item.id} className='border-b transition-colors duration-100 hover:bg-(--table-row-hover)'>
                     <td className='bg-card sticky left-0 z-10 truncate px-2 py-2 text-sm font-medium'>{item.name}</td>
-                    <td className='whitespace-nowrap px-2 py-2 text-right text-sm font-medium'>{formatExactNumber(item.totalTokens)}</td>
-                    <td className='whitespace-nowrap px-2 py-2 text-right text-sm'>{formatExactNumber(item.inputTokens)}</td>
-                    <td className='whitespace-nowrap px-2 py-2 text-right text-sm'>{formatExactNumber(item.cachedInputTokens)}</td>
-                    <td className='whitespace-nowrap px-2 py-2 text-right text-sm'>{formatExactNumber(item.inputTokens - item.cachedInputTokens)}</td>
-                    <td className='whitespace-nowrap px-2 py-2 text-right text-sm'>{formatExactNumber(item.outputTokens)}</td>
-                    <td className='whitespace-nowrap px-2 py-2 text-right text-sm'>
+                    <td className='whitespace-nowrap px-2 py-2 text-right tabular-nums text-sm font-medium'>{formatExactNumber(item.totalTokens)}</td>
+                    <td className='whitespace-nowrap px-2 py-2 text-right tabular-nums text-sm'>{formatExactNumber(item.inputTokens)}</td>
+                    <td className='whitespace-nowrap px-2 py-2 text-right tabular-nums text-sm'>{formatExactNumber(item.cachedInputTokens)}</td>
+                    <td className='whitespace-nowrap px-2 py-2 text-right tabular-nums text-sm'>{formatExactNumber(item.inputTokens - item.cachedInputTokens)}</td>
+                    <td className='whitespace-nowrap px-2 py-2 text-right tabular-nums text-sm'>{formatExactNumber(item.outputTokens)}</td>
+                    <td className='whitespace-nowrap px-2 py-2 text-right tabular-nums text-sm'>
                       {item.inputTokens > 0 ? ((item.cachedInputTokens / item.inputTokens) * 100).toFixed(1) : '0'}%
                     </td>
-                    <td className='whitespace-nowrap px-4 py-2 text-right text-sm'>{formatExactNumber(item.requestCount)}</td>
-                    <td className='whitespace-nowrap px-4 py-2 text-right text-sm'>
+                    <td className='whitespace-nowrap px-4 py-2 text-right tabular-nums text-sm tabular-nums'>{formatExactNumber(item.requestCount)}</td>
+                    <td className='whitespace-nowrap px-4 py-2 text-right tabular-nums text-sm tabular-nums'>
                       {item.tokensPerSecond == null ? '—' : item.tokensPerSecond.toFixed(2)}
                     </td>
-                    <td className='whitespace-nowrap px-4 py-2 text-right text-sm'>
+                    <td className='whitespace-nowrap px-4 py-2 text-right tabular-nums text-sm tabular-nums'>
                       {item.ttftMs == null ? '—' : Math.round(item.ttftMs).toLocaleString()}
                     </td>
-                    <td className='whitespace-nowrap px-4 py-2 text-right text-sm'>{formatCurrency(item.cost)}</td>
+                    <td className='whitespace-nowrap px-4 py-2 text-right tabular-nums text-sm tabular-nums'>{formatCurrency(item.cost)}</td>
                   </tr>
                 ))}
               </tbody>

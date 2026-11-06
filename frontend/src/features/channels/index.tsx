@@ -340,7 +340,7 @@ export default function ChannelsManagement() {
         </div>
       </Header>
 
-      <Main fixed>
+      <Main fixed className='py-2 sm:py-6 [--page-body-min-height:34rem]'>
         <ChannelsContent />
       </Main>
       <Suspense fallback={null}>

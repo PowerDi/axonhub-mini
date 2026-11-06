@@ -24,7 +24,7 @@ func TestPruneDirectChannelAssociations(t *testing.T) {
 			},
 		},
 		{
-			Type: "model",
+			Type:    "model",
 			ModelID: &objects.ModelIDAssociation{ModelID: "gpt-4o"},
 		},
 	}}

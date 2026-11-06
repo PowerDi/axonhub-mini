@@ -49,3 +49,13 @@ test('every settings selection block in channels.ts requests quotaRoutingMode', 
     `settings selection block(s) missing quotaRoutingMode: ${missing.map((b) => b.name).join(', ')}`
   );
 });
+
+test('full settings selections return both mini policies and beta12 retry/key settings', () => {
+  // Column-only projections intentionally omit editor settings; edit dialogs fetch full detail.
+  const fullBlocks = extractSettingsBlocks().filter(({ name }) => !['CHANNEL_QUERY_ROUTING_STATUS_SELECTION', 'CHANNEL_QUERY_PROXY_SELECTION'].includes(name));
+  assert.ok(fullBlocks.length > 0);
+  for (const field of ['modelApiFormatPolicies', 'allow', 'exclude', 'hammerRetry', 'reasoningFilter', 'maxSingleChannelRetries', 'responseTimeout', 'apiKeyStrategy', 'apiKeyRoundRobinSwitchAfter']) {
+    const missing = fullBlocks.filter(({ body }) => !new RegExp(`\\b${field}\\b`).test(body));
+    assert.deepEqual(missing.map(({ name }) => name), [], `settings selection missing ${field}`);
+  }
+});

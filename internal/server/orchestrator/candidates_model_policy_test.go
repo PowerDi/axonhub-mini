@@ -132,11 +132,9 @@ func TestPopulateAPIFormatSingleEntryPolicy(t *testing.T) {
 	require.Equal(t, llm.APIFormatOpenAIChatCompletion.String(), populated[0].APIFormat)
 }
 
-// TestPopulateAPIFormatMultipleEntriesFallbackUnfiltered verifies that a
-// multi-entry candidate keeps the legacy channel-level format (policies are
-// applied per entry at outbound time), and that a policy-free candidate is
-// byte-for-byte identical to the legacy behaviour.
-func TestPopulateAPIFormatMultipleEntriesFallbackUnfiltered(t *testing.T) {
+// TestPopulateAPIFormatMultipleEntries keeps beta12's per-entry hints aligned
+// with mini policies, so the first model and subsequent retries use their own formats.
+func TestPopulateAPIFormatMultipleEntries(t *testing.T) {
 	ch := setupPolicyChannel(t, "Policy Channel", []string{"deepseek-chat", "claude-sonnet"}, []objects.ModelAPIFormatPolicy{
 		{Model: "deepseek-chat", Exclude: []string{llm.APIFormatAnthropicMessage.String()}},
 	})
@@ -156,9 +154,11 @@ func TestPopulateAPIFormatMultipleEntriesFallbackUnfiltered(t *testing.T) {
 
 	populated := populateAPIFormat(context.Background(), candidates, req)
 	require.Len(t, populated, 1)
-	// Channel-level format still prefers the inbound format; per-entry
-	// resolution happens later in apiFormatForEntry.
-	require.Equal(t, llm.APIFormatAnthropicMessage.String(), populated[0].APIFormat)
+	require.Equal(t, llm.APIFormatOpenAIChatCompletion.String(), populated[0].APIFormat)
+	require.Equal(t, []string{llm.APIFormatOpenAIChatCompletion.String(), llm.APIFormatAnthropicMessage.String()}, populated[0].modelAPIFormats)
+	format, ok := apiFormatForEntry(populated[0], 1, req)
+	require.True(t, ok)
+	require.Equal(t, llm.APIFormatAnthropicMessage.String(), format)
 }
 
 // TestAPIFormatForEntryPerModelPolicies is the core entry-granularity check:
@@ -601,4 +601,56 @@ func TestSpecifiedChannelSelectorExplicitAPIFormatOverridesPolicy(t *testing.T) 
 	_, err = missing.Select(ctx, req)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "no "+llm.APIFormatGeminiContents.String()+" endpoint")
+}
+
+func TestPerEntryFormatCannotBypassPolicyEndpointAvailability(t *testing.T) {
+	h := llm.APIFormatOpenAIResponse.String()
+	chat := llm.APIFormatOpenAIChatCompletion.String()
+	ch := setupPolicyChannel(t, "Policy Endpoint Availability", []string{"test-model"}, []objects.ModelAPIFormatPolicy{
+		{Model: "test-model", Allow: []string{h, chat}},
+	})
+	entry := ch.GetModelEntries()["test-model"]
+	candidate := &ChannelModelsCandidate{Channel: ch, Models: []biz.ChannelModelEntry{entry}, modelAPIFormats: []string{h}}
+	req := &llm.Request{RequestType: llm.RequestTypeChat, APIFormat: llm.APIFormatOpenAIResponse}
+	format, ok := apiFormatForEntry(candidate, 0, req)
+	require.True(t, ok)
+	require.Equal(t, chat, format, "a stale Responses hint cannot resurrect a removed endpoint")
+	candidate.Models[0].Policy = &objects.ModelAPIFormatPolicy{Model: "test-model", Allow: []string{h}}
+	_, ok = apiFormatForEntry(candidate, 0, req)
+	require.False(t, ok)
+
+	// A missing transformer must not fall back to the channel's forbidden primary.
+	anthropic := llm.APIFormatAnthropicMessage.String()
+	candidate.Models[0].Policy = &objects.ModelAPIFormatPolicy{Model: "test-model", Allow: []string{anthropic}}
+	candidate.modelAPIFormats = []string{anthropic}
+	delete(ch.Outbounds, anthropic)
+	_, _, ok = selectOutboundForEntry(candidate, 0, req)
+	require.False(t, ok)
+}
+
+func TestPopulateAPIFormatExplicitRequestsFilterIndividualModels(t *testing.T) {
+	for _, tt := range []struct {
+		requestType llm.RequestType
+		format      llm.APIFormat
+	}{
+		{llm.RequestTypeAlphaSearch, llm.APIFormatOpenAIAlphaSearch},
+		{llm.RequestTypeDecisions, llm.APIFormatOpenAIDecisions},
+		{llm.RequestTypeSystemOne, llm.APIFormatTypeSafeSystemOne},
+	} {
+		t.Run(string(tt.requestType), func(t *testing.T) {
+			ch := &biz.Channel{Channel: &ent.Channel{Type: channel.TypeOpenaiMultiprotocol, Endpoints: []objects.ChannelEndpoint{{APIFormat: string(tt.format)}}}}
+			candidate := &ChannelModelsCandidate{Channel: ch, Models: []biz.ChannelModelEntry{
+				{ActualModel: "denied", Policy: &objects.ModelAPIFormatPolicy{Model: "denied", Exclude: []string{string(tt.format)}}},
+				{ActualModel: "allowed"},
+			}}
+			req := &llm.Request{RequestType: tt.requestType, APIFormat: tt.format}
+			got := populateAPIFormat(t.Context(), []*ChannelModelsCandidate{candidate}, req)
+			require.Len(t, got, 1)
+			require.Equal(t, []biz.ChannelModelEntry{{ActualModel: "allowed"}}, got[0].Models)
+			require.Equal(t, []string{string(tt.format)}, got[0].modelAPIFormats)
+			// With no matching endpoint, an explicit request must never use chat.
+			ch.Endpoints = nil
+			require.Empty(t, populateAPIFormat(t.Context(), []*ChannelModelsCandidate{candidate}, req))
+		})
+	}
 }

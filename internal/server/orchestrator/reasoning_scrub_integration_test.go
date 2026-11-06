@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -41,6 +42,14 @@ import (
 // outbound re-serializes that signature verbatim, so the scrub is observable in
 // the wire body rather than only in unit-level field assertions.
 func TestChatCompletionOrchestrator_Process_StripsSignedReasoningAndRetriesSameChannel(t *testing.T) {
+	for _, passThrough := range []bool{false, true} {
+		t.Run(fmt.Sprintf("passThrough=%t", passThrough), func(t *testing.T) {
+			testSignedReasoningRetry(t, passThrough)
+		})
+	}
+}
+
+func testSignedReasoningRetry(t *testing.T, passThrough bool) {
 	ctx := context.Background()
 	ctx = authz.WithTestBypass(ctx)
 
@@ -145,7 +154,7 @@ func TestChatCompletionOrchestrator_Process_StripsSignedReasoningAndRetriesSameC
 			SetCredentials(objects.ChannelCredentials{APIKey: key}).
 			SetSupportedModels([]string{"gpt-4"}).
 			SetDefaultTestModel("gpt-4").
-			SetSettings(&objects.ChannelSettings{ReasoningFilter: true}).
+			SetSettings(&objects.ChannelSettings{ReasoningFilter: true, PassThroughBody: lo.ToPtr(passThrough)}).
 			Save(ctx)
 		require.NoError(t, err)
 

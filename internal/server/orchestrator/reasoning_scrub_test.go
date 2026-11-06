@@ -8,9 +8,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent"
-	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
+	"github.com/looplj/axonhub/llm/auth"
+	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/pipeline"
+	"github.com/looplj/axonhub/llm/transformer/openai/responses"
+	"github.com/looplj/axonhub/llm/transformer/shared"
 )
 
 // respErr builds a *llm.ResponseError shaped like the ones the pipeline wraps
@@ -331,4 +336,57 @@ func TestCanRetry_NonReasoningErrorLeavesFlagUnset(t *testing.T) {
 	p.CanRetry(respErr("missing required parameter: model", "", "invalid_request_error"))
 
 	require.False(t, p.state.ReasoningStripped)
+}
+
+func TestReasoningScrubRawMiddlewaresKeepSanitizedResponsesBody(t *testing.T) {
+	for _, format := range []llm.APIFormat{llm.APIFormatOpenAIResponse, llm.APIFormatOpenAIResponseWebSocket} {
+		t.Run(string(format), func(t *testing.T) {
+			p := newScrubTestTransformer()
+			p.GetCurrentChannel().Settings.PassThroughBody = lo.ToPtr(true)
+			raw := []byte(`{"model":"test-model","previous_response_id":"delta","input":[{"type":"reasoning","encrypted_content":"signed-canary"}]}`)
+			p.state.LlmRequest = &llm.Request{Model: "test-model", APIFormat: llm.APIFormatOpenAIResponse, RawRequest: &httpclient.Request{Body: raw}}
+			p.state.ResponsesContinuation = &responsesContinuation{previous: "delta", complete: true, effective: raw}
+			clean := []byte(`{"model":"test-model","store":false,"input":[{"role":"user","content":"complete safe history"}]}`)
+			request := &httpclient.Request{APIFormat: string(format), Body: clean}
+			for _, middleware := range []pipeline.Middleware{
+				applyPassThroughRequestBody(p, nil), applyResponsesTransportRequestBody(p, nil), applyResponsesContinuationBody(p), verifyResponsesAttempt(p),
+			} {
+				var err error
+				request, err = middleware.OnOutboundRawRequest(t.Context(), request)
+				require.NoError(t, err, middleware.Name())
+				require.JSONEq(t, string(clean), string(request.Body), middleware.Name())
+			}
+			// Without certified complete history, dropping the reference is not recovery.
+			p.state.ResponsesContinuation.complete = false
+			_, err := verifyResponsesAttempt(p).OnOutboundRawRequest(t.Context(), request)
+			require.ErrorIs(t, err, shared.ErrResponsesContinuationUnavailable)
+		})
+	}
+}
+
+func TestReasoningScrubCannotPrepareDeltaOnlyContinuation(t *testing.T) {
+	ctx := shared.WithSessionScope(t.Context(), "api_key:1:project:1")
+	p := newScrubTestTransformer()
+	out, err := responses.NewOutboundTransformerWithConfig(&responses.Config{
+		BaseURL: "https://example.test/v1", APIKeyProvider: auth.NewStaticKeyProvider("test-key"), Transport: responses.TransportWebSocket,
+	})
+	require.NoError(t, err)
+	p.wrapped = out
+	candidate := p.state.CurrentCandidate
+	candidate.Channel.ID = 1
+	candidate.Channel.Outbound = out
+	candidate.APIFormat = llm.APIFormatOpenAIResponseWebSocket.String()
+	candidate.Models = []biz.ChannelModelEntry{{RequestModel: "test-model", ActualModel: "test-model"}}
+	p.state.ResponsesContinuation = &responsesContinuation{
+		previous: "delta", capture: &responsesCompletion{}, original: []byte(`{"model":"test-model","previous_response_id":"delta","input":"next"}`),
+		owner: &shared.ResponsesRecord{ID: "delta", Origin: shared.ResponsesOrigin{ChannelID: 1, Model: "test-model", Format: candidate.APIFormat}},
+	}
+	req := &llm.Request{Model: "test-model", APIFormat: llm.APIFormatOpenAIResponseWebSocket}
+	// Native continuation is valid, but destructive cleanup requires complete history.
+	p.state.ReasoningStripped = false
+	_, err = prepareResponsesAttempt(ctx, p, req)
+	require.NoError(t, err)
+	p.state.ReasoningStripped = true
+	_, err = prepareResponsesAttempt(ctx, p, req)
+	require.ErrorIs(t, err, shared.ErrResponsesContinuationUnavailable)
 }

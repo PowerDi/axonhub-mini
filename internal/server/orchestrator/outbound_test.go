@@ -524,10 +524,10 @@ func TestPersistentOutboundTransformer_PrepareForRetry_AppliesPerModelPolicyForm
 	}
 	populateAPIFormat(ctx, []*ChannelModelsCandidate{candidate}, req)
 
-	// A multi-entry candidate keeps the channel-level format; each entry's policy
-	// is applied per attempt by apiFormatForEntry, so a retry that advances the
-	// model also advances the endpoint format.
-	require.Equal(t, llm.APIFormatOpenAIChatCompletion.String(), candidate.APIFormat)
+	// The candidate starts with the first entry's policy-resolved format, and
+	// beta12's per-entry hints carry the next model's format through a retry.
+	require.Equal(t, llm.APIFormatAnthropicMessage.String(), candidate.APIFormat)
+	require.Equal(t, []string{llm.APIFormatAnthropicMessage.String(), llm.APIFormatOpenAIResponse.String()}, candidate.modelAPIFormats)
 
 	processor := &PersistentOutboundTransformer{
 		state: &PersistenceState{
@@ -886,9 +886,12 @@ func TestPersistentOutboundTransformer_CanRetry(t *testing.T) {
 			biz.ChannelModelEntry{RequestModel: "gpt-4", ActualModel: "gpt-4-alternative"})
 		require.True(t, outbound.CanRetry(nonRetryableErr), "sticky channels can retry another mapped model")
 
-		// Without a fallback candidate the 429 falls back to a same-channel
-		// retry so the configured budget is not silently discarded.
+		// Without hammer mode, even the last candidate requires explicit 429 opt-in.
 		outbound.state.ChannelModelsCandidates = []*ChannelModelsCandidate{candidate}
+		require.False(t, outbound.CanRetry(&httpclient.Error{StatusCode: http.StatusTooManyRequests}))
+		previousSettings := candidate.Channel.Settings
+		t.Cleanup(func() { candidate.Channel.Settings = previousSettings })
+		candidate.Channel.Settings = &objects.ChannelSettings{RetryableStatusCodes: []int{429}}
 		require.True(t, outbound.CanRetry(&httpclient.Error{StatusCode: http.StatusTooManyRequests}))
 	})
 
@@ -911,6 +914,39 @@ func TestPersistentOutboundTransformer_CanRetry(t *testing.T) {
 
 			require.True(t, outbound.CanRetry(retryErr))
 		}
+	})
+
+	// A channel that lists 429 asks for a same-channel retry on a rate limit. The
+	// candidate keeps a single mapped model so the decision is about the 429
+	// branch itself — with a second model the retry is also allowed for "try the
+	// next mapped model".
+	t.Run("a channel that lists 429 opts a rate limit into same-channel retry", func(t *testing.T) {
+		optInChannel := &biz.Channel{
+			Channel: &ent.Channel{
+				ID:       2,
+				Name:     "opt-in-channel",
+				Settings: &objects.ChannelSettings{RetryableStatusCodes: []int{http.StatusTooManyRequests}},
+			},
+			Outbound: &mockTransformer{},
+		}
+		newOutbound := func(ch *biz.Channel) *PersistentOutboundTransformer {
+			return &PersistentOutboundTransformer{
+				wrapped: &mockTransformer{},
+				state: &PersistenceState{
+					CurrentCandidate: &ChannelModelsCandidate{
+						Channel: ch,
+						Models:  []biz.ChannelModelEntry{{RequestModel: "gpt-4", ActualModel: "gpt-4"}},
+					},
+				},
+			}
+		}
+
+		require.True(t, newOutbound(optInChannel).CanRetry(&httpclient.Error{StatusCode: http.StatusTooManyRequests}))
+		require.True(t, newOutbound(optInChannel).CanRetry(&llm.ResponseError{StatusCode: http.StatusTooManyRequests}))
+
+		// Without 429 in the list a rate limit still switches channels.
+		require.False(t, newOutbound(channel).CanRetry(&httpclient.Error{StatusCode: http.StatusTooManyRequests}))
+		require.False(t, newOutbound(channel).CanRetry(&llm.ResponseError{StatusCode: http.StatusTooManyRequests}))
 	})
 }
 

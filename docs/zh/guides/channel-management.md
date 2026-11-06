@@ -208,7 +208,7 @@ https://custom-gateway.example.com/api##
 # 实际请求: /api（不会加版本号和端点路径）
 ```
 
-## 多协议端点与模型协议覆盖
+## 多协议端点与模型端点策略
 
 一个渠道可以同时配置多个出站端点（Endpoint），覆盖 chat、responses、messages 等协议，使不同客户端以原生协议直连。
 
@@ -228,17 +228,68 @@ https://custom-gateway.example.com/api##
 - 上游返回非 `404`/`405` 即视为该路由存在；`401`/`403` 归类为鉴权失败，`5xx` 或连接失败归类为错误。
 - 渠道列表的 **端点** 列用四个图标展示已配置的透传协议（包括原生 Gemini Contents 端点）：已配置高亮，未配置置灰。
 
-### 模型协议覆盖（ModelProtocols）
+### 模型端点策略（ModelAPIFormatPolicies）
 
-在 **模型协议覆盖** 区块为单个模型强制可用的出站协议：
+同一渠道保留多个端点，在端点编辑器中使用 **仅允许（Allow）** 或 **排除（Exclude）** 限制单个模型：
 
 ```json
-{ "model": "glm-5.3-flash", "apiFormats": ["openai/responses", "openai/chat_completions"], "enabled": true }
+{ "model": "glm-5.3-flash", "allow": ["openai/responses", "openai/chat_completions"] }
 ```
 
-- `apiFormats` 按配置顺序表达优先级；客户端入站协议在列表中时优先直连，否则使用列表中的第一个协议并经统一转换管线转换。
-- 启用的覆盖只能引用渠道已具备的 `api_format`（默认端点或自定义端点），保存时校验；模型被移出渠道支持列表时自动清理对应覆盖。
-- 端点与协议覆盖在同一次保存中原子提交。
+- `allow` 非空时仅允许列表内的格式，且优先于 `exclude`；`allow` 为空或未设置时，允许可用端点中除 `exclude` 以外的格式。
+- 列表是过滤条件，**不表示协议优先顺序**。请求必须使用策略允许且具备对应能力的端点；没有可用端点时跳过渠道，不回退到被禁止的端点。
+- 删除端点或修改策略，导致模型无可用端点且无其他启用渠道承接时，会拒绝保存。禁用渠道可暂存此类配置，但实际请求仍严格执行策略过滤。
+- 端点与模型策略原子保存。本分支沿用这一套配置，不额外引入上游模型协议编辑器。
+
+### Responses HTTP 与 WebSocket 端点
+
+Responses 有两种独立的端点格式：
+
+| `api_format` | 传输方式 | 默认请求路径 |
+|---|---|---|
+| `openai/responses` | HTTP | `/v1/responses` |
+| `openai/responses-ws` | WebSocket | `/v1/responses` |
+
+当一个渠道同时支持两种传输方式时，请在同一渠道中配置这两种格式。
+端点格式是出站传输方式的唯一依据。旧配置中的 WebSocket scheme 会归一化为
+`openai/responses-ws`；旧的 HTTP Responses 端点仍归一化为
+`openai/responses`。已经明确配置为仅 HTTP 或仅 WebSocket 的端点集合，在使用新配置
+保存前仍保持单模式。
+
+对于入站格式与所选渠道中允许的端点格式相同的请求，AxonHub 会先选择完全匹配的
+格式。如果没有同格式端点，则按配置顺序选择第一个允许的端点，并在 HTTP 与
+WebSocket 之间转换 Responses 请求、响应或事件封装。此回退不会改变渠道排序，也不会
+把 Images 或 Models 请求变成 Responses 请求。
+
+模型端点策略应列出模型可以使用的确切格式：
+
+```json
+{
+  "model": "gpt-5",
+  "allow": ["openai/responses", "openai/responses-ws"]
+}
+```
+
+只会选择渠道上可用、具备对应能力且策略允许的端点。旧配置中以 HTTP Responses 标识表示
+WebSocket 传输的策略，会同时归一化 `allow` 与 `exclude`。Responses 连续对话应尽量保持在同一渠道。
+如果切换传输方式或渠道时无法确认此前的完整输入，AxonHub 会在发送上游请求前拒绝，
+不会带着不完整历史继续请求。
+
+### Responses 连续对话与有界恢复
+
+`previous_response_id` 会绑定到生成它的渠道、端点来源、模型、认证身份和 WebSocket
+连接代次。原生 WebSocket 续接会在匹配的上游会话中发送下一轮增量内容。过期、缺失、
+失效或超出预算的上下文不会被静默发送到其他端点或渠道。
+
+当完整上下文不可用时，AxonHub 返回 HTTP 400，或返回带有
+`previous_response_not_found` 代码的 WebSocket 错误，并要求客户端删除
+`previous_response_id`、重新发送完整输入。此恢复错误不会进入普通渠道故障转移。
+同一个下游连接上的其他 WebSocket lane 不会因某一个 lane 的恢复错误而关闭。
+
+当前有界默认值为：单条 HTTP 保留记录或流捕获 16 MiB、保留载荷总量 64 MiB、单个
+下游连接的单帧或排队帧 128 MiB。超过保留预算时，只会移除可选的回放历史；如果提供商
+会话仍可继续，则保留有效的原生 response identity。后续请求如果需要已被移除的历史，
+客户端必须重新发送完整输入。
 
 **示例**（GLM Coding Plan 渠道，三个端点 + 覆盖）：
 

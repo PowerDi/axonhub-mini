@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/samber/lo"
+
 	"github.com/looplj/axonhub/internal/authz"
 	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
@@ -107,13 +109,13 @@ func policyFiltersAll(endpoints []objects.ChannelEndpoint, policy *objects.Model
 // check against it. Skipped entirely when neither settings nor endpoints nor
 // type is being touched, or when the resulting settings carry no policies.
 func (svc *ChannelService) validateUpdateModelRoutability(ctx context.Context, id int, input *ent.UpdateChannelInput) error {
-	if input.Settings == nil && input.Endpoints == nil && input.Type == nil {
+	if input.Settings == nil && input.Endpoints == nil && input.Type == nil && input.BaseURL == nil {
 		return nil
 	}
 
 	existing, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) (*ent.Channel, error) {
 		return svc.entFromContext(queryCtx).Channel.Query().Where(channel.IDEQ(id)).
-			Select(channel.FieldType, channel.FieldStatus, channel.FieldEndpoints, channel.FieldSettings).
+			Select(channel.FieldBaseURL, channel.FieldType, channel.FieldStatus, channel.FieldEndpoints, channel.FieldSettings).
 			Only(queryCtx)
 	})
 	if err != nil {
@@ -135,7 +137,7 @@ func (svc *ChannelService) validateUpdateModelRoutability(ctx context.Context, i
 		effectiveSettings = input.Settings
 	}
 
-	return svc.ValidateChannelModelRoutability(ctx, id, effectiveType, existing.Status, effectiveEndpoints, effectiveSettings)
+	return svc.ValidateChannelModelRoutability(ctx, id, effectiveType, existing.Status, effectiveEndpoints, effectiveSettings, lo.FromPtrOr(input.BaseURL, existing.BaseURL))
 }
 
 // ValidateChannelModelRoutability is the edit-time bidirectional check for
@@ -163,6 +165,7 @@ func (svc *ChannelService) ValidateChannelModelRoutability(
 	effectiveStatus channel.Status,
 	effectiveEndpoints []objects.ChannelEndpoint,
 	effectiveSettings *objects.ChannelSettings,
+	baseURLs ...string,
 ) error {
 	if effectiveSettings == nil || len(effectiveSettings.ModelAPIFormatPolicies) == 0 {
 		return nil
@@ -173,7 +176,13 @@ func (svc *ChannelService) ValidateChannelModelRoutability(
 	}
 
 	// Resolve this channel's effective endpoints.
-	endpoints := mergeEndpoints(DefaultEndpointsForChannelType(effectiveType), effectiveEndpoints)
+	baseURL := ""
+	if len(baseURLs) > 0 {
+		baseURL = baseURLs[0]
+	}
+	probe := &Channel{Channel: &ent.Channel{Type: effectiveType, BaseURL: baseURL, Endpoints: effectiveEndpoints, Settings: effectiveSettings}}
+	endpoints := probe.ResolveEndpoints()
+	effectiveSettings = normalizeModelAPIFormatPolicies(effectiveSettings, probe.Channel)
 
 	// Model entities carry the request type; a model without an entity is
 	// still validated with the permissive "" request type (any capable endpoint).
@@ -252,7 +261,7 @@ func otherChannelServesModel(channels []*entChannel, model string, requestType l
 			continue
 		}
 
-		endpoints := mergeEndpoints(DefaultEndpointsForChannelType(chEnt.Type), chEnt.Endpoints)
+		endpoints := ch.ResolveEndpoints()
 		if !policyFiltersAll(endpoints, entry.Policy, requestType) {
 			return true
 		}
