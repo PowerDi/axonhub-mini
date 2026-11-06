@@ -101,5 +101,6 @@
   "dashboard.stats.user": "用户",
   "dashboard.stats.requestCount": "请求数",
   "dashboard.stats.tokenCount": "Token数",
-  "dashboard.stats.userCost": "费用"
+  "dashboard.stats.userCost": "费用",
+  "dashboard.channelSuccessRates.description": "查看所有渠道的请求成功率统计"
 }

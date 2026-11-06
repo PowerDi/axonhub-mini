@@ -1,16 +1,15 @@
 import { useMemo, useEffect } from 'react';
 import { Cross2Icon } from '@radix-ui/react-icons';
-import { IconChevronsDown, IconChevronsUp, IconSearch } from '@tabler/icons-react';
 import { Table } from '@tanstack/react-table';
+import { IconChevronsDown, IconChevronsUp, IconSearch } from '@tabler/icons-react';
 import { useQueryModels } from '@/gql/models';
 import { useTranslation } from 'react-i18next';
+import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter';
-import { useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
-import { useAllChannelTags } from '../data/channels';
 import { useChannels } from '../context/channels-context';
-import { CHANNEL_CONFIGS } from '../data/config_channels';
+import { useAllChannelTags } from '../data/channels';
 import { DataTableViewOptions } from './data-table-view-options';
 
 interface DataTableToolbarProps<TData> {
@@ -25,8 +24,6 @@ interface DataTableToolbarProps<TData> {
 export function DataTableToolbar<TData>({
   table,
   isFiltered: externalIsFiltered,
-  selectedCount: externalSelectedCount,
-  selectedTypeTab = 'all',
   showErrorOnly,
   onExitErrorOnlyMode,
 }: DataTableToolbarProps<TData>) {
@@ -67,16 +64,6 @@ export function DataTableToolbar<TData>({
       label: model.id,
     }));
   }, [modelsData]);
-
-  // Generate channel types from CHANNEL_CONFIGS
-  const channelTypes = useMemo(
-    () =>
-      Object.values(CHANNEL_CONFIGS).map((config) => ({
-        value: config.channelType,
-        label: t(`channels.types.${config.channelType}`),
-      })),
-    [t]
-  );
 
   const channelStatuses = useMemo(
     () => [
@@ -121,11 +108,7 @@ export function DataTableToolbar<TData>({
         <DataTableFacetedFilter column={table.getColumn('model')} title={t('channels.filters.model')} options={modelOptions} singleSelect />
       )}
       {isFiltered && (
-        <Button
-          variant='ghost'
-          onClick={() => table.resetColumnFilters()}
-          className='px-2 lg:px-2.5'
-        >
+        <Button variant='ghost' onClick={() => table.resetColumnFilters()} className='px-2 lg:px-2.5'>
           {t('common.filters.reset')}
           <Cross2Icon className='ml-2 h-4 w-4' />
         </Button>
@@ -134,7 +117,7 @@ export function DataTableToolbar<TData>({
         <Button
           variant='outline'
           onClick={onExitErrorOnlyMode}
-          className='border-(--warning-soft-fg)/40 text-(--warning-soft-fg) hover:bg-warning/10'
+          className='hover:bg-warning/10 border-(--warning-soft-fg)/40 text-(--warning-soft-fg)'
         >
           {t('channels.errorBanner.exitErrorOnlyButton')}
         </Button>

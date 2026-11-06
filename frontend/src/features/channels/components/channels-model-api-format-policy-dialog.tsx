@@ -13,9 +13,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
-import { useUpdateChannel } from '../data/channels';
+import { useUpdateChannelSettings } from '../data/channels';
+import { getEffectiveResponsesFormats, isResponsesFamilyFormat, translateLegacyCodexModelPolicies } from '../data/protocol-options';
 import { Channel, ModelAPIFormatPolicy } from '../data/schema';
-import { mergeChannelSettingsForUpdate } from '../utils/merge';
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -29,6 +30,7 @@ const POLICY_API_FORMATS = [
   'openai/chat_completions',
   'openai/completions',
   'openai/responses',
+  'openai/responses-ws',
   'openai/responses_compact',
   'anthropic/messages',
   'gemini/contents',
@@ -45,12 +47,9 @@ const createPolicyFormSchema = () =>
             exclude: z.array(z.string()).optional().nullable(),
             allow: z.array(z.string()).optional().nullable(),
           })
-          .refine(
-            (policy) => !policy.allow || policy.allow.length === 0 || !policy.exclude || policy.exclude.length === 0,
-            {
-              message: 'A policy can use either Allow or Exclude, not both',
-            }
-          )
+          .refine((policy) => !policy.allow || policy.allow.length === 0 || !policy.exclude || policy.exclude.length === 0, {
+            message: 'A policy can use either Allow or Exclude, not both',
+          })
       )
       .refine(
         (policies) => {
@@ -65,14 +64,21 @@ const createPolicyFormSchema = () =>
 
 export function ChannelsModelApiFormatPolicyDialog({ open, onOpenChange, currentRow }: Props) {
   const { t } = useTranslation();
-  const updateChannel = useUpdateChannel();
+  const updateChannel = useUpdateChannelSettings();
 
   const policyFormSchema = useMemo(() => createPolicyFormSchema(), []);
+  const initialPolicies = useMemo(
+    () =>
+      translateLegacyCodexModelPolicies(currentRow, currentRow.settings?.modelApiFormatPolicies) ??
+      currentRow.settings?.modelApiFormatPolicies ??
+      [],
+    [currentRow]
+  );
 
   const form = useForm<z.infer<typeof policyFormSchema>>({
     resolver: zodResolver(policyFormSchema),
     defaultValues: {
-      modelApiFormatPolicies: currentRow.settings?.modelApiFormatPolicies || [],
+      modelApiFormatPolicies: initialPolicies,
     },
   });
 
@@ -100,21 +106,23 @@ export function ChannelsModelApiFormatPolicyDialog({ open, onOpenChange, current
   useEffect(() => {
     if (open) {
       form.reset({
-        modelApiFormatPolicies: currentRow.settings?.modelApiFormatPolicies || [],
+        modelApiFormatPolicies: initialPolicies,
       });
       setModelSearch('');
       setError(null);
     }
-  }, [open, currentRow, form]);
+  }, [open, initialPolicies, form]);
 
   // Models affected by each policy are highlighted when their filtered
   // endpoint set becomes empty on this channel.
   const resolvedApiFormats = useMemo(() => {
     const formats = new Set<string>();
-    (currentRow.defaultEndpoints || []).forEach((ep) => formats.add(ep.apiFormat));
-    (currentRow.endpoints || []).forEach((ep) => formats.add(ep.apiFormat));
+    [...(currentRow.defaultEndpoints ?? []), ...(currentRow.endpoints ?? [])].forEach((ep) => {
+      if (!isResponsesFamilyFormat(ep.apiFormat)) formats.add(ep.apiFormat);
+    });
+    getEffectiveResponsesFormats(currentRow).forEach((format) => formats.add(format));
     return formats;
-  }, [currentRow.defaultEndpoints, currentRow.endpoints]);
+  }, [currentRow]);
 
   // Per-model policies that leave no usable endpoint on this channel.
   const policyFiltersAllEndpoints = useCallback(
@@ -200,15 +208,11 @@ export function ChannelsModelApiFormatPolicyDialog({ open, onOpenChange, current
     }
 
     try {
-      const nextSettings = mergeChannelSettingsForUpdate(currentRow.settings, {
-        modelApiFormatPolicies: cleaned,
-      });
-
+      // A policy-only edit must not overwrite timeout/key/retry settings from
+      // the snapshot that happened to be open when this dialog was mounted.
       await updateChannel.mutateAsync({
         id: currentRow.id,
-        input: {
-          settings: nextSettings,
-        },
+        patch: { modelApiFormatPolicies: cleaned },
       });
       onOpenChange(false);
     } catch (_error) {
@@ -218,7 +222,7 @@ export function ChannelsModelApiFormatPolicyDialog({ open, onOpenChange, current
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className='max-h-[90vh] overflow-y-auto sm:max-w-[800px]'>
+      <DialogContent data-testid='model-policy-dialog' className='max-h-[90vh] overflow-y-auto sm:max-w-[800px]'>
         <DialogHeader>
           <DialogTitle>{t('channels.dialogs.modelApiFormatPolicy.title')}</DialogTitle>
           <DialogDescription>{t('channels.dialogs.modelApiFormatPolicy.description', { name: currentRow.name })}</DialogDescription>
@@ -258,10 +262,7 @@ export function ChannelsModelApiFormatPolicyDialog({ open, onOpenChange, current
                   ) : (
                     <div className='max-h-44 overflow-y-auto rounded-md border p-1'>
                       {filteredSelectableModels.map((model) => (
-                        <label
-                          key={model}
-                          className='hover:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5'
-                        >
+                        <label key={model} className='hover:bg-accent flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5'>
                           <Checkbox
                             checked={false}
                             onCheckedChange={() => addPolicy(model)}
@@ -280,16 +281,14 @@ export function ChannelsModelApiFormatPolicyDialog({ open, onOpenChange, current
                 )}
 
                 {policies.length === 0 ? (
-                  <p className='text-muted-foreground py-4 text-center text-sm'>
-                    {t('channels.dialogs.modelApiFormatPolicy.noPolicies')}
-                  </p>
+                  <p className='text-muted-foreground py-4 text-center text-sm'>{t('channels.dialogs.modelApiFormatPolicy.noPolicies')}</p>
                 ) : (
                   <div className='space-y-2'>
                     {policies.map((policy) => {
                       const starved = policyFiltersAllEndpoints(policy);
                       const inChannelModels = channelModels.includes(policy.model);
                       return (
-                        <div key={policy.model} className='rounded-lg border p-3'>
+                        <div key={policy.model} data-testid={`model-policy-${policy.model}`} className='rounded-lg border p-3'>
                           <div className='flex items-center justify-between pb-2'>
                             <div className='flex min-w-0 flex-wrap items-center gap-2'>
                               <Badge variant='outline' className='font-mono text-xs'>
@@ -349,11 +348,9 @@ export function ChannelsModelApiFormatPolicyDialog({ open, onOpenChange, current
                                 </FormItem>
                               )}
                             />
-                            <p className='text-muted-foreground text-xs'>
-                              {t('channels.dialogs.modelApiFormatPolicy.allowOverridesHint')}
-                            </p>
+                            <p className='text-muted-foreground text-xs'>{t('channels.dialogs.modelApiFormatPolicy.allowOverridesHint')}</p>
                             {starved && (
-                              <div className='text-(--warning-soft-fg) bg-warning/10 flex items-center gap-2 rounded-md px-3 py-2 text-sm'>
+                              <div className='bg-warning/10 flex items-center gap-2 rounded-md px-3 py-2 text-sm text-(--warning-soft-fg)'>
                                 <AlertTriangle className='h-4 w-4 shrink-0' />
                                 <span>
                                   {t('channels.dialogs.modelApiFormatPolicy.zeroEndpointWarning', {

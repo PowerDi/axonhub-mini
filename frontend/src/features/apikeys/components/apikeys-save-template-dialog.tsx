@@ -77,6 +77,10 @@ export function ApiKeySaveTemplateDialog({ open, onOpenChange, profileData, proj
   }, [matchingTemplate, form]);
 
   const saveNewTemplate = async (values: FormValues) => {
+    if (!projectID) {
+      toast.error(t('common.projectGuard.noProjectSelected'));
+      return;
+    }
     await createTemplate.mutateAsync({
       name: values.name.trim(),
       description: values.description || '',
@@ -146,7 +150,9 @@ export function ApiKeySaveTemplateDialog({ open, onOpenChange, profileData, proj
                       <Input {...field} placeholder={t('apikeys.templates.namePlaceholder')} />
                     </FormControl>
                     {matchingTemplate && (
-                      <p className='text-sm text-(--warning-soft-fg)'>{t('apikeys.templates.overwriteHint', { name: matchingTemplate.name })}</p>
+                      <p className='text-sm text-(--warning-soft-fg)'>
+                        {t('apikeys.templates.overwriteHint', { name: matchingTemplate.name })}
+                      </p>
                     )}
                     <FormMessage />
                   </FormItem>
@@ -203,7 +209,7 @@ export function ApiKeySaveTemplateDialog({ open, onOpenChange, profileData, proj
                 void overwriteTemplate();
               }}
               disabled={updateTemplate.isPending}
-              className='bg-destructive/10 text-(--destructive-soft-fg) hover:bg-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30'
+              className='bg-destructive/10 hover:bg-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 text-(--destructive-soft-fg)'
             >
               {updateTemplate.isPending
                 ? t('common.buttons.saving')

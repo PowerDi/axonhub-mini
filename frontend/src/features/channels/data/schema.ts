@@ -33,6 +33,7 @@ export type ApiFormat = z.infer<typeof apiFormatSchema>;
 export const configurableChannelEndpointApiFormats = [
   'openai/chat_completions',
   'openai/responses',
+  'openai/responses-ws',
   'openai/image_generation',
   'openai/image_edit',
   'openai/image_variation',
@@ -830,13 +831,7 @@ export const createChannelInputSchema = z
 
     // Validate that at least one credential type is provided. A Vertex key only counts
     // on a gemini_vertex channel, so it must not satisfy an ordinary channel.
-    if (
-      !hasApiKey &&
-      !hasApiKeys &&
-      data.type !== 'anthropic_aws' &&
-      data.type !== 'anthropic_gcp' &&
-      data.type !== 'gemini_vertex'
-    ) {
+    if (!hasApiKey && !hasApiKeys && data.type !== 'anthropic_aws' && data.type !== 'anthropic_gcp' && data.type !== 'gemini_vertex') {
       ctx.addIssue({
         code: 'custom' as const,
         message: 'At least one API Key is required',
@@ -932,15 +927,9 @@ export const updateChannelInputSchema = z
       effectiveType === 'github_copilot' ||
       effectiveType === 'xai_subscription';
 
-    // Derive type from parent context if not available
-    let derivedType = effectiveType;
-    if (!derivedType && hasApiKey) {
-      // Try to get type from parent context
-      const parent = ctx.parent;
-      if (parent && typeof parent === 'object' && 'type' in parent) {
-        derivedType = (parent as { type?: string }).type;
-      }
-    }
+    // Zod refinements receive this object, not an implicit parent context.
+    // Callers must submit the channel type when validating provider credentials.
+    const derivedType = effectiveType;
 
     // If we have an OAuth key but no type, check if it looks like Copilot credentials
     const isCopilotKey = hasApiKey && data.credentials?.apiKey?.trim().startsWith('{');
@@ -949,7 +938,7 @@ export const updateChannelInputSchema = z
     if (!isThirdPartyCodex && (isOAuthType || derivedType === 'github_copilot' || isCopilotKey)) {
       if (isCopilotKey && !derivedType) {
         try {
-          const parsed = JSON.parse(data.credentials.apiKey);
+          const parsed = JSON.parse(data.credentials?.apiKey ?? '');
           if (!parsed.access_token) {
             ctx.addIssue({
               code: 'custom',
@@ -966,7 +955,7 @@ export const updateChannelInputSchema = z
         }
         return;
       }
-      validateOAuthCredentials(derivedType, data.credentials?.apiKey, ctx);
+      if (derivedType) validateOAuthCredentials(derivedType, data.credentials?.apiKey, ctx);
     }
 
     // 如果是 anthropic_gcp 类型且提供了 credentials，GCP 字段必填（字段级报错）

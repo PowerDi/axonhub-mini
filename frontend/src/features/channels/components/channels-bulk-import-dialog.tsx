@@ -1,25 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  AlertCircle,
-  CheckCircle2,
-  FileText,
-  Key,
-  Layers,
-  Link,
-  Loader2,
-  Sparkles,
-  Upload,
-  XCircle,
-} from 'lucide-react';
+import { AlertCircle, CheckCircle2, FileText, Key, Layers, Link, Loader2, Sparkles, Upload, XCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { useAllChannelNames, useBulkImportChannels } from '../data/channels';
@@ -116,9 +105,7 @@ export function ChannelsBulkImportDialog({ isOpen, onClose }: ChannelsBulkImport
 
       const lowerCaseName = channelName.toLowerCase();
       if (nameSet.has(lowerCaseName)) {
-        const isDuplicateWithExisting = existingChannelNames.some(
-          (existingName) => existingName.toLowerCase() === lowerCaseName
-        );
+        const isDuplicateWithExisting = existingChannelNames.some((existingName) => existingName.toLowerCase() === lowerCaseName);
 
         if (isDuplicateWithExisting) {
           errors.push(t('channels.dialogs.bulkImport.duplicateNameWithExisting', { line: index + 1, name: channelName }));
@@ -196,7 +183,7 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
             </div>
             <div>
               <DialogTitle className='text-lg font-semibold'>{t('channels.dialogs.bulkImport.title')}</DialogTitle>
-              <DialogDescription className='text-sm text-muted-foreground'>
+              <DialogDescription className='text-muted-foreground text-sm'>
                 {t('channels.dialogs.bulkImport.description')}
               </DialogDescription>
             </div>
@@ -206,7 +193,7 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
         <div className='flex-1 overflow-y-auto px-1 py-2'>
           <div className='space-y-6'>
             {/* Format Instructions Card */}
-            <Card className='border-l-4 border-l-primary'>
+            <Card className='border-l-primary border-l-4'>
               <CardHeader className='pb-3'>
                 <div className='flex items-center gap-2'>
                   <div className='bg-primary/10 text-primary dark:bg-primary/20 rounded-lg p-1.5'>
@@ -214,15 +201,11 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
                   </div>
                   <CardTitle className='text-sm font-medium'>{t('channels.dialogs.bulkImport.formatTitle')}</CardTitle>
                 </div>
-                <CardDescription className='pt-2 text-sm'>
-                  {t('channels.dialogs.bulkImport.formatDescription')}
-                </CardDescription>
+                <CardDescription className='pt-2 text-sm'>{t('channels.dialogs.bulkImport.formatDescription')}</CardDescription>
               </CardHeader>
               <CardContent className='space-y-4 pt-0'>
                 <div className='bg-muted/50 rounded-lg border p-3'>
-                  <code className='text-muted-foreground block text-xs whitespace-pre-wrap font-mono leading-relaxed'>
-                    {exampleText}
-                  </code>
+                  <code className='text-muted-foreground block font-mono text-xs leading-relaxed whitespace-pre-wrap'>{exampleText}</code>
                 </div>
                 <p className='text-muted-foreground text-xs'>{t('channels.dialogs.bulkImport.formatNote')}</p>
               </CardContent>
@@ -276,7 +259,7 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
             {/* Preview Results */}
             {showPreview && (
               <Card
-                className={`${parseErrors.length > 0 ? 'border-l-4 border-l-destructive' : parsedChannels.length > 0 ? 'border-l-4 border-l-success' : ''}`}
+                className={`${parseErrors.length > 0 ? 'border-l-destructive border-l-4' : parsedChannels.length > 0 ? 'border-l-success border-l-4' : ''}`}
               >
                 <CardHeader className='pb-3'>
                   <div className='flex items-center justify-between'>
@@ -289,7 +272,7 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
                         {parsedChannels.length > 0 && (
                           <Badge
                             variant='secondary'
-                            className='bg-success/10 text-(--success-soft-fg) dark:bg-success/30 dark:text-(--success-soft-fg) border-0'
+                            className='bg-success/10 dark:bg-success/30 border-0 text-(--success-soft-fg) dark:text-(--success-soft-fg)'
                           >
                             <CheckCircle2 className='mr-1 h-3 w-3' />
                             {t('channels.dialogs.bulkImport.validRecords', { count: parsedChannels.length })}
@@ -298,7 +281,7 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
                         {parseErrors.length > 0 && (
                           <Badge
                             variant='secondary'
-                            className='bg-destructive/10 text-(--destructive-soft-fg) dark:bg-destructive/30 dark:text-(--destructive-soft-fg) border-0'
+                            className='bg-destructive/10 dark:bg-destructive/30 border-0 text-(--destructive-soft-fg) dark:text-(--destructive-soft-fg)'
                           >
                             <AlertCircle className='mr-1 h-3 w-3' />
                             {t('channels.dialogs.bulkImport.errors', { count: parseErrors.length })}
@@ -334,7 +317,7 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
                           <Alert
                             key={index}
                             variant='destructive'
-                            className='border-destructive/40 bg-destructive/50 py-2 dark:border-destructive/40 dark:bg-destructive/20'
+                            className='border-destructive/40 bg-destructive/50 dark:border-destructive/40 dark:bg-destructive/20 py-2'
                           >
                             <XCircle className='h-4 w-4 shrink-0' />
                             <AlertDescription className='text-xs'>{error}</AlertDescription>
@@ -355,7 +338,7 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
                       </div>
                       <div className='grid gap-3'>
                         {parsedChannels.map((channel, index) => (
-                          <Card key={index} className='overflow-hidden border-l-2 border-l-primary/50'>
+                          <Card key={index} className='border-l-primary/50 overflow-hidden border-l-2'>
                             <CardHeader className='bg-muted/30 py-3'>
                               <div className='flex items-center gap-3'>
                                 <Badge variant='outline' className='text-xs font-medium'>
@@ -383,10 +366,8 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
                                   <Key className='h-3.5 w-3.5' />
                                 </div>
                                 <div className='min-w-0 flex-1'>
-                                  <div className='text-muted-foreground text-xs'>
-                                    {t('channels.dialogs.bulkImport.fieldLabels.apiKey')}
-                                  </div>
-                                  <div className='font-mono text-xs text-primary dark:text-primary'>
+                                  <div className='text-muted-foreground text-xs'>{t('channels.dialogs.bulkImport.fieldLabels.apiKey')}</div>
+                                  <div className='text-primary dark:text-primary font-mono text-xs'>
                                     {channel.apiKey.substring(0, 16)}...
                                   </div>
                                 </div>
@@ -401,11 +382,7 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
                                   </div>
                                   <div className='mt-1 flex flex-wrap gap-1'>
                                     {channel.supportedModels.map((model, idx) => (
-                                      <Badge
-                                        key={idx}
-                                        variant='secondary'
-                                        className='bg-muted text-muted-foreground text-xs font-normal'
-                                      >
+                                      <Badge key={idx} variant='secondary' className='bg-muted text-muted-foreground text-xs font-normal'>
                                         {model}
                                       </Badge>
                                     ))}
@@ -424,7 +401,7 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
           </div>
         </div>
 
-        <DialogFooter className='border-t bg-muted/30 flex-shrink-0 gap-3 pt-4'>
+        <DialogFooter className='bg-muted/30 flex-shrink-0 gap-3 border-t pt-4'>
           <Button variant='outline' onClick={handleClose} className='min-w-[100px]'>
             {t('common.buttons.cancel')}
           </Button>

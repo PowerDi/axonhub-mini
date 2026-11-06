@@ -13,7 +13,7 @@ export type ApiKeyStatus = z.infer<typeof apiKeyStatusSchema>;
 export const channelTagsMatchModeSchema = z.enum(['any', 'all', 'none']);
 export type ChannelTagsMatchMode = z.infer<typeof channelTagsMatchModeSchema>;
 
-const channelTagsMatchModeFieldSchema = z.preprocess((value) => {
+const channelTagsMatchModeFieldSchema = z.preprocess((value: ChannelTagsMatchMode | '' | null | undefined) => {
   if (value == null || value === '') {
     return 'any';
   }
@@ -24,7 +24,7 @@ const channelTagsMatchModeFieldSchema = z.preprocess((value) => {
 export const channelIDsMatchModeSchema = z.enum(['include', 'exclude']);
 export type ChannelIDsMatchMode = z.infer<typeof channelIDsMatchModeSchema>;
 
-const channelIDsMatchModeFieldSchema = z.preprocess((value) => {
+const channelIDsMatchModeFieldSchema = z.preprocess((value: ChannelIDsMatchMode | '' | null | undefined) => {
   if (value == null || value === '') {
     return 'include';
   }
@@ -372,6 +372,8 @@ export const updateApiKeyProfilesInputSchema = z.object({
   profiles: z.array(
     z.object({
       name: z.string().min(1, 'Profile name is required'),
+      templateID: z.number().optional().nullable(),
+      templateName: z.string().optional().nullable(),
       modelMappings: z.array(
         z.object({
           from: z.string().min(1, 'Source model is required'),

@@ -22,7 +22,10 @@
     "test:e2e:setup": "../scripts/e2e/e2e-test.sh --project=setup",
     "test:e2e:report": "playwright show-report",
     "test:ui": "playwright test --ui",
-    "test:ui:headed": "playwright test --headed"
+    "test:ui:headed": "playwright test --headed",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json",
+    "test:ui:regression": "playwright test --config playwright.ui.config.ts",
+    "typecheck:ui": "tsc --noEmit -p tsconfig.ui.json"
   },
   "dependencies": {
     "@ai-sdk/react": "^4.0.160",
@@ -105,6 +108,7 @@
     "@tanstack/react-router-devtools": "^1.121.34",
     "@tanstack/router-plugin": "^1.168.48",
     "@trivago/prettier-plugin-sort-imports": "^5.2.2",
+    "@types/hast": "3.0.5",
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^26.6.6",
     "@types/react": "^19.2.2",

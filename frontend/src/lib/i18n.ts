@@ -38,39 +38,41 @@ const resources = {
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
-  .init({
-    resources,
-    fallbackLng: 'en',
-    debug: false,
-    supportedLngs: ['en', 'zh', 'zh-CN'],
+  .init(
+    {
+      resources,
+      fallbackLng: 'en',
+      debug: false,
+      supportedLngs: ['en', 'zh', 'zh-CN'],
 
-    interpolation: {
-      escapeValue: false, // React 已经默认转义了
-      format: (value, format, lng, options) => {
-        if (format === 'currency') {
-          return new Intl.NumberFormat(options?.locale || lng, {
-            style: 'currency',
-            currency: options?.currency || 'USD',
-            currencyDisplay: 'narrowSymbol',
-            minimumFractionDigits: options?.minimumFractionDigits,
-            maximumFractionDigits: options?.maximumFractionDigits,
-          }).format(value);
-        }
-        return value;
+      interpolation: {
+        escapeValue: false, // React 已经默认转义了
+      },
+
+      detection: {
+        order: ['localStorage', 'navigator', 'htmlTag'],
+        caches: ['localStorage'],
+        convertDetectedLanguage: (lng: string) => {
+          const normalized = lng.toLowerCase();
+          if (normalized === 'zh-cn' || normalized.startsWith('zh-')) {
+            return 'zh';
+          }
+          return lng;
+        },
       },
     },
-
-    detection: {
-      order: ['localStorage', 'navigator', 'htmlTag'],
-      caches: ['localStorage'],
-      convertDetectedLanguage: (lng: string) => {
-        const normalized = lng.toLowerCase();
-        if (normalized === 'zh-cn' || normalized.startsWith('zh-')) {
-          return 'zh';
-        }
-        return lng;
-      },
-    },
-  });
+    () => {
+      // i18next's Intl formatter replaces the removed interpolation.format hook.
+      i18n.services.formatter?.add('currency', (value, lng, options) =>
+        new Intl.NumberFormat(options?.locale || lng, {
+          style: 'currency',
+          currency: options?.currency || 'USD',
+          currencyDisplay: 'narrowSymbol',
+          minimumFractionDigits: options?.minimumFractionDigits,
+          maximumFractionDigits: options?.maximumFractionDigits,
+        }).format(value)
+      );
+    }
+  );
 
 export default i18n;

@@ -1,27 +1,26 @@
-import * as React from 'react'
-import { cn } from '@/lib/utils'
-import type { TimeValue } from '@/utils/date-range'
+import { cn } from '@/lib/utils';
+import type { TimeValue } from '@/utils/date-range';
 
 interface TimeDropdownProps {
-  value: TimeValue
-  onChange: (next: TimeValue) => void
-  onClose?: () => void
-  closeLabel?: string
-  hours?: number[]
-  minutes?: number[]
-  seconds?: number[]
+  value: TimeValue;
+  onChange: (next: TimeValue) => void;
+  onClose?: () => void;
+  closeLabel?: string;
+  hours?: number[];
+  minutes?: number[];
+  seconds?: number[];
 }
 
 function buildNumberList(min: number, max: number) {
-  return Array.from({ length: max - min + 1 }, (_, i) => min + i)
+  return Array.from({ length: max - min + 1 }, (_, i) => min + i);
 }
 
-const DEFAULT_HOURS = buildNumberList(0, 23)
-const DEFAULT_MINUTES = buildNumberList(0, 59)
-const DEFAULT_SECONDS = buildNumberList(0, 59)
+const DEFAULT_HOURS = buildNumberList(0, 23);
+const DEFAULT_MINUTES = buildNumberList(0, 59);
+const DEFAULT_SECONDS = buildNumberList(0, 59);
 
 function pad2(value: number | string) {
-  return String(value).padStart(2, '0')
+  return String(value).padStart(2, '0');
 }
 
 export function TimeDropdown({
@@ -37,7 +36,7 @@ export function TimeDropdown({
     <div
       className={cn(
         'bg-popover text-popover-foreground absolute top-[calc(100%+8px)] left-0 z-50 flex h-[220px] w-full overflow-hidden rounded-lg',
-        'shadow-md ring-1 ring-foreground/10'
+        'ring-foreground/10 shadow-md ring-1'
       )}
       role='dialog'
     >
@@ -57,44 +56,24 @@ export function TimeDropdown({
         </button>
       )}
     </div>
-  )
+  );
 }
 
-function TimeCol({
-  label,
-  items,
-  active,
-  onPick,
-}: {
-  label: string
-  items: number[]
-  active: string
-  onPick: (val: string) => void
-}) {
+function TimeCol({ label, items, active, onPick }: { label: string; items: number[]; active: string; onPick: (val: string) => void }) {
   return (
     <div className='no-scrollbar flex-1 overflow-y-auto p-1 text-center'>
       <TimeColInner label={label} items={items} active={active} onPick={onPick} />
     </div>
-  )
+  );
 }
 
-function TimeColInner({
-  label,
-  items,
-  active,
-  onPick,
-}: {
-  label: string
-  items: number[]
-  active: string
-  onPick: (val: string) => void
-}) {
+function TimeColInner({ label, items, active, onPick }: { label: string; items: number[]; active: string; onPick: (val: string) => void }) {
   return (
     <>
       <span className='sr-only'>{label}</span>
       {items.map((v) => {
-        const txt = pad2(v)
-        const isActive = txt === active
+        const txt = pad2(v);
+        const isActive = txt === active;
 
         return (
           <button
@@ -102,16 +81,14 @@ function TimeColInner({
             type='button'
             className={cn(
               'w-full rounded-md py-2 text-sm transition-colors',
-              isActive
-                ? 'border-primary/20 bg-primary/10 font-semibold text-primary'
-                : 'text-muted-foreground hover:bg-muted'
+              isActive ? 'border-primary/20 bg-primary/10 text-primary font-semibold' : 'text-muted-foreground hover:bg-muted'
             )}
             onClick={() => onPick(txt)}
           >
             {txt}
           </button>
-        )
+        );
       })}
     </>
-  )
+  );
 }

@@ -1,10 +1,9 @@
 import { useEffect } from 'react';
 import { useRouter } from '@tanstack/react-router';
-import { IconFolderOff, IconFolderPlus } from '@tabler/icons-react';
+import { IconFolderOff } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
 import { useMyProjects } from '@/features/projects/data/projects';
 
 interface ProjectGuardProps {
@@ -47,7 +46,7 @@ export function ProjectGuard({ children, fallbackPath = '/projects', showNoProje
   return <>{children}</>;
 }
 
-function NoProjectPage({ hasAnyProjects, onGoToProjects }: { hasAnyProjects: boolean; onGoToProjects: () => void }) {
+function NoProjectPage({ hasAnyProjects }: { hasAnyProjects: boolean; onGoToProjects: () => void }) {
   const { t } = useTranslation();
 
   return (

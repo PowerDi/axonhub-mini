@@ -115,6 +115,10 @@ export function ApiKeyCreateTemplateDialog({ open, onOpenChange }: ApiKeyCreateT
   const quotaPeriodType = form.watch('profile.quota.period.type');
 
   const handleSubmit = async (values: FormValues) => {
+    if (!selectedProjectId) {
+      toast.error(t('common.projectGuard.noProjectSelected'));
+      return;
+    }
     try {
       await createTemplate.mutateAsync({
         name: values.name,
@@ -209,10 +213,7 @@ export function ApiKeyCreateTemplateDialog({ open, onOpenChange }: ApiKeyCreateT
                           </FormDescription>
                         </div>
                         <FormControl>
-                          <Select
-                            onValueChange={field.onChange}
-                            value={field.value || 'default'}
-                          >
+                          <Select onValueChange={field.onChange} value={field.value || 'default'}>
                             <SelectTrigger className='w-[140px]'>
                               <SelectValue placeholder={t('apikeys.profiles.loadBalancerStrategyPlaceholder')} />
                             </SelectTrigger>
@@ -252,7 +253,9 @@ export function ApiKeyCreateTemplateDialog({ open, onOpenChange }: ApiKeyCreateT
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value='default'>{t('apikeys.profiles.traceStickyModePlaceholder')}</SelectItem>
-                              <SelectItem value='prefer_previous_channel'>{t('system.retry.traceStickyMode.options.preferPreviousChannel')}</SelectItem>
+                              <SelectItem value='prefer_previous_channel'>
+                                {t('system.retry.traceStickyMode.options.preferPreviousChannel')}
+                              </SelectItem>
                               <SelectItem value='disabled'>{t('system.retry.traceStickyMode.options.disabled')}</SelectItem>
                             </SelectContent>
                           </Select>
@@ -322,7 +325,11 @@ export function ApiKeyCreateTemplateDialog({ open, onOpenChange }: ApiKeyCreateT
                       {t(isChannelExcludeMode ? 'apikeys.profiles.excludedChannels' : 'apikeys.profiles.allowedChannels')}
                     </h4>
                     <p className='text-muted-foreground mt-1 text-xs'>
-                      {t(isChannelExcludeMode ? 'apikeys.profiles.excludedChannelsDescription' : 'apikeys.profiles.allowedChannelsDescription')}
+                      {t(
+                        isChannelExcludeMode
+                          ? 'apikeys.profiles.excludedChannelsDescription'
+                          : 'apikeys.profiles.allowedChannelsDescription'
+                      )}
                     </p>
                   </div>
                   <FormField
@@ -333,7 +340,7 @@ export function ApiKeyCreateTemplateDialog({ open, onOpenChange }: ApiKeyCreateT
                         <FormLabel>{t('apikeys.profiles.channelIDsMatchMode')}</FormLabel>
                         <FormControl>
                           <Select value={field.value || 'include'} onValueChange={field.onChange}>
-                            <SelectTrigger>
+                            <SelectTrigger data-testid='template-channel-match-mode'>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>

@@ -1,18 +1,9 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
-import { useNavigate } from '@tanstack/react-router';
+import { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import {
-  ChevronRight,
-  ExternalLink,
-  FileText,
-  History,
-  ChevronsDownUp,
-  ChevronsUpDown,
-  Copy,
-  Terminal,
-} from 'lucide-react';
+import { useNavigate } from '@tanstack/react-router';
+import { ChevronRight, ChevronsDownUp, ChevronsUpDown, Copy, ExternalLink, FileText, History, Terminal } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { copyTextToClipboard } from '@/lib/clipboard';
@@ -22,12 +13,12 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { JsonViewer } from '@/components/json-tree-view';
-import { useRequests, useRequest } from '@/features/requests/data';
 import { CurlPreviewDialog } from '@/features/requests/components/curl-preview-dialog';
-import { generateRequestCurl } from '@/features/requests/utils/curl-generator';
 import { getStatusColor } from '@/features/requests/components/help';
+import { useRequest, useRequests } from '@/features/requests/data';
+import { generateRequestCurl } from '@/features/requests/utils/curl-generator';
 import { Channel } from '../data/schema';
 
 interface Props {
@@ -112,7 +103,7 @@ export function ChannelsTestHistoryDrawer({ open, onOpenChange, channel }: Props
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side='right' className='w-[80vw] min-w-[720px] max-w-[1200px] p-0 sm:max-w-[1200px]'>
+      <SheetContent side='right' className='w-[80vw] max-w-[1200px] min-w-[720px] p-0 sm:max-w-[1200px]'>
         <div className='flex h-full'>
           <div className='flex w-[360px] flex-shrink-0 flex-col border-r'>
             <SheetHeader className='border-b px-6 py-4 text-left'>
@@ -242,7 +233,7 @@ export function ChannelsTestHistoryDrawer({ open, onOpenChange, channel }: Props
                   )}
                 </div>
 
-                <div className='min-h-0 flex-1 px-6 pb-6 pt-4'>
+                <div className='min-h-0 flex-1 px-6 pt-4 pb-6'>
                   {activeTab === 'request' ? (
                     <ScrollArea className='bg-muted/20 h-full w-full rounded-lg border p-4'>
                       {request.requestBody ? (

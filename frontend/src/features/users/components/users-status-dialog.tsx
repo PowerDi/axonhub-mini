@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { IconUserCheck, IconUserOff } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -30,8 +29,8 @@ export function UsersStatusDialog({ open, onOpenChange, currentRow }: Props) {
       });
       onOpenChange(false);
     } catch (error) {
-          toast.error(t('common.errors.somethingWentWrong'));
-        }
+      toast.error(t('common.errors.somethingWentWrong'));
+    }
   };
 
   return (

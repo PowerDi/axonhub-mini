@@ -30,14 +30,14 @@ export function DailyRequestStats() {
     [currencyCode, locale, t]
   );
 
-  const formatCostTick = useCallback((value: number | string) => formatCurrency(Number(value), 0), [formatCurrency]);
+  const formatCostTick = useCallback((value: number | string) => formatCurrency(Number(value ?? 0), 0), [formatCurrency]);
 
   const tooltipFormatter = useCallback(
-    (value: number | string, name: string) => {
+    (value: number | string | ReadonlyArray<number | string> | undefined, name: string | number | undefined): [string, string | number] => {
       if (name === t('dashboard.stats.totalCost')) {
-        return [formatCurrency(Number(value), 0), name];
+        return [formatCurrency(Number(value ?? 0), 0), name ?? ''];
       }
-      return [formatNumber(Number(value)), name];
+      return [formatNumber(Number(value ?? 0)), name ?? ''];
     },
     [formatCurrency, t]
   );
@@ -109,7 +109,7 @@ export function DailyRequestStats() {
           tickLine={true}
           axisLine={true}
           padding={{ right: 24 }}
-        // padding={{ left: 16, right: 16 }}
+          // padding={{ left: 16, right: 16 }}
         />
         <YAxis
           yAxisId='left'
@@ -118,7 +118,7 @@ export function DailyRequestStats() {
           tickLine={true}
           axisLine={true}
           domain={[0, requestsMax]}
-          tickFormatter={(value) => formatNumber(value)}
+          tickFormatter={(value) => formatNumber(value ?? 0)}
           width={40}
           tickMargin={8}
         />
@@ -130,7 +130,7 @@ export function DailyRequestStats() {
           tickLine={true}
           axisLine={true}
           domain={[0, tokensMax]}
-          tickFormatter={(value) => formatNumber(value)}
+          tickFormatter={(value) => formatNumber(value ?? 0)}
           width={40}
           tickMargin={8}
         />

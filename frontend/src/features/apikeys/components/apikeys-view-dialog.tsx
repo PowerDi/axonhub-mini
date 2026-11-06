@@ -101,8 +101,6 @@ export function ApiKeysViewDialog() {
   }, [activeExampleTab, piConfigCode, piPreRenderedCode]);
 
   const codeExamples = useMemo(() => {
-    if (!selectedApiKey?.key) return {};
-
     return {
       codex: {
         baseUrl: `${currentOrigin}/v1`,
@@ -367,7 +365,9 @@ print(response.text)`,
 
         <Alert className='border-warning/40 bg-warning/10 dark:border-warning/40 shrink-0'>
           <AlertTriangle className='h-4 w-4 text-(--warning-soft-fg) dark:text-(--warning-soft-fg)' />
-          <AlertDescription className='text-(--warning-soft-fg) dark:text-(--warning-soft-fg)'>{t('apikeys.dialogs.view.warning')}</AlertDescription>
+          <AlertDescription className='text-(--warning-soft-fg) dark:text-(--warning-soft-fg)'>
+            {t('apikeys.dialogs.view.warning')}
+          </AlertDescription>
         </Alert>
 
         <div className='shrink-0 space-y-4'>

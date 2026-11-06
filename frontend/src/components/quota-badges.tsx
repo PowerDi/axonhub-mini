@@ -162,7 +162,6 @@ function getCommandCodePlanLabel(planId?: string, planLabel?: string): string {
   return (normalizedPlanId && COMMAND_CODE_PLAN_LABELS[normalizedPlanId]) || planLabel?.trim() || planId?.trim() || '';
 }
 
-
 function isMinimaxType(t: string): t is 'minimax' | 'minimax_anthropic' {
   return t === 'minimax' || t === 'minimax_anthropic';
 }
@@ -307,7 +306,7 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
 function getApertisPercentage(qd: ProviderApertisQuotaData | undefined): number {
   if (!qd) return 0;
   if (qd.is_subscriber && qd.subscription?.cycle_quota_limit) {
-    return (qd.subscription.cycle_quota_used / qd.subscription.cycle_quota_limit) * 100;
+    return ((qd.subscription.cycle_quota_used ?? 0) / qd.subscription.cycle_quota_limit) * 100;
   }
   if (qd.payg && !qd.payg.token_is_unlimited && typeof qd.payg.token_total === 'number' && typeof qd.payg.token_used === 'number') {
     return (qd.payg.token_used / qd.payg.token_total) * 100;
@@ -1262,7 +1261,7 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                 <div key='state' className='flex items-center gap-1.5 pt-1'>
                   <Badge
                     variant='outline'
-                    className='h-4 border-warning/40 px-1.5 py-0 text-[10px] font-semibold tracking-wider text-(--warning-soft-fg) uppercase'
+                    className='border-warning/40 h-4 px-1.5 py-0 text-[10px] font-semibold tracking-wider text-(--warning-soft-fg) uppercase'
                   >
                     {t(stateKey)}
                   </Badge>
@@ -2004,7 +2003,7 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                   {qd.rollingFiveHourLimit.limited && (
                     <Badge
                       variant='outline'
-                      className='h-4 border-warning/40 px-1.5 py-0 text-[10px] font-semibold tracking-wider text-(--warning-soft-fg) uppercase'
+                      className='border-warning/40 h-4 px-1.5 py-0 text-[10px] font-semibold tracking-wider text-(--warning-soft-fg) uppercase'
                     >
                       {t('quota.status.limited')}
                     </Badge>
@@ -2157,9 +2156,9 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
             const items: React.ReactNode[] = [];
 
             // Subscription cycle quota (takes priority if subscriber)
-            if (qd.is_subscriber && qd.subscription && qd.subscription.cycle_quota_limit > 0) {
-              const subUsed = qd.subscription.cycle_quota_used;
-              const subTotal = qd.subscription.cycle_quota_limit;
+            if (qd.is_subscriber && qd.subscription && (qd.subscription.cycle_quota_limit ?? 0) > 0) {
+              const subUsed = qd.subscription.cycle_quota_used ?? 0;
+              const subTotal = qd.subscription.cycle_quota_limit ?? 0;
               const subPct = (subUsed / subTotal) * 100;
               const planLabel = qd.subscription.plan_type
                 ? `${qd.subscription.plan_type.charAt(0).toUpperCase() + qd.subscription.plan_type.slice(1)} Plan`
@@ -2241,7 +2240,7 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
             // For active subscribers without PAYG fallback, PAYG is only meaningful if there are real credits.
             // Otherwise it's just noise (0 credits, unlimited tokens, no fallback = nothing to show).
             const hasPaygCredits =
-              qd.payg && (qd.payg.account_credits > 0 || (typeof qd.payg.token_used === 'number' && qd.payg.token_used > 0));
+              qd.payg && ((qd.payg.account_credits ?? 0) > 0 || (typeof qd.payg.token_used === 'number' && qd.payg.token_used > 0));
             const isPaygRelevant =
               !qd.is_subscriber || qd.subscription?.status !== 'active' || qd.subscription?.payg_fallback_enabled || hasPaygCredits;
             if (
@@ -2297,8 +2296,8 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                     <span className='text-muted-foreground font-medium'>{t('quota.label.account_balance')}</span>
                     <span className='text-foreground font-medium'>
                       {qd.payg.token_is_unlimited
-                        ? `${t('quota.label.unlimited')} · $${qd.payg.account_credits.toFixed(2)}`
-                        : `$${qd.payg.account_credits.toFixed(2)}`}
+                        ? `${t('quota.label.unlimited')} · $${(qd.payg.account_credits ?? 0).toFixed(2)}`
+                        : `$${(qd.payg.account_credits ?? 0).toFixed(2)}`}
                     </span>
                   </div>
                 </div>
@@ -2341,7 +2340,7 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
               );
             }
 
-            if (quota.nextResetAt && (!qd.subscription || qd.subscription.cycle_quota_limit <= 0)) {
+            if (quota.nextResetAt && (!qd.subscription || (qd.subscription.cycle_quota_limit ?? 0) <= 0)) {
               items.push(
                 <div key='reset' className='text-muted-foreground pt-1 text-right text-[11px]'>
                   {formatTimeToReset(quota.nextResetAt)}
@@ -2568,7 +2567,7 @@ type QuotaCategory = {
 };
 
 function getChannelCategory(channel: ProviderQuotaChannel, t: TranslateFn): QuotaCategory {
-  const channelType = channel.type as string;
+  const channelType = channel.type === 'unknown' ? channel.originalType : channel.type;
   if (channelType === 'antigravity') {
     return { key: 'antigravity', label: t('channels.types.antigravity') || 'Antigravity' };
   }
@@ -2811,8 +2810,9 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
 
     if (isError) {
       return (
-        <div className='rounded bg-destructive/10 p-2 text-xs break-words text-(--destructive-soft-fg)'>
-          <span className='font-medium'>{t('system.providerQuota.error')}:</span> {error instanceof Error ? error.message : t('quota.label.unavailable')}
+        <div className='bg-destructive/10 rounded p-2 text-xs break-words text-(--destructive-soft-fg)'>
+          <span className='font-medium'>{t('system.providerQuota.error')}:</span>{' '}
+          {error instanceof Error ? error.message : t('quota.label.unavailable')}
         </div>
       );
     }

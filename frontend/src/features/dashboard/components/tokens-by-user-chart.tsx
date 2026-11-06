@@ -1,12 +1,12 @@
 import { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipProps } from 'recharts';
 import { Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipContentProps } from 'recharts';
 import { formatNumber } from '@/utils/format-number';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { TimePeriod } from '@/components/time-period-selector';
 import { useGeneralSettings } from '../../system/data/system';
 import { useUsageStatsByUser } from '../data/dashboard';
-import type { TimePeriod } from '@/components/time-period-selector';
 import { ChartLegend } from './chart-legend';
 
 const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)', 'var(--chart-6)'];
@@ -54,8 +54,8 @@ export function TokensByUserChart({ timePeriod }: TokensByUserChartProps) {
   }
 
   type Payload = {
-    name?: string;
-    value?: number;
+    name?: string | number;
+    value?: number | string | ReadonlyArray<number | string>;
     payload?: {
       userName: string;
       requestCount: number;
@@ -64,8 +64,8 @@ export function TokensByUserChart({ timePeriod }: TokensByUserChartProps) {
     };
   };
 
-  type CombinedTooltipProps = TooltipProps<number, string> & {
-    payload?: Payload[];
+  type CombinedTooltipProps = Pick<TooltipContentProps, 'active'> & {
+    payload?: readonly Payload[];
   };
 
   const tooltipContent = (props: CombinedTooltipProps) => {
@@ -75,11 +75,13 @@ export function TokensByUserChart({ timePeriod }: TokensByUserChartProps) {
 
     return (
       <div className='bg-background/90 rounded-md border px-3 py-2 text-xs shadow-sm backdrop-blur'>
-        <div className='text-foreground text-sm font-medium mb-1'>{d.userName}</div>
+        <div className='text-foreground mb-1 text-sm font-medium'>{d.userName}</div>
         <div className='space-y-1'>
           <div className='flex justify-between gap-4'>
             <span className='text-muted-foreground'>{t('dashboard.stats.tokenCount')}:</span>
-            <span className='font-medium'>{formatNumber(d.totalTokens)} ({totalTokens ? ((d.totalTokens / totalTokens) * 100).toFixed(0) : 0}%)</span>
+            <span className='font-medium'>
+              {formatNumber(d.totalTokens)} ({totalTokens ? ((d.totalTokens / totalTokens) * 100).toFixed(0) : 0}%)
+            </span>
           </div>
           <div className='flex justify-between gap-4'>
             <span className='text-muted-foreground'>{t('dashboard.stats.requestCount')}:</span>
@@ -87,7 +89,9 @@ export function TokensByUserChart({ timePeriod }: TokensByUserChartProps) {
           </div>
           <div className='flex justify-between gap-4'>
             <span className='text-muted-foreground'>{t('dashboard.stats.userCost')}:</span>
-            <span className='font-medium'>{formatCurrency(d.totalCost)} ({totalCost ? ((d.totalCost / totalCost) * 100).toFixed(0) : 0}%)</span>
+            <span className='font-medium'>
+              {formatCurrency(d.totalCost)} ({totalCost ? ((d.totalCost / totalCost) * 100).toFixed(0) : 0}%)
+            </span>
           </div>
         </div>
       </div>
@@ -145,8 +149,8 @@ export function TokensByUserChart({ timePeriod }: TokensByUserChartProps) {
         </>
       )}
       {isFetching && (
-        <div className='absolute inset-0 flex items-center justify-center bg-background/50'>
-          <Loader2 className='h-6 w-6 animate-spin text-muted-foreground' />
+        <div className='bg-background/50 absolute inset-0 flex items-center justify-center'>
+          <Loader2 className='text-muted-foreground h-6 w-6 animate-spin' />
         </div>
       )}
     </div>

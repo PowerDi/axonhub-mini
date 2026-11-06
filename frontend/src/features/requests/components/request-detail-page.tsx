@@ -1,6 +1,6 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { format } from 'date-fns';
-import { useParams, useNavigate, useRouterState } from '@tanstack/react-router';
+import { useNavigate, useParams, useRouterState } from '@tanstack/react-router';
 import { ArrowLeft, Copy, FileText } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -203,21 +203,23 @@ export default function RequestDetailPage() {
       return;
     }
 
-    const requestIdNumber = extractNumberID(requestData.id);
+    const previewSource = requestData;
+    const projectID = selectedProjectId;
+    const requestIdNumber = extractNumberID(previewSource.id);
     if (!requestIdNumber) {
       return;
     }
 
     const controller = new AbortController();
     let isDisposed = false;
-    let reconnectTimer: ReturnType<typeof window.setTimeout> | null = null;
+    let reconnectTimer: number | null = null;
     let reconnectAttempt = 0;
 
     previewCompletedRef.current = false;
     setIsPreviewStreaming(true);
     setPreviewFallbackActive(false);
     setPreviewRequest({
-      ...requestData,
+      ...previewSource,
       responseChunks: [],
     });
     previewChunkCountRef.current = 0;
@@ -233,7 +235,7 @@ export default function RequestDetailPage() {
       if (isDisposed || controller.signal.aborted) {
         return;
       }
-      if (requestData.status !== 'processing' || !requestData.stream || previewCompletedRef.current) {
+      if (previewSource.status !== 'processing' || !previewSource.stream || previewCompletedRef.current) {
         return;
       }
       if (reconnectTimer !== null) {
@@ -262,7 +264,7 @@ export default function RequestDetailPage() {
         const response = await fetch(`/admin/requests/${encodeURIComponent(requestIdNumber)}/preview`, {
           headers: {
             Authorization: `Bearer ${currentToken}`,
-            'X-Project-ID': selectedProjectId,
+            'X-Project-ID': projectID,
           },
           signal: controller.signal,
         });
@@ -346,7 +348,7 @@ export default function RequestDetailPage() {
           return;
         }
 
-        if (requestData.status === 'processing' && requestData.stream) {
+        if (previewSource.status === 'processing' && previewSource.stream) {
           setIsPreviewStreaming(false);
           scheduleReconnect();
         } else {

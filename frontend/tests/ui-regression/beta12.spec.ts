@@ -1,0 +1,163 @@
+import { expect, test, type Page } from '@playwright/test';
+import { channel, legacyCodexChannel, pageInfo, PROJECT_ID, user } from './fixtures';
+
+type Operation = { operationName: string; query: string; variables: Record<string, any>; projectHeader?: string };
+
+async function openFixture(page: Page, scenario: string) {
+  const operations: Operation[] = [];
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  const snapshot = structuredClone(scenario === 'codex-endpoints' || scenario === 'legacy-policy' ? legacyCodexChannel : channel);
+  await page.route('**/admin/graphql', async (route) => {
+    const payload = route.request().postDataJSON() as Operation;
+    // Channel operations include a fragment before the operation definition.
+    const op = { ...payload, operationName: payload.operationName ?? /\b(?:query|mutation)\s+(\w+)/.exec(payload.query)?.[1] ?? 'unnamed' };
+    operations.push({ ...op, projectHeader: route.request().headers()['x-project-id'] });
+    let data: Record<string, unknown>;
+    switch (op.operationName) {
+      case 'Me': data = { me: user }; break;
+      case 'Models': data = { queryModels: [{ id: 'gpt-4o', status: 'enabled' }] }; break;
+      case 'GetAllChannelSummarys': data = { allChannelSummarys: [channel] }; break;
+      case 'ApiKeyProfileTemplates': data = { apiKeyProfileTemplates: { edges: [], pageInfo, totalCount: 0 } }; break;
+      case 'AllChannelTags': data = { allChannelTags: ['ui-fixture'] }; break;
+      case 'ProxyPresets': data = { proxyPresets: [] }; break;
+      case 'QuotaRoutingSettings': data = { quotaRoutingSettings: { defaultMode: 'IGNORE_QUOTA' } }; break;
+      case 'UserAgentPassThroughSettings': data = { userAgentPassThroughSettings: { enabled: false } }; break;
+      case 'PassThroughSettings': data = { passThroughSettings: { enabled: false } }; break;
+      case 'RetryPolicy': data = { retryPolicy: { enabled: true, maxChannelRetries: 2, maxSingleChannelRetries: 1, retryDelayMs: 0, streamFirstEventTimeoutSeconds: 10, nonStreamResponseTimeoutSeconds: 30 } }; break;
+      case 'QueryChannels': data = { queryChannels: { edges: [{ node: snapshot, cursor: '101' }], pageInfo, totalCount: 1 } }; break;
+      case 'UpdateChannel': data = { updateChannel: { ...snapshot, ...op.variables.input } }; break;
+      case 'UpdateChannelSettings': data = { updateChannelSettings: { ...snapshot, settings: { ...snapshot.settings, ...op.variables.input } } }; break;
+      case 'CreateApiKeyProfileTemplate': data = { createApiKeyProfileTemplate: { id: 'gid://axonhub/APIKeyProfileTemplate/88', ...op.variables.input, profile: op.variables.profile } }; break;
+      default: errors.push(`Unexpected GraphQL operation: ${op.operationName}`); data = {};
+    }
+    await route.fulfill({ json: { data } });
+  });
+  await page.goto(`/tests/ui-regression/index.html?case=${scenario}`);
+  await expect(page.getByTestId('harness-ready')).toBeVisible();
+  if (scenario !== 'schemas' && scenario !== 'analytics') await expect(page.getByRole('dialog')).toBeVisible();
+  return { operations, errors };
+}
+
+test('multi-endpoint channel can add a separate Responses WebSocket URL without losing its HTTP URL', async ({ page }) => {
+  const { operations, errors } = await openFixture(page, 'endpoints');
+  await page.getByTestId('endpoint-format-select').click();
+  await page.getByRole('option', { name: 'openai/responses-ws', exact: true }).click();
+  await page.locator('#endpoint-base-url').fill('wss://ws.example.test/v1');
+  await page.locator('#endpoint-path').fill('/custom/responses');
+  await page.getByTestId('endpoint-add-button').click();
+  await page.getByTestId('endpoints-save-button').click();
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  const saved = operations.find((op) => op.operationName === 'UpdateChannel');
+  expect(saved?.variables.input.endpoints).toEqual(expect.arrayContaining([
+    expect.objectContaining({ apiFormat: 'openai/responses', baseURL: 'https://responses.example.test/v1' }),
+    expect.objectContaining({ apiFormat: 'openai/responses-ws', baseURL: 'wss://ws.example.test/v1', path: '/custom/responses' }),
+  ]));
+  expect(saved?.variables.input.settings.hammerRetry).toEqual(channel.settings.hammerRetry);
+  expect(errors).toEqual([]);
+});
+
+test('legacy Codex WS save normalizes both Allow and Exclude atomically', async ({ page }) => {
+  const { operations, errors } = await openFixture(page, 'codex-endpoints');
+  await expect(page.getByTestId('codex-endpoints-websocket-checkbox')).toBeChecked();
+  await page.getByTestId('endpoints-save-button').click();
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  const saved = operations.find((op) => op.operationName === 'UpdateChannel')!;
+  expect(saved.variables.input.baseURL).toBe('https://codex.example.test/v1');
+  expect(saved.variables.input.settings.modelApiFormatPolicies).toEqual([
+    { model: 'gpt-4o', allow: ['openai/responses-ws'], exclude: [] },
+    { model: 'deny-model', allow: [], exclude: ['openai/responses-ws'] },
+  ]);
+  expect(errors).toEqual([]);
+});
+
+test('model policy edit uses settings PATCH and preserves legacy WebSocket identity', async ({ page }) => {
+  const { operations, errors } = await openFixture(page, 'legacy-policy');
+  await expect(page.getByTestId('model-policy-gpt-4o')).toContainText('openai/responses-ws');
+  await expect(page.getByTestId('model-policy-deny-model')).toContainText('openai/responses-ws');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  const saved = operations.find((op) => op.operationName === 'UpdateChannelSettings')!;
+  expect(Object.keys(saved.variables.input)).toEqual(['modelApiFormatPolicies']);
+  expect(saved.variables.input.modelApiFormatPolicies[0].allow).toEqual(['openai/responses-ws']);
+  expect(operations.some((op) => op.operationName === 'UpdateChannel')).toBe(false);
+  expect(errors).toEqual([]);
+});
+
+test('channel editor recalls and saves beta12 timeout/key settings without dropping mini settings', async ({ page }) => {
+  const { operations, errors } = await openFixture(page, 'channel-edit');
+  await expect(page.getByTestId('response-timeout-stream-first-event')).toHaveValue('12');
+  await expect(page.getByTestId('response-timeout-non-stream')).toHaveValue('45');
+  await page.getByTestId('response-timeout-non-stream').fill('60');
+  await page.getByTestId('channel-submit-button').click();
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  const saved = operations.find((op) => op.operationName === 'UpdateChannel')!;
+  expect(saved.variables.input.type).toBe('openai_multiprotocol');
+  expect(saved.variables.input.settings.responseTimeout.nonStreamResponseTimeoutSeconds).toBe(60);
+  expect(saved.variables.input.settings.apiKeyStrategy).toBe('round_robin_success');
+  expect(saved.variables.input.settings.apiKeyRoundRobinSwitchAfter).toBe(3);
+  expect(saved.variables.input.settings.reasoningFilter).toBe(true);
+  expect(saved.variables.input.settings.modelApiFormatPolicies).toEqual(channel.settings.modelApiFormatPolicies);
+  expect(saved.variables.input.settings.hammerRetry.maxRetries).toBe(4);
+  expect(errors).toEqual([]);
+});
+
+test('profile manager recalls Exclude and preserves template linkage on submit', async ({ page }) => {
+  const { errors } = await openFixture(page, 'profiles');
+  await expect(page.getByTestId('profile-channel-match-mode')).toContainText('Exclude selected');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  const saved = JSON.parse(await page.getByTestId('profile-submitted').textContent() ?? 'null');
+  expect(saved.profiles[0]).toMatchObject({ channelIDsMatchMode: 'exclude', channelIDs: [101], templateID: 51, templateName: 'Shared exclusion' });
+  expect(errors).toEqual([]);
+});
+
+test('new API key template offers Exclude and sends an explicitly project-scoped payload', async ({ page }) => {
+  const { operations, errors } = await openFixture(page, 'template');
+  await page.getByRole('textbox', { name: 'Template Name', exact: true }).fill('UI exclusion template');
+  await page.getByTestId('template-channel-match-mode').click();
+  await page.getByRole('option', { name: 'Exclude selected', exact: true }).click();
+  await page.getByPlaceholder('Excluded Channels', { exact: true }).fill(channel.name);
+  await page.getByPlaceholder('Excluded Channels', { exact: true }).press('Enter');
+  await page.getByRole('button', { name: 'Create Template', exact: true }).click();
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  const saved = operations.find((op) => op.operationName === 'CreateApiKeyProfileTemplate')!;
+  expect(saved.projectHeader).toBe(PROJECT_ID);
+  expect(saved.variables.input.projectID).toBe(PROJECT_ID);
+  expect(saved.variables.profile.channelIDsMatchMode).toBe('exclude');
+  expect(saved.variables.profile.channelIDs).toEqual([101]);
+  expect(errors).toEqual([]);
+});
+
+test('Intl currency formatting still uses configured currency and digits after i18next migration', async ({ page }) => {
+  await openFixture(page, 'endpoints');
+  await expect(page.getByTestId('currency-format')).toHaveText('$1,234.50');
+});
+
+
+test('endpoint editor refuses to remove the last allowed WebSocket endpoint', async ({ page }) => {
+  const { operations, errors } = await openFixture(page, 'codex-endpoints');
+  await page.getByTestId('codex-endpoints-websocket-checkbox').click();
+  await expect(page.getByRole('alertdialog')).toContainText('gpt-4o');
+  await expect(page.getByTestId('codex-endpoints-websocket-checkbox')).toBeChecked();
+  expect(operations.some((op) => op.operationName.startsWith('Update'))).toBe(false);
+  expect(errors).toEqual([]);
+});
+
+test('profile schemas preserve template linkage and normalize only legacy empty matching modes', async ({ page }) => {
+  const { errors } = await openFixture(page, 'schemas');
+  const results = JSON.parse(await page.getByTestId('schema-regression').textContent() ?? 'null');
+  for (const result of results) {
+    expect(result.invalidAccepted).toBe(false);
+    expect(result.normalized.map((row: { profiles: { channelIDsMatchMode: string }[] }) => row.profiles[0].channelIDsMatchMode)).toEqual(['include', 'include', 'include', 'include', 'exclude']);
+    for (const row of result.normalized) expect(row.profiles[0]).toMatchObject({ templateID: 51, templateName: 'Shared exclusion', channelTagsMatchMode: 'any' });
+  }
+  expect(errors).toEqual([]);
+});
+
+test('analytics charts retain custom legends after the Recharts API update', async ({ page }) => {
+  const { errors } = await openFixture(page, 'analytics');
+  await expect(page.getByTestId('trend-chart').locator('.recharts-legend-item')).toHaveCount(5);
+  await expect(page.getByTestId('pie-charts').locator('.recharts-legend-item').first()).toContainText('Fixture channel');
+  expect(errors).toEqual([]);
+});

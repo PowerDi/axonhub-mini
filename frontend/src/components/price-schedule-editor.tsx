@@ -1,20 +1,20 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import { useFieldArray, useFormContext, useWatch, type Control, type FieldArrayPath, type FieldPath } from 'react-hook-form';
-import { IconPlus, IconTrash, IconClock, IconCalendar, IconChevronDown, IconCheck } from '@tabler/icons-react';
 import { format } from 'date-fns';
+import { useFieldArray, useFormContext, useWatch, type Control, type FieldArrayPath, type FieldPath } from 'react-hook-form';
+import { IconCalendar, IconCheck, IconChevronDown, IconClock, IconPlus, IconTrash } from '@tabler/icons-react';
+import { Clock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
 import { GMTTimeZoneOptions } from '@/features/system/data/timezones';
-import { Clock } from 'lucide-react';
 
 const WEEKDAYS = [1, 2, 3, 4, 5, 6, 7] as const;
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
@@ -126,10 +126,14 @@ export const PriceScheduleEditor = memo(function PriceScheduleEditor({
   const handleToggle = useCallback(
     (checked: boolean) => {
       if (checked) {
-        setValue(asFieldPath(`prices.${priceIndex}.price.schedule`) as FieldPath<ScheduleFormValues>, {
-          timezone: defaultTimezone,
-          overrides: [],
-        } as never, { shouldDirty: true, shouldValidate: true });
+        setValue(
+          asFieldPath(`prices.${priceIndex}.price.schedule`) as FieldPath<ScheduleFormValues>,
+          {
+            timezone: defaultTimezone,
+            overrides: [],
+          } as never,
+          { shouldDirty: true, shouldValidate: true }
+        );
       } else {
         setValue(asFieldPath(`prices.${priceIndex}.price.schedule`) as FieldPath<ScheduleFormValues>, null as never, {
           shouldDirty: true,
@@ -228,13 +232,7 @@ const ScheduleContent = memo(function ScheduleContent({
       <div className='space-y-3'>
         <div className='flex items-center justify-between'>
           <span className='text-muted-foreground text-xs font-medium'>{t('price.schedule.overrides')}</span>
-          <Button
-            type='button'
-            variant='outline'
-            size='icon-sm'
-            data-testid='price-schedule-add-override'
-            onClick={handleAddOverride}
-          >
+          <Button type='button' variant='outline' size='icon-sm' data-testid='price-schedule-add-override' onClick={handleAddOverride}>
             <IconPlus size={14} />
           </Button>
         </div>
@@ -251,11 +249,7 @@ const ScheduleContent = memo(function ScheduleContent({
           />
         ))}
 
-        {overrideFields.length === 0 && (
-          <p className='text-muted-foreground py-4 text-center text-xs'>
-            {t('price.schedule.noOverrides')}
-          </p>
-        )}
+        {overrideFields.length === 0 && <p className='text-muted-foreground py-4 text-center text-xs'>{t('price.schedule.noOverrides')}</p>}
       </div>
     </div>
   );
@@ -286,7 +280,7 @@ const OverrideCard = memo(function OverrideCard({
   const { setValue } = useFormContext<ScheduleFormValues>();
 
   const base = `prices.${priceIndex}.price.schedule.overrides.${overrideIndex}`;
-  const when = useScheduleWatch<ScheduleFormValues['prices'][number]['price']['schedule']['overrides'][number]['when']>(
+  const when = useScheduleWatch<NonNullable<ScheduleFormValues['prices'][number]['price']['schedule']>['overrides'][number]['when']>(
     control,
     `${base}.when`
   );
@@ -303,20 +297,28 @@ const OverrideCard = memo(function OverrideCard({
     if (available.length === 0) return;
     const nextType = available[0];
     if (nextType === 'dailyTime') {
-      setValue(asFieldPath(`${base}.when.dailyTime`) as FieldPath<ScheduleFormValues>, {
-        start: '00:00',
-        end: '08:00',
-      } as never, { shouldDirty: true, shouldValidate: true });
+      setValue(
+        asFieldPath(`${base}.when.dailyTime`) as FieldPath<ScheduleFormValues>,
+        {
+          start: '00:00',
+          end: '08:00',
+        } as never,
+        { shouldDirty: true, shouldValidate: true }
+      );
     } else if (nextType === 'weekdays') {
       setValue(asFieldPath(`${base}.when.weekdays`) as FieldPath<ScheduleFormValues>, [1] as never, {
         shouldDirty: true,
         shouldValidate: true,
       });
     } else if (nextType === 'dateRange') {
-      setValue(asFieldPath(`${base}.when.dateRange`) as FieldPath<ScheduleFormValues>, {
-        start: '',
-        end: '',
-      } as never, { shouldDirty: true, shouldValidate: true });
+      setValue(
+        asFieldPath(`${base}.when.dateRange`) as FieldPath<ScheduleFormValues>,
+        {
+          start: '',
+          end: '',
+        } as never,
+        { shouldDirty: true, shouldValidate: true }
+      );
     }
   }, [base, conditions, setValue]);
 
@@ -330,20 +332,28 @@ const OverrideCard = memo(function OverrideCard({
       });
       // Set new with default value
       if (newType === 'dailyTime') {
-        setValue(asFieldPath(`${base}.when.dailyTime`) as FieldPath<ScheduleFormValues>, {
-          start: '00:00',
-          end: '08:00',
-        } as never, { shouldDirty: true, shouldValidate: true });
+        setValue(
+          asFieldPath(`${base}.when.dailyTime`) as FieldPath<ScheduleFormValues>,
+          {
+            start: '00:00',
+            end: '08:00',
+          } as never,
+          { shouldDirty: true, shouldValidate: true }
+        );
       } else if (newType === 'weekdays') {
         setValue(asFieldPath(`${base}.when.weekdays`) as FieldPath<ScheduleFormValues>, [1] as never, {
           shouldDirty: true,
           shouldValidate: true,
         });
       } else if (newType === 'dateRange') {
-        setValue(asFieldPath(`${base}.when.dateRange`) as FieldPath<ScheduleFormValues>, {
-          start: '',
-          end: '',
-        } as never, { shouldDirty: true, shouldValidate: true });
+        setValue(
+          asFieldPath(`${base}.when.dateRange`) as FieldPath<ScheduleFormValues>,
+          {
+            start: '',
+            end: '',
+          } as never,
+          { shouldDirty: true, shouldValidate: true }
+        );
       }
     },
     [base, setValue]
@@ -363,11 +373,10 @@ const OverrideCard = memo(function OverrideCard({
     (day: number) => {
       const current = when?.weekdays || [];
       const next = current.includes(day) ? current.filter((d) => d !== day) : [...current, day].sort();
-      setValue(
-        asFieldPath(`${base}.when.weekdays`) as FieldPath<ScheduleFormValues>,
-        next.length > 0 ? (next as never) : (null as never),
-        { shouldDirty: true, shouldValidate: true }
-      );
+      setValue(asFieldPath(`${base}.when.weekdays`) as FieldPath<ScheduleFormValues>, next.length > 0 ? (next as never) : (null as never), {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
     },
     [base, setValue, when?.weekdays]
   );
@@ -383,7 +392,12 @@ const OverrideCard = memo(function OverrideCard({
               <FormItem>
                 <FormLabel className='text-xs'>{t('price.schedule.override.name')}</FormLabel>
                 <FormControl>
-                  <Input {...field} value={(field.value as string) || ''} placeholder={t('price.schedule.override.namePlaceholder')} className='h-8 text-sm' />
+                  <Input
+                    {...field}
+                    value={(field.value as string) || ''}
+                    placeholder={t('price.schedule.override.namePlaceholder')}
+                    className='h-8 text-sm'
+                  />
                 </FormControl>
                 <FormMessage className='text-[10px]' />
               </FormItem>
@@ -449,18 +463,11 @@ const OverrideCard = memo(function OverrideCard({
           ))}
 
           {conditions.length === 0 && (
-            <p className='text-muted-foreground py-2 text-center text-xs'>
-              {t('price.schedule.when.atLeastOne')}
-            </p>
+            <p className='text-muted-foreground py-2 text-center text-xs'>{t('price.schedule.when.atLeastOne')}</p>
           )}
         </div>
 
-        <OverrideItemsEditor
-          control={control}
-          priceIndex={priceIndex}
-          overrideIndex={overrideIndex}
-          currencyCode={currencyCode}
-        />
+        <OverrideItemsEditor control={control} priceIndex={priceIndex} overrideIndex={overrideIndex} currencyCode={currencyCode} />
       </CollapsibleContent>
     </Collapsible>
   );
@@ -496,9 +503,7 @@ const ConditionRow = memo(function ConditionRow({
   const base = `prices.${priceIndex}.price.schedule.overrides.${overrideIndex}.when`;
 
   // Filter out types already used by OTHER rows, but keep current row's type
-  const availableTypes = CONDITION_TYPES.filter(
-    (ct) => ct === type || !allActiveTypes.includes(ct)
-  );
+  const availableTypes = CONDITION_TYPES.filter((ct) => ct === type || !allActiveTypes.includes(ct));
 
   return (
     <div className='grid grid-cols-[7rem_1fr_auto_1fr_2rem] items-center gap-1'>
@@ -676,9 +681,7 @@ function TimeColInner({
             data-testid={`${testIdPrefix}-${txt}`}
             className={cn(
               'w-full rounded-md py-2 text-sm transition-colors',
-              isActive
-                ? 'border-primary/20 bg-primary/10 font-semibold text-primary'
-                : 'text-muted-foreground hover:bg-muted'
+              isActive ? 'border-primary/20 bg-primary/10 text-primary font-semibold' : 'text-muted-foreground hover:bg-muted'
             )}
             onClick={() => onPick(txt)}
           >
@@ -703,9 +706,7 @@ const WeekdaysEditor = memo(function WeekdaysEditor({
   const [open, setOpen] = useState(false);
 
   const selected = weekdays || [];
-  const displayText = selected.length > 0
-    ? selected.map((d) => t(`price.schedule.weekdays.${d}`)).join(', ')
-    : '';
+  const displayText = selected.length > 0 ? selected.map((d) => t(`price.schedule.weekdays.${d}`)).join(', ') : '';
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -731,7 +732,7 @@ const WeekdaysEditor = memo(function WeekdaysEditor({
             <button
               key={day}
               type='button'
-              className='flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs hover:bg-accent'
+              className='hover:bg-accent flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs'
               onClick={() => onToggle(day)}
             >
               <div
@@ -773,11 +774,11 @@ const DateRangeSinglePicker = memo(function DateRangeSinglePicker({
               <FormControl>
                 <Button
                   variant='outline'
-                  className={`!bg-transparent h-8 w-full justify-start pl-2 text-left text-xs font-normal ${
+                  className={`h-8 w-full justify-start !bg-transparent pl-2 text-left text-xs font-normal ${
                     !field.value && 'text-muted-foreground'
                   }`}
                 >
-                  {field.value || placeholder}
+                  {typeof field.value === 'string' && field.value ? field.value : placeholder}
                   <IconCalendar className='ml-auto h-3.5 w-3.5 opacity-50' />
                 </Button>
               </FormControl>
@@ -785,7 +786,7 @@ const DateRangeSinglePicker = memo(function DateRangeSinglePicker({
             <PopoverContent className='w-auto p-0' align='start'>
               <Calendar
                 mode='single'
-                selected={field.value ? new Date(field.value) : undefined}
+                selected={typeof field.value === 'string' && field.value ? new Date(field.value) : undefined}
                 onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')}
                 initialFocus
               />
@@ -818,7 +819,7 @@ const OverrideItemsEditor = memo(function OverrideItemsEditor({
     control,
     name: asFieldPath(`prices.${priceIndex}.price.schedule.overrides.${overrideIndex}.items`) as FieldPath<ScheduleFormValues>,
     compute: (value) => value,
-  }) as unknown as ScheduleFormValues['prices'][number]['price']['schedule']['overrides'][number]['items'] | undefined;
+  }) as unknown as NonNullable<ScheduleFormValues['prices'][number]['price']['schedule']>['overrides'][number]['items'] | undefined;
 
   const handleAddItem = useCallback(() => {
     const currentItems = items || [];
@@ -827,21 +828,21 @@ const OverrideItemsEditor = memo(function OverrideItemsEditor({
     if (!nextCode) return;
 
     const path = `prices.${priceIndex}.price.schedule.overrides.${overrideIndex}.items` as string;
-    setValue(asFieldPath(path) as FieldPath<ScheduleFormValues>, [
-      ...currentItems,
-      { itemCode: nextCode, pricing: { mode: 'usage_per_unit', usagePerUnit: '0' } },
-    ] as never, { shouldDirty: true, shouldValidate: true });
+    setValue(
+      asFieldPath(path) as FieldPath<ScheduleFormValues>,
+      [...currentItems, { itemCode: nextCode, pricing: { mode: 'usage_per_unit', usagePerUnit: '0' } }] as never,
+      { shouldDirty: true, shouldValidate: true }
+    );
   }, [items, overrideIndex, priceIndex, setValue]);
 
   const handleRemoveItem = useCallback(
     (itemIndex: number) => {
       const currentItems = items || [];
       const path = `prices.${priceIndex}.price.schedule.overrides.${overrideIndex}.items` as string;
-      setValue(
-        asFieldPath(path) as FieldPath<ScheduleFormValues>,
-        currentItems.filter((_, i) => i !== itemIndex) as never,
-        { shouldDirty: true, shouldValidate: true }
-      );
+      setValue(asFieldPath(path) as FieldPath<ScheduleFormValues>, currentItems.filter((_, i) => i !== itemIndex) as never, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
     },
     [items, overrideIndex, priceIndex, setValue]
   );
@@ -855,7 +856,7 @@ const OverrideItemsEditor = memo(function OverrideItemsEditor({
         </Button>
       </div>
 
-      {(items || []).map((item, itemIndex) => (
+      {(items || []).map((_item, itemIndex) => (
         <OverrideItemRow
           key={itemIndex}
           control={control}
@@ -931,11 +932,10 @@ const OverrideItemRow = memo(function OverrideItemRow({
     if (!tiers?.length) return;
     const lastIndex = tiers.length - 1;
     if (tiers[lastIndex]?.upTo !== null) {
-      setValue(
-        asFieldPath(`${base}.pricing.usageTiered.tiers.${lastIndex}.upTo`) as FieldPath<ScheduleFormValues>,
-        null,
-        { shouldDirty: true, shouldValidate: true }
-      );
+      setValue(asFieldPath(`${base}.pricing.usageTiered.tiers.${lastIndex}.upTo`) as FieldPath<ScheduleFormValues>, null, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
     }
   }, [base, setValue, tiers]);
 
@@ -1002,9 +1002,7 @@ const OverrideItemRow = memo(function OverrideItemRow({
                 <FormControl>
                   <div className='relative'>
                     {currencyPrefix && (
-                      <span className='text-muted-foreground absolute top-1/2 left-2 -translate-y-1/2 text-[10px]'>
-                        {currencyPrefix}
-                      </span>
+                      <span className='text-muted-foreground absolute top-1/2 left-2 -translate-y-1/2 text-[10px]'>{currencyPrefix}</span>
                     )}
                     <Input
                       {...field}
@@ -1028,9 +1026,7 @@ const OverrideItemRow = memo(function OverrideItemRow({
                 <FormControl>
                   <div className='relative'>
                     {currencyPrefix && (
-                      <span className='text-muted-foreground absolute top-1/2 left-2 -translate-y-1/2 text-[10px]'>
-                        {currencyPrefix}
-                      </span>
+                      <span className='text-muted-foreground absolute top-1/2 left-2 -translate-y-1/2 text-[10px]'>{currencyPrefix}</span>
                     )}
                     <Input
                       {...field}
@@ -1080,11 +1076,9 @@ const OverrideItemRow = memo(function OverrideItemRow({
                         <Input
                           type='number'
                           {...field}
-                          value={isLastTier ? '' : (field.value as number | null | undefined) ?? ''}
+                          value={isLastTier ? '' : ((field.value as number | null | undefined) ?? '')}
                           onChange={(e) =>
-                            isLastTier
-                              ? field.onChange(null)
-                              : field.onChange(e.target.value ? parseInt(e.target.value) : null)
+                            isLastTier ? field.onChange(null) : field.onChange(e.target.value ? parseInt(e.target.value) : null)
                           }
                           placeholder={isLastTier ? '∞' : t('price.upTo')}
                           disabled={isLastTier}

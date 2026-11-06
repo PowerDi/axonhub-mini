@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { z } from 'zod';
 import { format, type Locale } from 'date-fns';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,12 +27,26 @@ import { useApiKeyQuotaUsages } from '../data/apikeys';
 import {
   normalizeApiKeyProfileRoutingPolicy,
   updateApiKeyProfilesInputSchemaFactory,
+  apiKeyProfileSchema,
   type ApiKeyProfile,
   type ApiKeyProfileQuotaUsage,
   type UpdateApiKeyProfilesInput,
 } from '../data/schema';
 import { ApiKeyLoadTemplatePopover } from './apikeys-load-template-popover';
 import { ApiKeySaveTemplateDialog } from './apikeys-save-template-dialog';
+
+type ProfileFormInput = z.input<ReturnType<typeof updateApiKeyProfilesInputSchemaFactory>>;
+
+// The template preview may open while the quota/name fields are still being
+// edited. Normalize only legacy matching modes here; validating the entire
+// profile during render could crash the dialog on an incomplete form.
+function profileForTemplate(profile: ProfileFormInput['profiles'][number]): ApiKeyProfile {
+  return {
+    ...profile,
+    channelIDsMatchMode: apiKeyProfileSchema.shape.channelIDsMatchMode.parse(profile.channelIDsMatchMode),
+    channelTagsMatchMode: apiKeyProfileSchema.shape.channelTagsMatchMode.parse(profile.channelTagsMatchMode),
+  };
+}
 
 type ApiKeyQuotaPeriod = NonNullable<NonNullable<ApiKeyProfile['quota']>['period']>;
 
@@ -127,7 +142,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
     []
   );
 
-  const form = useForm<UpdateApiKeyProfilesInput>({
+  const form = useForm<ProfileFormInput, unknown, UpdateApiKeyProfilesInput>({
     resolver: zodResolver(updateApiKeyProfilesInputSchemaFactory(t)),
     defaultValues,
   });
@@ -262,6 +277,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
       name: `Profile ${profileFields.length + 1}`,
       modelMappings: [],
       channelIDs: [],
+      channelIDsMatchMode: 'include',
       channelTags: [],
       channelTagsMatchMode: 'any',
       modelIDs: [],
@@ -442,7 +458,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
               setSaveTemplateOpen(open);
               if (!open) setSaveTemplateProfileIndex(null);
             }}
-            profileData={form.watch(`profiles.${saveTemplateProfileIndex}`)}
+            profileData={profileForTemplate(form.watch(`profiles.${saveTemplateProfileIndex}`))}
             projectID={selectedProjectId}
           />
         )}
@@ -453,7 +469,7 @@ export function ApiKeyProfilesDialog({ open, onOpenChange, onSubmit, loading = f
 
 interface ProfileCardProps {
   profileIndex: number;
-  form: ReturnType<typeof useForm<UpdateApiKeyProfilesInput>>;
+  form: ReturnType<typeof useForm<ProfileFormInput, unknown, UpdateApiKeyProfilesInput>>;
   onRemove: () => void;
   canRemove: boolean;
   availableModels: string[];
@@ -537,8 +553,8 @@ function ProfileCard({
         return;
       }
 
-      const otherProfiles = allProfiles.filter((_profile: ApiKeyProfile, idx: number) => idx !== profileIndex);
-      const isDuplicate = otherProfiles.some((p: ApiKeyProfile) => p.name && p.name.trim().toLowerCase() === trimmedValue);
+      const otherProfiles = allProfiles.filter((_profile, idx) => idx !== profileIndex);
+      const isDuplicate = otherProfiles.some((p) => p.name && p.name.trim().toLowerCase() === trimmedValue);
 
       if (isDuplicate) {
         form.setError(`profiles.${profileIndex}.name`, {
@@ -1062,7 +1078,7 @@ function ProfileCard({
                     <FormLabel>{t('apikeys.profiles.channelIDsMatchMode')}</FormLabel>
                     <FormControl>
                       <Select value={field.value || 'include'} onValueChange={field.onChange}>
-                        <SelectTrigger>
+                        <SelectTrigger data-testid='profile-channel-match-mode'>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -1169,7 +1185,7 @@ function ProfileCard({
 interface MappingRowProps {
   profileIndex: number;
   mappingIndex: number;
-  form: ReturnType<typeof useForm<UpdateApiKeyProfilesInput>>;
+  form: ReturnType<typeof useForm<ProfileFormInput, unknown, UpdateApiKeyProfilesInput>>;
   onRemove: () => void;
   availableModels: string[];
   t: (key: string) => string;

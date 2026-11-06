@@ -6,7 +6,7 @@ import { useTopProjects } from '../data/dashboard';
 
 export function TopProjects() {
   const { t } = useTranslation();
-  const { data: topProjects, isLoading, error } = useTopProjects(5);
+  const { data: topProjects, isLoading, error } = useTopProjects();
 
   if (isLoading) {
     return (

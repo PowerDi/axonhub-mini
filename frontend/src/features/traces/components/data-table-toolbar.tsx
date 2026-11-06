@@ -15,7 +15,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Separator } from '@/components/ui/separator';
 import { AutoRefreshControl } from '@/components/auto-refresh-control';
 import { DateRangePicker } from '@/components/date-range-picker';
-import { DataTableViewOptions } from './data-table-view-options';
 
 interface DataTableToolbarProps<TData> {
   table: Table<TData>;

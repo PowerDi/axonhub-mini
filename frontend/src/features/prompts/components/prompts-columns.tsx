@@ -7,7 +7,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DataTableColumnHeader } from '@/components/data-table-column-header';
-import { usePrompts } from '../context/prompts-context';
 import { Prompt } from '../data/schema';
 import { DataTableRowActions } from './data-table-row-actions';
 import { PromptsStatusDialog } from './prompts-status-dialog';
@@ -173,14 +172,16 @@ export const createColumns = (t: ReturnType<typeof useTranslation>['t'], canWrit
       enableHiding: false,
     },
     ...(canWrite
-      ? [{
-          id: 'actions',
-          header: t('common.columns.actions'),
-          cell: DataTableRowActions,
-          meta: { className: 'w-[56px] min-w-[56px] pr-3 pl-0' },
-          enableSorting: false,
-          enableHiding: false,
-        }]
+      ? [
+          {
+            id: 'actions',
+            header: t('common.columns.actions'),
+            cell: DataTableRowActions,
+            meta: { className: 'w-[56px] min-w-[56px] pr-3 pl-0' },
+            enableSorting: false,
+            enableHiding: false,
+          },
+        ]
       : []),
   ];
 };

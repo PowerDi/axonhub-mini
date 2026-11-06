@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { useApiKeysContext } from '../context/apikeys-context';
 import { useBulkDisableApiKeys } from '../data/apikeys';
-import { ApiKey } from '../data/schema';
 
 export function ApiKeysBulkDisableDialog() {
   const { t } = useTranslation();
@@ -21,8 +20,7 @@ export function ApiKeysBulkDisableDialog() {
       resetRowSelection();
       setSelectedApiKeys([]);
       closeDialog();
-    } catch (error) {
-    }
+    } catch (error) {}
   };
 
   return (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,15 +12,15 @@ import { useAuthStore } from '@/stores/authStore';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import { canEditUserPermissions } from '@/lib/permission-utils';
 import { formatUserName } from '@/lib/utils';
-import { AutoCompleteSelect } from '@/components/auto-complete-select';
+import { useDebounce } from '@/hooks/use-debounce';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, useFormField } from '@/components/ui/form';
+import { AutoCompleteSelect } from '@/components/auto-complete-select';
 import { ScopesSelect } from '@/components/scopes-select';
-import { useDebounce } from '@/hooks/use-debounce';
 import { User } from '../data/schema';
-import { useAddUserToProject, useUpdateProjectUser, useAllUsersOptions } from '../data/users';
+import { useAddUserToProject, useAllUsersOptions, useUpdateProjectUser } from '../data/users';
 
 interface Role {
   id: string;
@@ -259,15 +259,9 @@ export function ProjectUserActionDialog({ currentRow, open, onOpenChange }: Prop
     >
       <DialogContent className='sm:max-w-2xl' ref={setDialogContent}>
         <DialogHeader className='text-left'>
-          <DialogTitle>
-            {isEdit
-              ? t('users.dialogs.edit.title')
-              : t('users.dialogs.addToProject.title')}
-          </DialogTitle>
+          <DialogTitle>{isEdit ? t('users.dialogs.edit.title') : t('users.dialogs.addToProject.title')}</DialogTitle>
           <DialogDescription>
-            {isEdit
-              ? t('users.dialogs.edit.description')
-              : t('users.dialogs.addToProject.description')}
+            {isEdit ? t('users.dialogs.edit.description') : t('users.dialogs.addToProject.description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -283,7 +277,7 @@ export function ProjectUserActionDialog({ currentRow, open, onOpenChange }: Prop
                     <FormItem>
                       <FormLabel>{t('users.form.selectUser')}</FormLabel>
                       <UserFieldPicker
-                        field={field}
+                        field={{ value: field.value ?? '', onChange: field.onChange }}
                         options={userOptions}
                         isLoading={isFetching && !usersData}
                         hasMore={!!hasNextPage}

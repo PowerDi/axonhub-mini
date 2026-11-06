@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, ReactNode } from 'react';
-import { Trace, RequestTrace, Span } from '../data/schema';
+import { Trace, Segment as RequestTrace, Span } from '../data/schema';
 
 interface TracesContextType {
   // Dialog states

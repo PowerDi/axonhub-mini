@@ -3,9 +3,9 @@ import SettingsProfile from '@/features/settings/profile';
 
 export const Route = createFileRoute('/_authenticated/settings/profile')({
   component: SettingsProfile,
-  validateSearch: (search: Record<string, unknown>) => {
+  validateSearch: (search: Record<string, unknown>): { oidc_link?: string } => {
     return {
-      oidc_link: search.oidc_link as string | undefined,
+      oidc_link: typeof search.oidc_link === 'string' ? search.oidc_link : undefined,
     };
   },
 });

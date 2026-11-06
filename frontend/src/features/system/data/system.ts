@@ -285,7 +285,7 @@ export interface CleanupOption {
 export interface UpdateBrandSettingsInput {
   brandName?: string;
   brandLogo?: string;
-  title?: string;
+  title?: string | null;
 }
 
 export interface UpdateStoragePolicyInput {

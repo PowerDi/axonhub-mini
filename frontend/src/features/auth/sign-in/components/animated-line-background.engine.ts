@@ -100,7 +100,11 @@ export function isInFormArea(x: number, y: number, bounds: FormBounds): boolean 
   return x >= bounds.formLeft && x <= bounds.formRight && y >= bounds.formTop && y <= bounds.formBottom;
 }
 
-export function initParticles(canvasWidth: number, canvasHeight: number, bounds: FormBounds = getFormBounds(canvasWidth, canvasHeight)): Particle[] {
+export function initParticles(
+  canvasWidth: number,
+  canvasHeight: number,
+  bounds: FormBounds = getFormBounds(canvasWidth, canvasHeight)
+): Particle[] {
   const particles: Particle[] = [];
   const particleCount = 120;
   const leftSideCount = Math.floor(particleCount * 0.6);
@@ -238,12 +242,13 @@ export function renderParticles(
     ctx.fill();
   }
 
-  const hasMouseArea = mouseArea.x !== null && mouseArea.y !== null;
+  const { x: mouseX, y: mouseY } = mouseArea;
+  const hasMouseArea = mouseX !== null && mouseY !== null;
   for (let index = 0; index < particles.length; index += 1) {
     const dot = particles[index];
 
     if (hasMouseArea) {
-      drawConnection(ctx, canvasWidth, bounds, dot, mouseArea.x, mouseArea.y, mouseArea.max);
+      drawConnection(ctx, canvasWidth, bounds, dot, mouseX, mouseY, mouseArea.max);
     }
 
     for (let nextIndex = index + 1; nextIndex < particles.length; nextIndex += 1) {

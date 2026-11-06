@@ -99,7 +99,7 @@ export function ApiKeysProfileTemplatesDialog({ open, onOpenChange }: ApiKeysPro
   const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<ApiKeyProfileTemplate | null>(null);
-  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [editingTemplateId] = useState<string | null>(null);
   const [copyTarget, setCopyTarget] = useState<ApiKeyProfileTemplate | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
 
@@ -209,7 +209,7 @@ export function ApiKeysProfileTemplatesDialog({ open, onOpenChange }: ApiKeysPro
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={deleteTemplate.isPending}
-              className='bg-destructive/10 text-(--destructive-soft-fg) hover:bg-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30'
+              className='bg-destructive/10 hover:bg-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 text-(--destructive-soft-fg)'
             >
               {deleteTemplate.isPending ? t('common.buttons.saving') : t('apikeys.templates.deleteButton')}
             </AlertDialogAction>

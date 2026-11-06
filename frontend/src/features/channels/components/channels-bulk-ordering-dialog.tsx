@@ -15,7 +15,6 @@ import { useAllChannelSummarys, useBulkUpdateChannelOrdering } from '../data/cha
 import { ChannelSummary } from '../data/schema';
 import { parseOrderingWeightInput } from '../utils/ordering-weight';
 
-const WEIGHT_PRECISION = 0;
 const MIN_WEIGHT = 0;
 const MAX_WEIGHT = 100;
 
@@ -403,7 +402,7 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
                   {hasChanges && (
                     <Badge
                       variant='outline'
-                      className='border-warning/40 bg-warning/10 text-(--warning-soft-fg) dark:border-warning/40 dark:text-(--warning-soft-fg)'
+                      className='border-warning/40 bg-warning/10 dark:border-warning/40 text-(--warning-soft-fg) dark:text-(--warning-soft-fg)'
                     >
                       {t('common.unsavedChanges', 'Unsaved changes')}
                     </Badge>
@@ -439,7 +438,7 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
             <div className='text-muted-foreground text-xs'>
               {hasChanges && (
                 <span className='flex items-center gap-1'>
-                  <div className='h-2 w-2 rounded-full bg-warning'></div>
+                  <div className='bg-warning h-2 w-2 rounded-full'></div>
                   {t('common.unsavedChanges', 'You have unsaved changes')}
                 </span>
               )}

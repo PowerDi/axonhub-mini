@@ -32,12 +32,10 @@ export function useVersionCheck() {
     queryKey: ['versionCheck'],
     queryFn: async () => {
       const data = await graphqlRequest<{ checkForUpdate: VersionCheck }>(CHECK_FOR_UPDATE_QUERY, { includeBeta: false });
-      return data.checkForUpdate;
-    },
-    //@ts-ignore
-    onSuccess: () => {
-      // Store the timestamp after successful check
+      // Query callbacks are not supported by TanStack Query v5. Record a
+      // successful fetch here, not on a render or on a failed request.
       localStorage.setItem(VERSION_CHECK_TIMESTAMP_KEY, Date.now().toString());
+      return data.checkForUpdate;
     },
     enabled: shouldCheckVersion(),
     retry: false,

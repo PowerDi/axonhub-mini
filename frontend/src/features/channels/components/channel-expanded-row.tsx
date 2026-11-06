@@ -2,8 +2,8 @@ import { memo } from 'react';
 import { format } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import { Badge } from '@/components/ui/badge';
-import { CHANNEL_CONFIGS } from '../data/config_channels';
 import { useChannelDetails } from '../data/channels';
+import { CHANNEL_CONFIGS } from '../data/config_channels';
 import { getEffectiveResponsesFormats } from '../data/protocol-options';
 import { Channel } from '../data/schema';
 
@@ -13,7 +13,7 @@ interface ChannelExpandedRowProps {
   getApiFormatLabel: (apiFormat?: string) => string;
 }
 
-export const ChannelExpandedRow = memo(({ channel: listChannel, columnsLength, getApiFormatLabel }: ChannelExpandedRowProps) => {
+export const ChannelExpandedRow = memo(({ channel: listChannel, getApiFormatLabel }: ChannelExpandedRowProps) => {
   const { t } = useTranslation();
   const { data: detailedChannel } = useChannelDetails(listChannel.id);
   const channel = detailedChannel ?? listChannel;
@@ -33,9 +33,7 @@ export const ChannelExpandedRow = memo(({ channel: listChannel, columnsLength, g
               </div>
               <div className='flex items-center justify-between'>
                 <span className='text-muted-foreground'>{t('channels.columns.type')}:</span>
-                <Badge variant='outline'>
-                  {t(`channels.types.${channel.type}`)}
-                </Badge>
+                <Badge variant='outline'>{t(`channels.types.${channel.type}`)}</Badge>
               </div>
               <div className='flex items-center justify-between'>
                 <span className='text-muted-foreground'>{t('channels.expandedRow.apiFormat')}:</span>
@@ -84,7 +82,6 @@ export const ChannelExpandedRow = memo(({ channel: listChannel, columnsLength, g
                 </div>
               </div>
             </div>
-
           </div>
         </div>
 
@@ -92,9 +89,7 @@ export const ChannelExpandedRow = memo(({ channel: listChannel, columnsLength, g
           <div className='space-y-3'>
             <h4 className='text-sm font-medium'>
               {t('channels.expandedRow.supportedModels')}
-              <span className='text-muted-foreground ml-1.5 text-xs font-normal'>
-                ({channel.supportedModels.length})
-              </span>
+              <span className='text-muted-foreground ml-1.5 text-xs font-normal'>({channel.supportedModels.length})</span>
             </h4>
             <div className='flex flex-wrap gap-2'>
               {channel.supportedModels.map((model) => (

@@ -11,9 +11,9 @@ import { AutoComplete } from '@/components/auto-complete';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
 import { useModels } from '../context/models-context';
 import { DEVELOPER_IDS, DEVELOPER_ICONS } from '../data/constants';
+import { isSuggestedModel, withMiniMaxFlash } from '../data/model-suggestions';
 import { useBulkCreateModels } from '../data/models';
 import { useDevelopersData } from '../data/providers';
-import { isSuggestedModel, withMiniMaxFlash } from '../data/model-suggestions';
 import { type Provider, type ProviderModel, resolveVision } from '../data/providers.schema';
 import { deriveReasoningEfforts } from '../data/reasoning-efforts';
 import { CreateModelInput, ModelCard, ModelType, modelTypeSchema } from '../data/schema';
@@ -177,9 +177,8 @@ export function ModelsBatchCreateDialog() {
               lastUpdated: selectedModel.last_updated,
             };
             const normalizedType = selectedModel.type?.replace(/-/g, '_');
-            const modelType = normalizedType && modelTypeSchema.safeParse(normalizedType).success
-              ? (normalizedType as ModelType)
-              : 'chat' as ModelType;
+            const modelType =
+              normalizedType && modelTypeSchema.safeParse(normalizedType).success ? (normalizedType as ModelType) : ('chat' as ModelType);
             return {
               ...row,
               modelId,
@@ -288,11 +287,13 @@ export function ModelsBatchCreateDialog() {
         limit: { context: 0, output: 0 },
       },
       settings: {
+        disableDeveloperSettingsInheritance: false,
         loadBalancerStrategy: 'default',
         traceStickyMode: 'default',
         associations: [
           {
             type: 'model',
+            disabled: false,
             priority: 0,
             modelId: {
               modelId: row.modelId,
@@ -406,7 +407,9 @@ export function ModelsBatchCreateDialog() {
                       }}
                       placeholder={t('models.fields.name')}
                     />
-                    {validationErrors[row.id]?.name && <p className='text-xs text-(--destructive-soft-fg)'>{t('models.dialogs.batchCreate.required')}</p>}
+                    {validationErrors[row.id]?.name && (
+                      <p className='text-xs text-(--destructive-soft-fg)'>{t('models.dialogs.batchCreate.required')}</p>
+                    )}
                   </div>
                   <div className='min-w-32 flex-[3] space-y-1'>
                     <AutoCompleteSelect
@@ -420,7 +423,9 @@ export function ModelsBatchCreateDialog() {
                       emptyMessage={t('models.fields.noIcons')}
                       portalContainer={dialogContent}
                     />
-                    {validationErrors[row.id]?.icon && <p className='text-xs text-(--destructive-soft-fg)'>{t('models.dialogs.batchCreate.required')}</p>}
+                    {validationErrors[row.id]?.icon && (
+                      <p className='text-xs text-(--destructive-soft-fg)'>{t('models.dialogs.batchCreate.required')}</p>
+                    )}
                   </div>
                   <Button
                     type='button'

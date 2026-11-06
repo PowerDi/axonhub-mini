@@ -101,5 +101,6 @@
   "dashboard.stats.user": "User",
   "dashboard.stats.requestCount": "Requests",
   "dashboard.stats.tokenCount": "Tokens",
-  "dashboard.stats.userCost": "Cost"
+  "dashboard.stats.userCost": "Cost",
+  "dashboard.channelSuccessRates.description": "View request success rates across all channels."
 }

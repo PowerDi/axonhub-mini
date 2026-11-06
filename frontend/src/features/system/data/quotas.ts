@@ -442,7 +442,10 @@ type ProviderClineErrorQuotaData = ProviderQuotaDataCommon & {
 };
 
 export type ProviderClineQuotaData =
-  ProviderClinePassQuotaData | ProviderClineUnavailablePassQuotaData | ProviderClineDirectQuotaData | ProviderClineErrorQuotaData;
+  | ProviderClinePassQuotaData
+  | ProviderClineUnavailablePassQuotaData
+  | ProviderClineDirectQuotaData
+  | ProviderClineErrorQuotaData;
 
 export function isClineActivePassQuotaData(qd: ProviderClineQuotaData): qd is ProviderClinePassQuotaData {
   return qd.pool === 'cline_pass' && qd.windows != null;
@@ -652,6 +655,7 @@ function parseClaudeQuotaData(quotaData: unknown, limits: ProviderQuotaLimit[]):
 }
 
 export type ProviderQuotaChannel = {
+  providerType?: string;
   id: string;
   name: string;
   // Display-sort rank set via the channels page "Order channels" dialog; the
@@ -674,6 +678,11 @@ export type ProviderQuotaChannel = {
     limits: ProviderQuotaLimit[];
   };
 } & (
+  | {
+      type: 'unknown';
+      originalType: string;
+      quotaStatus: { quotaData: ProviderQuotaDataCommon };
+    }
   | {
       type: 'claudecode';
       quotaStatus: {
@@ -1005,7 +1014,8 @@ function parseChannelNode(node: QueryChannelNodeWithQuota): ProviderQuotaChannel
   }
   return {
     ...base,
-    type: node.type as ProviderQuotaChannel['type'],
+    type: 'unknown',
+    originalType: node.type,
     quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderQuotaDataCommon },
   };
 }

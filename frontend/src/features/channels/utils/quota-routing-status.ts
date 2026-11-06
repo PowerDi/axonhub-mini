@@ -1,9 +1,9 @@
-import type { QuotaRoutingMode } from '@/features/system/data/system';
 import { parseQuotaLimits } from '@/features/system/data/quotas';
+import type { QuotaRoutingMode } from '@/features/system/data/system';
 import type { Channel, ChannelQuotaRoutingMode } from '../data/schema';
 
 export type ChannelQuotaRoutingIndicator = 'exhausted' | 'backpressure';
-type QuotaLimit = { window: string; status: string; usageRatio: number; periodStart?: string | null; nextResetAt?: string | null };
+type QuotaLimit = { window?: string; status: string; usageRatio: number; periodStart?: string | null; nextResetAt?: string | null };
 
 export function getChannelQuotaRoutingIndicator(
   channel: Pick<Channel, 'providerQuotaStatus' | 'settings'> & { quotaRoutingMode?: ChannelQuotaRoutingMode | null },
@@ -29,13 +29,25 @@ export function getChannelQuotaRoutingIndicator(
 function hasQuotaWindowPressure(quotaData: unknown, providedLimits?: readonly QuotaLimit[]): boolean {
   const now = Date.now();
   return (providedLimits ?? parseQuotaLimits(quotaData)).some((limit) => {
-    if (limit.window === 'pay_as_you_go' || limit.window === 'credits' || limit.status === 'exhausted' || !limit.periodStart || !limit.nextResetAt) {
+    if (
+      limit.window === 'pay_as_you_go' ||
+      limit.window === 'credits' ||
+      limit.status === 'exhausted' ||
+      !limit.periodStart ||
+      !limit.nextResetAt
+    ) {
       return false;
     }
 
     const periodStart = Date.parse(limit.periodStart);
     const nextResetAt = Date.parse(limit.nextResetAt);
-    if (!Number.isFinite(periodStart) || !Number.isFinite(nextResetAt) || periodStart >= now || nextResetAt <= now || nextResetAt <= periodStart) {
+    if (
+      !Number.isFinite(periodStart) ||
+      !Number.isFinite(nextResetAt) ||
+      periodStart >= now ||
+      nextResetAt <= now ||
+      nextResetAt <= periodStart
+    ) {
       return false;
     }
 

@@ -540,7 +540,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
                     {t('channels.endpoints.apiFormat')}
                   </label>
                   <Select value={newApiFormat} onValueChange={setNewApiFormat}>
-                    <SelectTrigger id='endpoint-api-format' className='w-full'>
+                    <SelectTrigger data-testid='endpoint-format-select' id='endpoint-api-format' className='w-full'>
                       <SelectValue placeholder={t('channels.endpoints.apiFormat')} />
                     </SelectTrigger>
                     <SelectContent>
@@ -596,6 +596,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
                   type='button'
                   variant='default'
                   size='icon'
+                  data-testid='endpoint-add-button'
                   onClick={handleAddEndpoint}
                   disabled={!newApiFormat}
                   className='shrink-0 justify-self-end md:mt-5 md:justify-self-auto'
@@ -618,7 +619,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
             <Button variant='outline' onClick={() => onOpenChange(false)}>
               {t('common.buttons.cancel')}
             </Button>
-            <Button onClick={handleSave} disabled={updateChannelSettings.isPending}>
+            <Button data-testid='endpoints-save-button' onClick={handleSave} disabled={updateChannelSettings.isPending}>
               {updateChannelSettings.isPending ? t('common.buttons.saving') : t('common.buttons.save')}
             </Button>
           </DialogFooter>

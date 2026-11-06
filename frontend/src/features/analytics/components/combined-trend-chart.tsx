@@ -8,17 +8,18 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
+  DefaultLegendContent,
   ResponsiveContainer,
 } from 'recharts';
+import { formatNumber } from '@/utils/format-number';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatNumber } from '@/utils/format-number';
+import type { AnalyticsDailyStat } from '../data/analytics';
 import { formatCurrencySimple, formatCurrencyTick } from '../utils/format-currency';
 
 function formatExactNumber(value: number): string {
   return Math.round(value).toLocaleString();
 }
-import type { AnalyticsDailyStat } from '../data/analytics';
 
 interface CombinedTrendChartProps {
   data: AnalyticsDailyStat[];
@@ -78,14 +79,7 @@ export function CombinedTrendChart({ data, isLoading, currencyCode }: CombinedTr
         <ResponsiveContainer width='100%' height={350}>
           <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' vertical={false} />
-            <XAxis
-              dataKey='name'
-              stroke='var(--muted-foreground)'
-              fontSize={12}
-              tickLine={true}
-              axisLine={true}
-              padding={{ right: 24 }}
-            />
+            <XAxis dataKey='name' stroke='var(--muted-foreground)' fontSize={12} tickLine={true} axisLine={true} padding={{ right: 24 }} />
             <YAxis
               yAxisId='tokens'
               stroke='var(--chart-1)'
@@ -122,7 +116,7 @@ export function CombinedTrendChart({ data, isLoading, currencyCode }: CombinedTr
               tickMargin={8}
             />
             <Tooltip
-              content={({ active, payload, label }: { active?: boolean; payload?: Array<{ name?: string; value?: number | string; color?: string; payload?: Record<string, number> }>; label?: string }) => {
+              content={({ active, payload, label }) => {
                 if (!active || !payload || payload.length === 0) return null;
                 const order = [
                   t('analytics.chart.cachedInput'),
@@ -136,7 +130,7 @@ export function CombinedTrendChart({ data, isLoading, currencyCode }: CombinedTr
                 const raw = payload[0]?.payload as Record<string, number> | undefined;
                 const totalTokens = raw?.totalTokens ?? 0;
                 return (
-                  <div className='rounded-md border bg-background p-2 shadow-md' style={{ fontSize: '12px' }}>
+                  <div className='bg-background rounded-md border p-2 shadow-md' style={{ fontSize: '12px' }}>
                     <p className='mb-1 font-medium'>{label}</p>
                     {sorted.map((entry, index) => (
                       <p key={index} className='flex justify-between gap-4' style={{ color: entry.color, padding: '2px 0' }}>
@@ -148,7 +142,10 @@ export function CombinedTrendChart({ data, isLoading, currencyCode }: CombinedTr
                         </span>
                       </p>
                     ))}
-                    <p className='flex justify-between gap-4 border-t pt-1 font-medium' style={{ padding: '2px 0', color: 'var(--chart-6)' }}>
+                    <p
+                      className='flex justify-between gap-4 border-t pt-1 font-medium'
+                      style={{ padding: '2px 0', color: 'var(--chart-6)' }}
+                    >
                       <span>{t('analytics.chart.totalTokens')}</span>
                       <span>{formatExactNumber(totalTokens)}</span>
                     </p>
@@ -170,19 +167,64 @@ export function CombinedTrendChart({ data, isLoading, currencyCode }: CombinedTr
               verticalAlign='top'
               height={36}
               itemSorter={null}
-              payload={[
-                { value: t('analytics.chart.cachedInput'), type: 'square' as const, color: 'var(--chart-1)' },
-                { value: t('analytics.chart.uncachedInput'), type: 'square' as const, color: 'var(--chart-2)' },
-                { value: t('analytics.chart.outputTokens'), type: 'square' as const, color: 'var(--chart-3)' },
-                { value: t('analytics.chart.requestCount'), type: 'line' as const, color: 'var(--chart-4)' },
-                { value: t('analytics.chart.cost'), type: 'line' as const, color: 'var(--chart-5)' },
-              ]}
+              content={(props) => (
+                <DefaultLegendContent
+                  {...props}
+                  payload={[
+                    { value: t('analytics.chart.cachedInput'), type: 'square' as const, color: 'var(--chart-1)' },
+                    { value: t('analytics.chart.uncachedInput'), type: 'square' as const, color: 'var(--chart-2)' },
+                    { value: t('analytics.chart.outputTokens'), type: 'square' as const, color: 'var(--chart-3)' },
+                    { value: t('analytics.chart.requestCount'), type: 'line' as const, color: 'var(--chart-4)' },
+                    { value: t('analytics.chart.cost'), type: 'line' as const, color: 'var(--chart-5)' },
+                  ]}
+                />
+              )}
             />
-            <Bar yAxisId='tokens' dataKey='cachedInput' name={t('analytics.chart.cachedInput')} stackId='tokens' fill='var(--chart-1)' isAnimationActive={false} />
-            <Bar yAxisId='tokens' dataKey='uncachedInput' name={t('analytics.chart.uncachedInput')} stackId='tokens' fill='var(--chart-2)' isAnimationActive={false} />
-            <Bar yAxisId='tokens' dataKey='output' name={t('analytics.chart.outputTokens')} stackId='tokens' fill='var(--chart-3)' radius={[4, 4, 0, 0]} isAnimationActive={false} />
-            <Line yAxisId='requests' type='monotone' dataKey='requests' name={t('analytics.chart.requestCount')} stroke='var(--chart-4)' strokeWidth={2} dot={false} activeDot={{ r: 5 }} />
-            <Line yAxisId='cost' type='monotone' dataKey='cost' name={t('analytics.chart.cost')} stroke='var(--chart-5)' strokeWidth={2} dot={false} activeDot={{ r: 4 }} />
+            <Bar
+              yAxisId='tokens'
+              dataKey='cachedInput'
+              name={t('analytics.chart.cachedInput')}
+              stackId='tokens'
+              fill='var(--chart-1)'
+              isAnimationActive={false}
+            />
+            <Bar
+              yAxisId='tokens'
+              dataKey='uncachedInput'
+              name={t('analytics.chart.uncachedInput')}
+              stackId='tokens'
+              fill='var(--chart-2)'
+              isAnimationActive={false}
+            />
+            <Bar
+              yAxisId='tokens'
+              dataKey='output'
+              name={t('analytics.chart.outputTokens')}
+              stackId='tokens'
+              fill='var(--chart-3)'
+              radius={[4, 4, 0, 0]}
+              isAnimationActive={false}
+            />
+            <Line
+              yAxisId='requests'
+              type='monotone'
+              dataKey='requests'
+              name={t('analytics.chart.requestCount')}
+              stroke='var(--chart-4)'
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 5 }}
+            />
+            <Line
+              yAxisId='cost'
+              type='monotone'
+              dataKey='cost'
+              name={t('analytics.chart.cost')}
+              stroke='var(--chart-5)'
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 4 }}
+            />
           </ComposedChart>
         </ResponsiveContainer>
       </CardContent>

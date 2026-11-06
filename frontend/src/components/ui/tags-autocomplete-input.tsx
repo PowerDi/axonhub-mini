@@ -1,8 +1,7 @@
 'use client';
 
-import { forwardRef, useCallback, useEffect, useRef, useState, useMemo } from 'react';
-import { Check } from 'lucide-react';
-import { X } from 'lucide-react';
+import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
+import { Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TruncatedText } from '@/components/truncated-text';
 import { Popover, PopoverContent, PopoverTrigger } from './popover';
@@ -25,7 +24,6 @@ export const TagsAutocompleteInput = forwardRef<HTMLDivElement, TagsAutocomplete
     const [isComposing, setIsComposing] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
-
 
     // Filter suggestions based on input and not already selected (capped for performance)
     const filteredSuggestions = useMemo(() => {
@@ -113,7 +111,11 @@ export const TagsAutocompleteInput = forwardRef<HTMLDivElement, TagsAutocomplete
 
     return (
       <div
-        ref={containerRef}
+        ref={(node) => {
+          containerRef.current = node;
+          if (typeof ref === 'function') return ref(node);
+          if (ref) ref.current = node;
+        }}
         data-tags-input-container
         className={cn(
           'border-input bg-background has-[input:focus-visible]:border-ring has-[input:focus-visible]:outline-foreground flex min-h-10 w-full flex-wrap gap-1 rounded-md border px-3 py-2 text-sm has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-offset-1',

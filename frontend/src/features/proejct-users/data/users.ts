@@ -1,21 +1,20 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { graphqlRequest } from '@/gql/graphql';
-import { USERS_QUERY, CREATE_USER_MUTATION, UPDATE_USER_MUTATION, UPDATE_USER_STATUS_MUTATION } from '@/gql/users';
+import { CREATE_USER_MUTATION, UPDATE_USER_MUTATION, UPDATE_USER_STATUS_MUTATION, USERS_QUERY } from '@/gql/users';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useSelectedProjectId } from '@/stores/projectStore';
 import { useErrorHandler } from '@/hooks/use-error-handler';
 import { useRequestPermissions } from '@/hooks/useRequestPermissions';
 import {
+  CreateUserInput,
+  ProjectUser,
+  projectUserSchema,
+  UpdateUserInput,
   User,
   UserConnection,
-  ProjectUser,
-  CreateUserInput,
-  UpdateUserInput,
-  userSchema,
-  projectUserSchema,
-  userConnectionSchema,
   userOptionConnectionSchema,
+  userSchema,
 } from './schema';
 
 // Dynamic GraphQL query builder for project-level users
@@ -182,18 +181,18 @@ export function useUsers(
         return {
           edges: transformedUsers.map((user) => ({ node: user })),
           pageInfo: {
-hasNextPage: false,
-          hasPreviousPage: false,
-          startCursor: null,
-          endCursor: null,
-        },
-      };
-    } catch (error) {
-      handleError(error, t('common.errors.loadFailed'));
-      throw error;
-    }
-  },
-  enabled: !options?.disableAutoFetch && !!selectedProjectId,
+            hasNextPage: false,
+            hasPreviousPage: false,
+            startCursor: null,
+            endCursor: null,
+          },
+        };
+      } catch (error) {
+        handleError(error, t('common.errors.loadFailed'));
+        throw error;
+      }
+    },
+    enabled: !options?.disableAutoFetch && !!selectedProjectId,
   });
 }
 
@@ -475,7 +474,12 @@ export function useAllUsersOptions(options?: { search?: string; enabled?: boolea
     queryKey: ['all-users', 'options', search],
     queryFn: async ({ pageParam }) => {
       try {
-        const data = await graphqlRequest<{ users: { edges: { node: { id: string; email: string; firstName: string | null; lastName: string | null; status: string } }[]; pageInfo: { hasNextPage: boolean; hasPreviousPage: boolean; startCursor: string | null; endCursor: string | null } } }>(ALL_USERS_QUERY, {
+        const data = await graphqlRequest<{
+          users: {
+            edges: { node: { id: string; email: string; firstName: string | null; lastName: string | null; status: string } }[];
+            pageInfo: { hasNextPage: boolean; hasPreviousPage: boolean; startCursor: string | null; endCursor: string | null };
+          };
+        }>(ALL_USERS_QUERY, {
           first: 100,
           after: pageParam,
           where: search ? { emailContainsFold: search } : undefined,

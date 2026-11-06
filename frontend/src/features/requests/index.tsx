@@ -14,8 +14,8 @@ import { useAutoRefreshInterval } from '@/hooks/use-auto-refresh-interval';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import useInterval from '@/hooks/useInterval';
-import { Main } from '@/components/layout/main';
 import { Header } from '@/components/layout/header';
+import { Main } from '@/components/layout/main';
 import { RequestsTable, type RequestTableFilters } from './components';
 import { RequestsProvider } from './context';
 import { useRequests } from './data';
@@ -174,7 +174,7 @@ function clearRequestFilterSearch(draft: Record<string, unknown>) {
 }
 
 function RequestsContent() {
-  const navigate = useNavigate();
+  const navigate = useNavigate({ from: '/project/requests/' });
   const currentSearch = useRouterState({
     select: (state) => (state.location.search ?? {}) as Record<string, unknown>,
   });

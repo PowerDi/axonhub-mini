@@ -1,12 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
-import {
-  copilotOAuthStart,
-  copilotOAuthPoll,
-  DeviceFlowStartResult,
-  DeviceFlowPollResult,
-} from '../data/copilot';
+import { toast } from 'sonner';
+import { copilotOAuthStart, copilotOAuthPoll, DeviceFlowStartResult, DeviceFlowPollResult } from '../data/copilot';
 
 export interface UseDeviceFlowOptions {
   /**
@@ -59,9 +54,7 @@ export interface UseDeviceFlowActions {
  * </Button>
  * ```
  */
-export function useDeviceFlow(
-  options: UseDeviceFlowOptions = {}
-): UseDeviceFlowState & UseDeviceFlowActions {
+export function useDeviceFlow(options: UseDeviceFlowOptions = {}): UseDeviceFlowState & UseDeviceFlowActions {
   const { onSuccess } = options;
   const { t } = useTranslation();
 
@@ -74,7 +67,7 @@ export function useDeviceFlow(
   const [error, setError] = useState<string | null>(null);
   const [isComplete, setIsComplete] = useState(false);
 
-  const pollingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollingTimeoutRef = useRef<number | null>(null);
   const currentIntervalRef = useRef<number>(5);
   const onSuccessRef = useRef(onSuccess);
 
@@ -126,9 +119,7 @@ export function useDeviceFlow(
       }
 
       try {
-        const result: DeviceFlowPollResult = await copilotOAuthPoll(
-          { session_id: sessionId }
-        );
+        const result: DeviceFlowPollResult = await copilotOAuthPoll({ session_id: sessionId });
 
         if (result.access_token) {
           setIsPolling(false);

@@ -20,9 +20,9 @@ import { AutoComplete } from '@/components/auto-complete';
 import { AutoCompleteSelect } from '@/components/auto-complete-select';
 import { useModels } from '../context/models-context';
 import { DEVELOPER_IDS, DEVELOPER_ICONS } from '../data/constants';
+import { isSuggestedModel, withMiniMaxFlash } from '../data/model-suggestions';
 import { useCreateModel, useUpdateModel } from '../data/models';
 import { useDevelopersData } from '../data/providers';
-import { isSuggestedModel, withMiniMaxFlash } from '../data/model-suggestions';
 import { type Provider, type ProviderModel, resolveVision } from '../data/providers.schema';
 import { REASONING_EFFORTS, deriveReasoningEfforts } from '../data/reasoning-efforts';
 import {
@@ -306,12 +306,12 @@ export function ModelsActionDialog() {
           <form id='model-form' onSubmit={form.handleSubmit(onSubmit)} className='flex min-h-0 flex-1 flex-col overflow-hidden'>
             <div className='flex min-h-0 flex-1 gap-6 overflow-x-auto overflow-y-hidden md:overflow-hidden'>
               {/* Left Panel - Basic Information */}
-              <div className='min-h-0 w-1/2 md:w-1/3 flex-shrink-0 overflow-y-auto pr-4'>
+              <div className='min-h-0 w-1/2 flex-shrink-0 overflow-y-auto pr-4 md:w-1/3'>
                 <div className='space-y-4'>
                   <FormField
                     control={form.control}
                     name='developer'
-                    render={({ field }) => (
+                    render={() => (
                       <FormItem>
                         <FormLabel>{t('models.fields.developer')}</FormLabel>
                         <FormControl>
@@ -334,7 +334,7 @@ export function ModelsActionDialog() {
                   <FormField
                     control={form.control}
                     name='modelID'
-                    render={({ field }) => (
+                    render={() => (
                       <FormItem>
                         <FormLabel>{t('models.fields.modelId')}</FormLabel>
                         <FormControl>
@@ -458,7 +458,7 @@ export function ModelsActionDialog() {
               </div>
 
               {/* Right Panel - Model Card Fields */}
-              <div className='min-h-0 min-w-full md:min-w-0 flex-1 overflow-y-auto border-l pl-6'>
+              <div className='min-h-0 min-w-full flex-1 overflow-y-auto border-l pl-6 md:min-w-0'>
                 <div className='space-y-4 pb-4'>
                   <h3 className='text-lg font-semibold'>{t('models.modelCard.title')}</h3>
 
@@ -549,9 +549,7 @@ export function ModelsActionDialog() {
                                     checked={field.value?.includes(effort) || false}
                                     onCheckedChange={(checked) => {
                                       const current = field.value || [];
-                                      const next = checked
-                                        ? [...current, effort]
-                                        : current.filter((value) => value !== effort);
+                                      const next = checked ? [...current, effort] : current.filter((value) => value !== effort);
                                       // Clearing every level means "unknown", not "no levels".
                                       field.onChange(next.length ? next : null);
                                     }}
@@ -640,7 +638,7 @@ export function ModelsActionDialog() {
 
                   <div className='space-y-2'>
                     <FormLabel>{t('models.modelCard.cost')} ($/M tokens)</FormLabel>
-                    <p className='text-xs text-muted-foreground'>{t('models.modelCard.costHint')}</p>
+                    <p className='text-muted-foreground text-xs'>{t('models.modelCard.costHint')}</p>
                     <div className='grid grid-cols-2 gap-2'>
                       <FormField
                         control={form.control}

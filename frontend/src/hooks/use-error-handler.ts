@@ -2,13 +2,13 @@ import { useCallback } from 'react';
 import { ZodError } from 'zod';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { 
-  parseGraphQLErrors, 
-  getErrorI18nKey, 
+import {
+  parseGraphQLErrors,
+  getErrorI18nKey,
   getErrorI18nParams,
   isDuplicateError,
   getDuplicateErrorInfo,
-  type ParsedGraphQLError 
+  type ParsedGraphQLError,
 } from '@/lib/error-parser';
 
 export interface ErrorHandlerOptions {
@@ -28,11 +28,9 @@ export function useErrorHandler() {
   const handleError = useCallback(
     (error: unknown, options?: string | ErrorHandlerOptions) => {
       // Normalize options
-      const opts: ErrorHandlerOptions = typeof options === 'string' 
-        ? { context: options } 
-        : options || {};
-      
-      const { context, onDuplicate, onErrorCode, showToast = true } = opts;
+      const opts: ErrorHandlerOptions = typeof options === 'string' ? { context: options } : options || {};
+
+      const { onDuplicate, onErrorCode, showToast = true } = opts;
 
       // Handle Zod validation errors
       if (error instanceof ZodError) {
@@ -57,7 +55,7 @@ export function useErrorHandler() {
 
       // Try to parse GraphQL errors with extensions.code
       const graphqlErrors = parseGraphQLErrors(error);
-      
+
       if (graphqlErrors.length > 0) {
         const firstError = graphqlErrors[0];
         const { code, extensions } = firstError;
@@ -102,11 +100,11 @@ export function useErrorHandler() {
           toast.error(message, { duration: 5000 });
         }
 
-        return { 
-          type: code.toLowerCase(), 
-          code, 
+        return {
+          type: code.toLowerCase(),
+          code,
           message,
-          extensions 
+          extensions,
         };
       }
 
@@ -137,9 +135,9 @@ export function useErrorHandler() {
     return getDuplicateErrorInfo(error);
   }, []);
 
-  return { 
-    handleError, 
+  return {
+    handleError,
     isDuplicateError: checkIsDuplicateError,
-    getDuplicateInfo 
+    getDuplicateInfo,
   };
 }
