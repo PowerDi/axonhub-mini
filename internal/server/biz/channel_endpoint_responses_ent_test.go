@@ -266,3 +266,22 @@ func TestResponsesPolicyUpdateOnlyTranslatesUnchangedEntriesUsingOldIdentity(t *
 	require.Equal(t, []string{h}, normalized.ModelAPIFormatPolicies[2].Allow)
 	require.Equal(t, []string{"openai/chat_completions", h}, input.ModelAPIFormatPolicies[0].Allow, "do not mutate the submitted settings")
 }
+
+func TestResponsesSettingsOnlyEditPreservesEndpointCapabilities(t *testing.T) {
+	ctx, svc := setupRoutabilityDB(t)
+	h := llm.APIFormatOpenAIResponse.String()
+	stored, err := svc.entFromContext(ctx).Channel.Create().SetType(channel.TypeOpenaiResponses).SetName("settings-only").
+		SetBaseURL("https://example.test/v1").SetCredentials(objects.ChannelCredentials{APIKey: "test"}).
+		SetSupportedModels([]string{"gpt-4o"}).SetDefaultTestModel("gpt-4o").
+		SetEndpoints([]objects.ChannelEndpoint{{APIFormat: h, Transport: "websocket"}}).
+		SetSettings(&objects.ChannelSettings{ModelAPIFormatPolicies: []objects.ModelAPIFormatPolicy{{Model: "gpt-4o", Allow: []string{h}}}}).Save(ctx)
+	require.NoError(t, err)
+	endpoints := (&Channel{Channel: stored}).ResolveEndpoints()
+	settings := *stored.Settings
+	settings.ReasoningFilter = true
+	updated, err := svc.UpdateChannel(ctx, stored.ID, &ent.UpdateChannelInput{Settings: &settings})
+	require.NoError(t, err)
+	require.Equal(t, stored.Endpoints, updated.Endpoints)
+	require.Equal(t, endpoints, (&Channel{Channel: updated}).ResolveEndpoints())
+	require.Equal(t, []string{llm.APIFormatOpenAIResponseWebSocket.String()}, updated.Settings.ModelAPIFormatPolicies[0].Allow)
+}

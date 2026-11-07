@@ -1094,10 +1094,12 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		}
 		proposed.Settings = normalizedSettings
 		normalizedEndpoints := normalizePolicyEndpoints(proposed)
-		if input.Endpoints != nil || !slices.Equal(normalizedEndpoints, existing.Endpoints) {
+		// A settings-only edit must not materialize endpoint defaults. Identity
+		// edits still persist canonical endpoints so old HTTP policies cannot
+		// be reinterpreted as WS aliases on the next read.
+		if input.Endpoints != nil || ((input.BaseURL != nil || input.Type != nil) && !slices.Equal(normalizedEndpoints, existing.Endpoints)) {
 			input.Endpoints = normalizedEndpoints
 		}
-
 	}
 
 	// Edit-time bidirectional routability check: a settings or endpoints edit
