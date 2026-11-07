@@ -30,7 +30,8 @@ func TestResponsesEndpointLegacyNormalizationExplicitModelAPIFormatPoliciesUpdat
 		{"omitted endpoints legacy settings", nil, []string{h}, []string{w}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			// Given: independent SQLite fixture with old WS-only H restriction.
+			// Given: independent SQLite fixture with an old WS exclusion.
+			// The submitted Allow policy is a real edit, not an echoed snapshot.
 			client := enttest.NewEntClient(t, "sqlite3", "file:"+filepath.Join(t.TempDir(), "update.db")+"?_fk=0")
 			t.Cleanup(func() { require.NoError(t, client.Close()) })
 			ctx := authz.WithTestBypass(ent.NewContext(context.Background(), client))
@@ -40,7 +41,7 @@ func TestResponsesEndpointLegacyNormalizationExplicitModelAPIFormatPoliciesUpdat
 				SetBaseURL("https://chatgpt.com/backend-api/codex#").SetCredentials(objects.ChannelCredentials{APIKey: "synthetic-key"}).
 				SetSupportedModels([]string{"test-model"}).SetDefaultTestModel("test-model").
 				SetEndpoints([]objects.ChannelEndpoint{{APIFormat: h, Transport: "websocket"}}).
-				SetSettings(&objects.ChannelSettings{ModelAPIFormatPolicies: []objects.ModelAPIFormatPolicy{{Model: "test-model", Allow: []string{h}}}}).Save(ctx)
+				SetSettings(&objects.ChannelSettings{ModelAPIFormatPolicies: []objects.ModelAPIFormatPolicy{{Model: "test-model", Exclude: []string{h}}}}).Save(ctx)
 			require.NoError(t, err)
 			// When: explicit replacement settings accompany the submitted endpoints.
 			_, err = svc.UpdateChannel(ctx, original.ID, &ent.UpdateChannelInput{

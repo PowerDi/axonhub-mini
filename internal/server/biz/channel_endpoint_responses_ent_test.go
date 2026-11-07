@@ -196,3 +196,73 @@ func TestResponsesPolicyRoutabilityAcrossEndpointEdits(t *testing.T) {
 		require.Equal(t, created.Settings, read.Settings)
 	})
 }
+
+func TestResponsesPolicyEchoAcrossIdentityEdits(t *testing.T) {
+	h, w := llm.APIFormatOpenAIResponse.String(), llm.APIFormatOpenAIResponseWebSocket.String()
+	for _, tt := range []struct {
+		name                     string
+		typ                      channel.Type
+		base, nextBase           string
+		endpoints, nextEndpoints []objects.ChannelEndpoint
+		allow, exclude           []string
+		enabled, wantError       bool
+	}{
+		{name: "A split legacy WS endpoint with echoed exclusion", typ: channel.TypeOpenai, base: "https://example.test/v1", endpoints: []objects.ChannelEndpoint{{APIFormat: h, Transport: "websocket"}}, nextEndpoints: []objects.ChannelEndpoint{{APIFormat: h}, {APIFormat: w}}, exclude: []string{h}},
+		{name: "B WS to HTTP with echoed allow", typ: channel.TypeOpenaiResponses, base: "wss://example.test/v1#", nextBase: "https://example.test/v1#", allow: []string{h}, enabled: true, wantError: true},
+		{name: "C HTTP to WS with echoed allow", typ: channel.TypeOpenaiResponses, base: "https://example.test/v1#", nextBase: "wss://example.test/v1#", allow: []string{h}, enabled: true, wantError: true},
+		{name: "disabled HTTP restriction survives WS base edit and reload", typ: channel.TypeOpenaiResponses, base: "https://example.test/v1#", nextBase: "wss://example.test/v1#", allow: []string{h}},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, svc := setupRoutabilityDB(t)
+			status := channel.StatusDisabled
+			if tt.enabled {
+				status = channel.StatusEnabled
+			}
+			stored, err := svc.entFromContext(ctx).Channel.Create().SetType(tt.typ).SetName("legacy").SetBaseURL(tt.base).
+				SetCredentials(objects.ChannelCredentials{APIKey: "test"}).SetSupportedModels([]string{"gpt-4o"}).SetDefaultTestModel("gpt-4o").SetStatus(status).
+				SetEndpoints(tt.endpoints).SetSettings(&objects.ChannelSettings{ModelAPIFormatPolicies: []objects.ModelAPIFormatPolicy{{Model: "gpt-4o", Allow: tt.allow, Exclude: tt.exclude}}}).Save(ctx)
+			require.NoError(t, err)
+			input := &ent.UpdateChannelInput{Settings: stored.Settings, Endpoints: tt.nextEndpoints}
+			if tt.nextBase != "" {
+				input.BaseURL = &tt.nextBase
+			}
+			_, err = svc.UpdateChannel(ctx, stored.ID, input)
+			if tt.wantError {
+				require.ErrorContains(t, err, "unroutable")
+			} else {
+				require.NoError(t, err)
+			}
+			saved, err := svc.entFromContext(ctx).Channel.Get(ctx, stored.ID)
+			require.NoError(t, err)
+			if tt.wantError {
+				require.Equal(t, stored.Settings, saved.Settings)
+				require.Equal(t, stored.BaseURL, saved.BaseURL)
+			} else {
+				policy := (&Channel{Channel: saved}).ModelAPIFormatPolicy("gpt-4o")
+				require.True(t, policy.AllowsAPIFormat(h), "HTTP must not silently become forbidden")
+				require.False(t, policy.AllowsAPIFormat(w), "WS must not silently become permitted")
+				if len(tt.exclude) > 0 {
+					require.Equal(t, []string{w}, saved.Settings.ModelAPIFormatPolicies[0].Exclude)
+				}
+			}
+		})
+	}
+}
+
+func TestResponsesPolicyUpdateOnlyTranslatesUnchangedEntriesUsingOldIdentity(t *testing.T) {
+	h, w := llm.APIFormatOpenAIResponse.String(), llm.APIFormatOpenAIResponseWebSocket.String()
+	existing := &ent.Channel{BaseURL: "wss://example.test", Settings: &objects.ChannelSettings{ModelAPIFormatPolicies: []objects.ModelAPIFormatPolicy{
+		{Model: "unchanged", Allow: []string{h, "openai/chat_completions"}},
+		{Model: "edited", Exclude: []string{h}},
+	}}}
+	input := &objects.ChannelSettings{ModelAPIFormatPolicies: []objects.ModelAPIFormatPolicy{
+		{Model: "unchanged", Allow: []string{"openai/chat_completions", h}},
+		{Model: "edited", Allow: []string{h}},
+		{Model: "new", Allow: []string{h}},
+	}}
+	normalized := normalizeUpdatedModelAPIFormatPolicies(input, existing, &ent.Channel{BaseURL: "https://example.test"})
+	require.Equal(t, []string{"openai/chat_completions", w}, normalized.ModelAPIFormatPolicies[0].Allow)
+	require.Equal(t, []string{h}, normalized.ModelAPIFormatPolicies[1].Allow)
+	require.Equal(t, []string{h}, normalized.ModelAPIFormatPolicies[2].Allow)
+	require.Equal(t, []string{"openai/chat_completions", h}, input.ModelAPIFormatPolicies[0].Allow, "do not mutate the submitted settings")
+}

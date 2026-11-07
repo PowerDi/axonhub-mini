@@ -58,7 +58,13 @@ func (c *Channel) DefaultEndpoints() []objects.ChannelEndpoint {
 	if c.Type != channel.TypeCodex {
 		for i, ep := range defaults {
 			if ep.APIFormat == llm.APIFormatOpenAIResponse.String() {
-				defaults[i].APIFormat = legacyResponsesFormat(c.Channel)
+				// Default transport follows the base URL even after an implicit WS
+				// endpoint has been made explicit to persist canonical policy identities.
+				source := *c.Channel
+				source.Endpoints = slices.DeleteFunc(slices.Clone(c.Endpoints), func(ep objects.ChannelEndpoint) bool {
+					return ep.APIFormat == llm.APIFormatOpenAIResponseWebSocket.String()
+				})
+				defaults[i].APIFormat = legacyResponsesFormat(&source)
 			}
 		}
 		return defaults
@@ -98,11 +104,16 @@ func normalizeModelAPIFormatPolicies(settings *objects.ChannelSettings, source *
 	if settings == nil || len(settings.ModelAPIFormatPolicies) == 0 || legacyResponsesFormat(source) != llm.APIFormatOpenAIResponseWebSocket.String() {
 		return settings
 	}
+	changed := false
 	copy := *settings
 	copy.ModelAPIFormatPolicies = slices.Clone(settings.ModelAPIFormatPolicies)
 	for i, policy := range copy.ModelAPIFormatPolicies {
+		changed = changed || slices.Contains(policy.Allow, llm.APIFormatOpenAIResponse.String()) || slices.Contains(policy.Exclude, llm.APIFormatOpenAIResponse.String())
 		copy.ModelAPIFormatPolicies[i].Allow = normalizeLegacyPolicyFormats(policy.Allow)
 		copy.ModelAPIFormatPolicies[i].Exclude = normalizeLegacyPolicyFormats(policy.Exclude)
+	}
+	if !changed {
+		return settings
 	}
 	return &copy
 }
@@ -124,4 +135,53 @@ func (c *Channel) ModelAPIFormatPolicy(model string) *objects.ModelAPIFormatPoli
 		return nil
 	}
 	return normalizeModelAPIFormatPolicies(c.Settings, c.Channel).GetModelAPIFormatPolicy(model)
+}
+
+// normalizeUpdatedModelAPIFormatPolicies interprets echoed policies using the
+// stored identity. Only new or actually edited policies use the submitted one.
+func normalizeUpdatedModelAPIFormatPolicies(settings *objects.ChannelSettings, existing, proposed *ent.Channel) *objects.ChannelSettings {
+	if settings == nil {
+		return nil
+	}
+	copy := *settings
+	copy.ModelAPIFormatPolicies = slices.Clone(settings.ModelAPIFormatPolicies)
+	changed := false
+	sameFormats := func(a, b []string) bool {
+		return slices.Equal(slices.Compact(slices.Sorted(slices.Values(a))), slices.Compact(slices.Sorted(slices.Values(b))))
+	}
+	for i, policy := range copy.ModelAPIFormatPolicies {
+		source := proposed
+		if old := existing.Settings.GetModelAPIFormatPolicy(policy.Model); old != nil && sameFormats(old.Allow, policy.Allow) && sameFormats(old.Exclude, policy.Exclude) {
+			source = existing
+		}
+		single := &objects.ChannelSettings{ModelAPIFormatPolicies: []objects.ModelAPIFormatPolicy{policy}}
+		normalized := normalizeModelAPIFormatPolicies(single, source)
+		if normalized != single {
+			copy.ModelAPIFormatPolicies[i] = normalized.ModelAPIFormatPolicies[0]
+			changed = true
+		}
+	}
+	if !changed {
+		return settings
+	}
+	return &copy
+}
+
+// Canonical policies must not be read as legacy aliases again on the next read.
+// An explicit WS endpoint records the identity of an inherited WS default, with
+// no extra endpoint capabilities and without changing the stored base URL.
+func normalizePolicyEndpoints(source *ent.Channel) []objects.ChannelEndpoint {
+	endpoints := NormalizeEndpoints(source.Endpoints, source.BaseURL)
+	if source.Settings == nil || !slices.ContainsFunc(source.Settings.ModelAPIFormatPolicies, func(policy objects.ModelAPIFormatPolicy) bool {
+		return slices.Contains(policy.Allow, llm.APIFormatOpenAIResponse.String()) || slices.Contains(policy.Exclude, llm.APIFormatOpenAIResponse.String())
+	}) {
+		return endpoints
+	}
+	if legacyResponsesFormat(source) != llm.APIFormatOpenAIResponseWebSocket.String() || slices.ContainsFunc(endpoints, func(ep objects.ChannelEndpoint) bool { return isResponsesEndpoint(ep.APIFormat) }) {
+		return endpoints
+	}
+	if slices.ContainsFunc(DefaultEndpointsForChannelType(source.Type), func(ep objects.ChannelEndpoint) bool { return ep.APIFormat == llm.APIFormatOpenAIResponse.String() }) {
+		endpoints = append(endpoints, objects.ChannelEndpoint{APIFormat: llm.APIFormatOpenAIResponseWebSocket.String()})
+	}
+	return endpoints
 }

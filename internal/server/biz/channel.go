@@ -582,7 +582,7 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 		return nil, fmt.Errorf("invalid endpoints: %w", err)
 	}
 	input.Settings = normalizeModelAPIFormatPolicies(input.Settings, &ent.Channel{Type: input.Type, BaseURL: baseURL, Endpoints: input.Endpoints})
-	input.Endpoints = NormalizeEndpoints(input.Endpoints, baseURL)
+	input.Endpoints = normalizePolicyEndpoints(&ent.Channel{Type: input.Type, BaseURL: baseURL, Endpoints: input.Endpoints, Settings: input.Settings})
 
 	if input.Settings != nil {
 		if input.Settings.BodyOverrideOperations != nil {
@@ -1007,7 +1007,6 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	// write-only callers (write_channels without read_channels — the scoped
 	// decision permits only this internal read required to preserve the write
 	// invariant) so the routability check below sees the merged state.
-	settingsSupplied := input.Settings != nil
 	if input.SupportedModels != nil && input.Settings == nil {
 		existing, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) (*ent.Channel, error) {
 			return svc.entFromContext(queryCtx).Channel.Query().
@@ -1085,23 +1084,20 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 			return nil, fmt.Errorf("invalid endpoints: %w", err)
 		}
 		policySettings := input.Settings
-		policySource := &ent.Channel{Type: channelType, BaseURL: baseURL, Endpoints: endpoints}
-		// Model-list-only updates may have loaded the old settings above. They
-		// still use the old transport identity, just like endpoint-only updates.
-		if !settingsSupplied {
-			policySource = existing
-		}
 		if policySettings == nil {
 			policySettings = existing.Settings
-			policySource = existing
 		}
-		normalizedSettings := normalizeModelAPIFormatPolicies(policySettings, policySource)
+		proposed := &ent.Channel{Type: channelType, BaseURL: baseURL, Endpoints: endpoints}
+		normalizedSettings := normalizeUpdatedModelAPIFormatPolicies(policySettings, existing, proposed)
 		if input.Settings != nil || normalizedSettings != policySettings {
 			input.Settings = normalizedSettings
 		}
-		if input.Endpoints != nil {
-			input.Endpoints = NormalizeEndpoints(input.Endpoints, baseURL)
+		proposed.Settings = normalizedSettings
+		normalizedEndpoints := normalizePolicyEndpoints(proposed)
+		if input.Endpoints != nil || !slices.Equal(normalizedEndpoints, existing.Endpoints) {
+			input.Endpoints = normalizedEndpoints
 		}
+
 	}
 
 	// Edit-time bidirectional routability check: a settings or endpoints edit
@@ -1321,6 +1317,7 @@ func (svc *ChannelService) SaveChannelEndpoints(ctx context.Context, input SaveC
 	}
 
 	settings := normalizeModelAPIFormatPolicies(ch.Settings, ch)
+	input.Endpoints = normalizePolicyEndpoints(&ent.Channel{Type: ch.Type, BaseURL: ch.BaseURL, Endpoints: input.Endpoints, Settings: settings})
 	// Endpoint edits can starve existing per-model policies: reject when a
 	// policy ends up with zero usable endpoints and no other enabled channel
 	// serves that model.
