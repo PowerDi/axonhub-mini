@@ -16,6 +16,7 @@ declare const process: {
  */
 export default defineConfig({
   testDir: './tests',
+  testIgnore: '**/ui-regression/**',
   /* Run setup test first, then run other tests in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */

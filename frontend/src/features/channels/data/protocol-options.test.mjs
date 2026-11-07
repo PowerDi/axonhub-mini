@@ -14,7 +14,7 @@ import {
   getEffectiveResponsesFormats,
   isResponsesFamilyFormat,
   toHttpBaseURL,
-  translateLegacyCodexModelPolicies,
+  translateLegacyResponsesModelPolicies,
 } from './protocol-options.ts';
 import { getApiPath } from '../../requests/utils/curl-paths.ts';
 
@@ -259,14 +259,14 @@ test('shows legacy WebSocket Base URLs as their HTTP(S) equivalent', () => {
 test('translates legacy WebSocket-only Responses model restrictions to the WebSocket format', () => {
   const chat = { model: 'gpt-4o', allow: ['openai/chat_completions'] };
   assert.deepEqual(
-    translateLegacyCodexModelPolicies({ baseURL: 'wss://chatgpt.com/backend-api/codex#', endpoints: [] }, [
+    translateLegacyResponsesModelPolicies({ baseURL: 'wss://chatgpt.com/backend-api/codex#', endpoints: [] }, [
       { model: 'gpt-5', allow: [H] },
       chat,
     ]),
     [{ model: 'gpt-5', allow: [W] }, chat]
   );
   assert.deepEqual(
-    translateLegacyCodexModelPolicies({ baseURL: CODEX_BASE, endpoints: [{ apiFormat: H, transport: 'websocket' }] }, [
+    translateLegacyResponsesModelPolicies({ baseURL: CODEX_BASE, endpoints: [{ apiFormat: H, transport: 'websocket' }] }, [
       { model: 'gpt-5', allow: [H, W] },
     ]),
     [{ model: 'gpt-5', allow: [W] }]
@@ -275,11 +275,11 @@ test('translates legacy WebSocket-only Responses model restrictions to the WebSo
 
 test('keeps HTTP-resolved and dual Responses model restrictions unchanged', () => {
   const restrictions = [{ model: 'gpt-5', allow: [H] }];
-  assert.equal(translateLegacyCodexModelPolicies({ baseURL: CODEX_BASE, endpoints: [] }, restrictions), undefined);
-  assert.equal(translateLegacyCodexModelPolicies({ baseURL: CODEX_BASE, endpoints: [{ apiFormat: H }] }, restrictions), undefined);
-  assert.equal(translateLegacyCodexModelPolicies({ baseURL: CODEX_BASE, endpoints: [{ apiFormat: H }, { apiFormat: W }] }, restrictions), undefined);
-  assert.equal(translateLegacyCodexModelPolicies({ baseURL: 'wss://proxy.test/codex#', endpoints: [{ apiFormat: H, transport: 'http' }] }, restrictions), undefined);
-  assert.equal(translateLegacyCodexModelPolicies({ baseURL: 'wss://proxy.test/codex#', endpoints: [] }, undefined), undefined);
+  assert.equal(translateLegacyResponsesModelPolicies({ baseURL: CODEX_BASE, endpoints: [] }, restrictions), undefined);
+  assert.equal(translateLegacyResponsesModelPolicies({ baseURL: CODEX_BASE, endpoints: [{ apiFormat: H }] }, restrictions), undefined);
+  assert.equal(translateLegacyResponsesModelPolicies({ baseURL: CODEX_BASE, endpoints: [{ apiFormat: H }, { apiFormat: W }] }, restrictions), undefined);
+  assert.equal(translateLegacyResponsesModelPolicies({ baseURL: 'wss://proxy.test/codex#', endpoints: [{ apiFormat: H, transport: 'http' }] }, restrictions), undefined);
+  assert.equal(translateLegacyResponsesModelPolicies({ baseURL: 'wss://proxy.test/codex#', endpoints: [] }, undefined), undefined);
 });
 
 test('keeps the Codex Responses family out of the custom endpoint list, other channels unchanged', () => {
@@ -321,7 +321,7 @@ test('legacy Responses normalization preserves Allow/Exclude shape and never mut
     { model: 'no-lists' },
   ];
   const before = structuredClone(policies);
-  const normalized = translateLegacyCodexModelPolicies({ baseURL: 'wss://relay.test/v1', endpoints: [] }, policies);
+  const normalized = translateLegacyResponsesModelPolicies({ baseURL: 'wss://relay.test/v1', endpoints: [] }, policies);
   assert.deepEqual(normalized, [
     { model: 'allow', allow: [W], exclude: null },
     { model: 'exclude', allow: [], exclude: [W] },

@@ -15,6 +15,8 @@ import {
   suffix,
 } from './codex-compat.utils'
 
+test.use({ storageState: { cookies: [], origins: [] } });
+
 const names = {
   disabledRelay: `pw-codex-disabled-relay-${suffix}`,
   archived: `pw-codex-archived-${suffix}`,

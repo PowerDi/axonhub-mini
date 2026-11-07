@@ -19,7 +19,7 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
   webServer: {
-    command: 'pnpm exec vite --host 127.0.0.1 --port 9530 --strictPort',
+    command: 'pnpm exec vite --config vite.ui.config.ts --host 127.0.0.1 --port 9530 --strictPort',
     url: 'http://127.0.0.1:9530/tests/ui-regression/index.html',
     reuseExistingServer: false,
     timeout: 120000,

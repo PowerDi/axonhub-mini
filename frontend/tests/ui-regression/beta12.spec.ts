@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { channel, legacyCodexChannel, pageInfo, PROJECT_ID, user } from './fixtures';
+import { channel, channelForScenario, pageInfo, PROJECT_ID, user } from './fixtures';
 
 type Operation = { operationName: string; query: string; variables: Record<string, any>; projectHeader?: string };
 
@@ -7,7 +7,7 @@ async function openFixture(page: Page, scenario: string) {
   const operations: Operation[] = [];
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  const snapshot = structuredClone(scenario === 'codex-endpoints' || scenario === 'legacy-policy' ? legacyCodexChannel : channel);
+  const snapshot = structuredClone(channelForScenario(scenario));
   await page.route('**/admin/graphql', async (route) => {
     const payload = route.request().postDataJSON() as Operation;
     // Channel operations include a fragment before the operation definition.
@@ -15,6 +15,7 @@ async function openFixture(page: Page, scenario: string) {
     operations.push({ ...op, projectHeader: route.request().headers()['x-project-id'] });
     let data: Record<string, unknown>;
     switch (op.operationName) {
+      case 'SystemGeneralSettings': data = { systemGeneralSettings: { currencyCode: 'USD', timezone: 'UTC' } }; break;
       case 'Me': data = { me: user }; break;
       case 'Models': data = { queryModels: [{ id: 'gpt-4o', status: 'enabled' }] }; break;
       case 'GetAllChannelSummarys': data = { allChannelSummarys: [channel] }; break;
@@ -25,7 +26,9 @@ async function openFixture(page: Page, scenario: string) {
       case 'UserAgentPassThroughSettings': data = { userAgentPassThroughSettings: { enabled: false } }; break;
       case 'PassThroughSettings': data = { passThroughSettings: { enabled: false } }; break;
       case 'RetryPolicy': data = { retryPolicy: { enabled: true, maxChannelRetries: 2, maxSingleChannelRetries: 1, retryDelayMs: 0, streamFirstEventTimeoutSeconds: 10, nonStreamResponseTimeoutSeconds: 30 } }; break;
+      case 'QueryChannelNames':
       case 'QueryChannels': data = { queryChannels: { edges: [{ node: snapshot, cursor: '101' }], pageInfo, totalCount: 1 } }; break;
+      case 'DuplicateChannel': data = { duplicateChannel: { ...snapshot, ...op.variables.input } }; break;
       case 'UpdateChannel': data = { updateChannel: { ...snapshot, ...op.variables.input } }; break;
       case 'UpdateChannelSettings': data = { updateChannelSettings: { ...snapshot, settings: { ...snapshot.settings, ...op.variables.input } } }; break;
       case 'CreateApiKeyProfileTemplate': data = { createApiKeyProfileTemplate: { id: 'gid://axonhub/APIKeyProfileTemplate/88', ...op.variables.input, profile: op.variables.profile } }; break;
@@ -35,18 +38,18 @@ async function openFixture(page: Page, scenario: string) {
   });
   await page.goto(`/tests/ui-regression/index.html?case=${scenario}`);
   await expect(page.getByTestId('harness-ready')).toBeVisible();
-  if (scenario !== 'schemas' && scenario !== 'analytics') await expect(page.getByRole('dialog')).toBeVisible();
+  if (scenario !== 'schemas' && scenario !== 'analytics' && scenario !== 'channels-table') await expect(page.getByRole('dialog')).toBeVisible();
   return { operations, errors };
 }
 
 test('multi-endpoint channel can add a separate Responses WebSocket URL without losing its HTTP URL', async ({ page }) => {
   const { operations, errors } = await openFixture(page, 'endpoints');
-  await page.getByTestId('endpoint-format-select').click();
+  await page.getByRole('dialog').getByTestId('endpoint-format-select').click();
   await page.getByRole('option', { name: 'openai/responses-ws', exact: true }).click();
-  await page.locator('#endpoint-base-url').fill('wss://ws.example.test/v1');
-  await page.locator('#endpoint-path').fill('/custom/responses');
-  await page.getByTestId('endpoint-add-button').click();
-  await page.getByTestId('endpoints-save-button').click();
+  await page.getByRole('dialog').locator('#endpoint-base-url').fill('wss://ws.example.test/v1');
+  await page.getByRole('dialog').locator('#endpoint-path').fill('/custom/responses');
+  await page.getByRole('dialog').getByTestId('endpoint-add-button').click();
+  await page.getByRole('dialog').getByTestId('endpoints-save-button').click();
   await expect(page.getByRole('dialog')).not.toBeVisible();
   const saved = operations.find((op) => op.operationName === 'UpdateChannel');
   expect(saved?.variables.input.endpoints).toEqual(expect.arrayContaining([
@@ -59,8 +62,8 @@ test('multi-endpoint channel can add a separate Responses WebSocket URL without 
 
 test('legacy Codex WS save normalizes both Allow and Exclude atomically', async ({ page }) => {
   const { operations, errors } = await openFixture(page, 'codex-endpoints');
-  await expect(page.getByTestId('codex-endpoints-websocket-checkbox')).toBeChecked();
-  await page.getByTestId('endpoints-save-button').click();
+  await expect(page.getByRole('dialog').getByTestId('codex-endpoints-websocket-checkbox')).toBeChecked();
+  await page.getByRole('dialog').getByTestId('endpoints-save-button').click();
   await expect(page.getByRole('dialog')).not.toBeVisible();
   const saved = operations.find((op) => op.operationName === 'UpdateChannel')!;
   expect(saved.variables.input.baseURL).toBe('https://codex.example.test/v1');
@@ -73,8 +76,8 @@ test('legacy Codex WS save normalizes both Allow and Exclude atomically', async 
 
 test('model policy edit uses settings PATCH and preserves legacy WebSocket identity', async ({ page }) => {
   const { operations, errors } = await openFixture(page, 'legacy-policy');
-  await expect(page.getByTestId('model-policy-gpt-4o')).toContainText('openai/responses-ws');
-  await expect(page.getByTestId('model-policy-deny-model')).toContainText('openai/responses-ws');
+  await expect(page.getByRole('dialog').getByTestId('model-policy-gpt-4o')).toContainText('openai/responses-ws');
+  await expect(page.getByRole('dialog').getByTestId('model-policy-deny-model')).toContainText('openai/responses-ws');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.getByRole('dialog')).not.toBeVisible();
   const saved = operations.find((op) => op.operationName === 'UpdateChannelSettings')!;
@@ -86,10 +89,10 @@ test('model policy edit uses settings PATCH and preserves legacy WebSocket ident
 
 test('channel editor recalls and saves beta12 timeout/key settings without dropping mini settings', async ({ page }) => {
   const { operations, errors } = await openFixture(page, 'channel-edit');
-  await expect(page.getByTestId('response-timeout-stream-first-event')).toHaveValue('12');
-  await expect(page.getByTestId('response-timeout-non-stream')).toHaveValue('45');
-  await page.getByTestId('response-timeout-non-stream').fill('60');
-  await page.getByTestId('channel-submit-button').click();
+  await expect(page.getByRole('dialog').getByTestId('response-timeout-stream-first-event')).toHaveValue('12');
+  await expect(page.getByRole('dialog').getByTestId('response-timeout-non-stream')).toHaveValue('45');
+  await page.getByRole('dialog').getByTestId('response-timeout-non-stream').fill('60');
+  await page.getByRole('dialog').getByTestId('channel-submit-button').click();
   await expect(page.getByRole('dialog')).not.toBeVisible();
   const saved = operations.find((op) => op.operationName === 'UpdateChannel')!;
   expect(saved.variables.input.type).toBe('openai_multiprotocol');
@@ -104,7 +107,7 @@ test('channel editor recalls and saves beta12 timeout/key settings without dropp
 
 test('profile manager recalls Exclude and preserves template linkage on submit', async ({ page }) => {
   const { errors } = await openFixture(page, 'profiles');
-  await expect(page.getByTestId('profile-channel-match-mode')).toContainText('Exclude selected');
+  await expect(page.getByRole('dialog').getByTestId('profile-channel-match-mode')).toContainText('Exclude selected');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expect(page.getByRole('dialog')).not.toBeVisible();
   const saved = JSON.parse(await page.getByTestId('profile-submitted').textContent() ?? 'null');
@@ -115,10 +118,11 @@ test('profile manager recalls Exclude and preserves template linkage on submit',
 test('new API key template offers Exclude and sends an explicitly project-scoped payload', async ({ page }) => {
   const { operations, errors } = await openFixture(page, 'template');
   await page.getByRole('textbox', { name: 'Template Name', exact: true }).fill('UI exclusion template');
-  await page.getByTestId('template-channel-match-mode').click();
+  await page.getByRole('dialog').getByTestId('template-channel-match-mode').click();
   await page.getByRole('option', { name: 'Exclude selected', exact: true }).click();
-  await page.getByPlaceholder('Excluded Channels', { exact: true }).fill(channel.name);
-  await page.getByPlaceholder('Excluded Channels', { exact: true }).press('Enter');
+  await page.getByRole('dialog').getByPlaceholder('Excluded Channels', { exact: true }).fill(channel.name);
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: `Remove ${channel.name} tag`, exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Create Template', exact: true }).click();
   await expect(page.getByRole('dialog')).not.toBeVisible();
   const saved = operations.find((op) => op.operationName === 'CreateApiKeyProfileTemplate')!;
@@ -137,9 +141,9 @@ test('Intl currency formatting still uses configured currency and digits after i
 
 test('endpoint editor refuses to remove the last allowed WebSocket endpoint', async ({ page }) => {
   const { operations, errors } = await openFixture(page, 'codex-endpoints');
-  await page.getByTestId('codex-endpoints-websocket-checkbox').click();
+  await page.getByRole('dialog').getByTestId('codex-endpoints-websocket-checkbox').click();
   await expect(page.getByRole('alertdialog')).toContainText('gpt-4o');
-  await expect(page.getByTestId('codex-endpoints-websocket-checkbox')).toBeChecked();
+  await expect(page.getByRole('dialog', { includeHidden: true }).getByTestId('codex-endpoints-websocket-checkbox')).toBeChecked();
   expect(operations.some((op) => op.operationName.startsWith('Update'))).toBe(false);
   expect(errors).toEqual([]);
 });
@@ -159,5 +163,68 @@ test('analytics charts retain custom legends after the Recharts API update', asy
   const { errors } = await openFixture(page, 'analytics');
   await expect(page.getByTestId('trend-chart').locator('.recharts-legend-item')).toHaveCount(5);
   await expect(page.getByTestId('pie-charts').locator('.recharts-legend-item').first()).toContainText('Fixture channel');
+  expect(errors).toEqual([]);
+});
+
+test('non-Codex legacy WSS policy does not block an unrelated endpoint save', async ({ page }) => {
+  const { operations, errors } = await openFixture(page, 'non-codex-ws-endpoints');
+  await page.getByRole('dialog').getByTestId('endpoint-format-select').click();
+  await page.getByRole('option', { name: 'openai/chat_completions', exact: true }).click();
+  await page.getByRole('dialog').getByTestId('endpoint-add-button').click();
+  await page.getByRole('dialog').getByTestId('endpoints-save-button').click();
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  const saved = operations.find((op) => op.operationName === 'UpdateChannel')!;
+  expect(saved.variables.input.baseURL).toBeUndefined(); // the existing WSS base URL is untouched
+  expect(saved.variables.input.settings.modelApiFormatPolicies).toEqual([{ model: 'gpt-4o', allow: ['openai/responses-ws'], exclude: [] }]);
+  expect(errors).toEqual([]);
+});
+
+test('duplicating a GCP channel submits instead of silently failing derived-type validation', async ({ page }) => {
+  const { operations, errors } = await openFixture(page, 'channel-duplicate-gcp');
+  await page.getByRole('dialog').getByTestId('channel-name-input').fill('GCP copy');
+  await page.getByRole('dialog').getByTestId('channel-submit-button').click();
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  const saved = operations.find((op) => op.operationName === 'DuplicateChannel');
+  expect(saved?.variables.input.name).toBe('GCP copy');
+  expect(errors).toEqual([]);
+});
+
+test('policy settings PATCH shows a successful update toast', async ({ page }) => {
+  const { operations, errors } = await openFixture(page, 'policy');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  expect(operations.some((op) => op.operationName === 'UpdateChannelSettings')).toBe(true);
+  await expect(page.locator('[data-sonner-toast]')).toContainText('Channel updated successfully');
+  expect(errors).toEqual([]);
+});
+
+test('analytics detail headers align with throughput, TTFT and cost cells', async ({ page }) => {
+  await openFixture(page, 'analytics');
+  const details = page.getByTestId('dimension-details');
+  await expect(details.locator('th')).toHaveCount(11);
+  await expect(details.locator('tbody tr').first().locator('td')).toHaveCount(11);
+  await expect(details.locator('th').nth(8)).toContainText('tok/s');
+  await expect(details.locator('th').nth(9)).toContainText('TTFT');
+});
+
+test('default channel table fits desktop content and still scrolls on mobile', async ({ page }) => {
+  const { errors } = await openFixture(page, 'channels-table');
+  const table = page.getByTestId('channels-table');
+  const scroller = table.locator('..');
+  const dimensions = () => scroller.evaluate((element) => ({ width: element.clientWidth, scroll: element.scrollWidth }));
+  const desktop = await dimensions();
+  expect(desktop.scroll).toBeLessThanOrEqual(desktop.width + 1);
+  const action = page.getByTestId('row-actions');
+  const actionBounds = await action.boundingBox();
+  expect(actionBounds!.x + actionBounds!.width).toBeLessThanOrEqual(1440);
+  await action.click();
+  await expect(page.getByRole('menu')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobile = await dimensions();
+  expect(mobile.scroll).toBeGreaterThan(mobile.width);
+  await scroller.evaluate((element) => { element.scrollLeft = element.scrollWidth; });
+  const mobileAction = await action.boundingBox();
+  expect(mobileAction!.x + mobileAction!.width).toBeLessThanOrEqual(390);
   expect(errors).toEqual([]);
 });

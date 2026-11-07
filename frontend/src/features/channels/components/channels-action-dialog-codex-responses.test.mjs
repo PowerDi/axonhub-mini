@@ -89,7 +89,7 @@ test('Codex submit serializes the checkbox into canonical endpoints and requires
   const submit = between('const onSubmit = async', 'const addModel = () =>');
   assert.match(submit, /buildCodexResponsesEndpoints\(initialRow\?\.endpoints, codexResponsesWebSocket\)/);
   assert.match(submit, /isCodexType \? 'http' : responsesTransport/);
-  assert.match(submit, /translateLegacyCodexModelPolicies\(initialRow/);
+  assert.match(submit, /translateLegacyResponsesModelPolicies\(initialRow/);
 });
 
 test('Codex never submits or derives a WebSocket channel Base URL, and official Base URLs stay locked', () => {

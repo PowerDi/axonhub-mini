@@ -628,7 +628,7 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
       <div className='flex items-center justify-between'>
         <div className='flex min-w-0 flex-1 items-center gap-2'>
           <BatteryIcon
-            className={`h-4 w-4 ${status === 'exhausted' ? 'text-(--destructive-soft-fg)' : status === 'warning' ? 'text-(--warning-soft-fg)' : 'text-muted-foreground'}`}
+            className={`h-4 w-4 shrink-0 ${status === 'exhausted' ? 'text-(--destructive-soft-fg)' : status === 'warning' ? 'text-(--warning-soft-fg)' : 'text-muted-foreground'}`}
           />
           <span className='text-foreground truncate font-medium' title={channel.name}>
             {channel.name}

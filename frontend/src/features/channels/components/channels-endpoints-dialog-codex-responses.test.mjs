@@ -21,7 +21,7 @@ function between(start, end) {
 }
 
 test('legacy restrictions use the mini policy translator without a second policy editor', () => {
-  assert.match(source, /translateLegacyCodexModelPolicies\(channel, channel\.settings\?\.modelApiFormatPolicies\)/);
+  assert.match(source, /translateLegacyResponsesModelPolicies\(channel, channel\.settings\?\.modelApiFormatPolicies\)/);
   assert.doesNotMatch(source, /modelProtocols|ModelProtocol|setNewProtocol/);
 });
 

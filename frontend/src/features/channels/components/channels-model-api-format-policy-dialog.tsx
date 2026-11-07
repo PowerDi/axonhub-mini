@@ -14,7 +14,7 @@ import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
 import { useUpdateChannelSettings } from '../data/channels';
-import { getEffectiveResponsesFormats, isResponsesFamilyFormat, translateLegacyCodexModelPolicies } from '../data/protocol-options';
+import { getEffectiveResponsesFormats, isResponsesFamilyFormat, translateLegacyResponsesModelPolicies } from '../data/protocol-options';
 import { Channel, ModelAPIFormatPolicy } from '../data/schema';
 
 interface Props {
@@ -69,7 +69,7 @@ export function ChannelsModelApiFormatPolicyDialog({ open, onOpenChange, current
   const policyFormSchema = useMemo(() => createPolicyFormSchema(), []);
   const initialPolicies = useMemo(
     () =>
-      translateLegacyCodexModelPolicies(currentRow, currentRow.settings?.modelApiFormatPolicies) ??
+      translateLegacyResponsesModelPolicies(currentRow, currentRow.settings?.modelApiFormatPolicies) ??
       currentRow.settings?.modelApiFormatPolicies ??
       [],
     [currentRow]
@@ -214,6 +214,7 @@ export function ChannelsModelApiFormatPolicyDialog({ open, onOpenChange, current
         id: currentRow.id,
         patch: { modelApiFormatPolicies: cleaned },
       });
+      toast.success(t('channels.messages.updateSuccess'));
       onOpenChange(false);
     } catch (_error) {
       // error handled by hook

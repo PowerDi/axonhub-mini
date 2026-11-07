@@ -90,7 +90,7 @@ import {
   getCodexResponsesWebSocketURL,
   hasCodexResponsesWebSocketOverrideReplacement,
   toHttpBaseURL,
-  translateLegacyCodexModelPolicies,
+  translateLegacyResponsesModelPolicies,
 } from '../data/protocol-options';
 import {
   Channel,
@@ -101,6 +101,7 @@ import {
   ChannelHammerRetry,
   RetryableErrorPattern,
   createChannelInputSchema,
+  type CreateChannelInput,
   updateChannelInputSchema,
 } from '../data/schema';
 import { xaiDecodeSSO, xaiOAuthExchange, xaiOAuthStart } from '../data/xai';
@@ -1735,8 +1736,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
       if (isCodexType) {
         dataWithModels.endpoints = buildCodexResponsesEndpoints(initialRow?.endpoints, codexResponsesWebSocket);
       }
-      const codexModelPolicy =
-        isCodexType && initialRow ? translateLegacyCodexModelPolicies(initialRow, initialRow.settings?.modelApiFormatPolicies) : undefined;
+      const legacyModelPolicy =
+        initialRow ? translateLegacyResponsesModelPolicies(initialRow, initialRow.settings?.modelApiFormatPolicies) : undefined;
 
       if (isEdit && currentRow) {
         const settingsPatch: Partial<ChannelSettings> = {
@@ -1751,7 +1752,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             apiKeyStrategy === 'round_robin' || apiKeyStrategy === 'round_robin_success' ? apiKeyRoundRobinSwitchAfter : null,
 
           responseTimeout,
-          ...(codexModelPolicy ? { modelApiFormatPolicies: codexModelPolicy } : {}),
+          ...(legacyModelPolicy ? { modelApiFormatPolicies: legacyModelPolicy } : {}),
           // Cookie edits (including clearing the saved cookie) travel through
           // the settings patch; mergeChannelSettingsForUpdate preserves the
           // field when the patch omits it and carries the null clear through.
@@ -1818,17 +1819,24 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           maxSingleChannelRetries,
 
           responseTimeout,
-          ...(codexModelPolicy ? { modelApiFormatPolicies: codexModelPolicy } : {}),
+          ...(legacyModelPolicy ? { modelApiFormatPolicies: legacyModelPolicy } : {}),
           ...quotaRoutingModeSettingsPatch(quotaRoutingMode),
           apiKeyStrategy,
           apiKeyRoundRobinSwitchAfter:
             apiKeyStrategy === 'round_robin' || apiKeyStrategy === 'round_robin_success' ? apiKeyRoundRobinSwitchAfter : null,
         });
 
-        const createInput = createChannelInputSchema.parse({
+        const createInput = {
           ...dataWithModels,
+          // Keep schema defaults without validating again against a derived
+          // provider type that may differ from the already-validated form.
+          credentials: {
+            ...dataWithModels.credentials,
+            apiKeys: dataWithModels.credentials.apiKeys ?? [],
+            vertexApiKeys: dataWithModels.credentials.vertexApiKeys ?? [],
+          },
           settings: nextSettings,
-        });
+        } as CreateChannelInput;
 
         if (isDuplicate && duplicateFromRow) {
           await duplicateChannel.mutateAsync({

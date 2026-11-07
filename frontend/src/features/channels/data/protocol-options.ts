@@ -274,7 +274,7 @@ function getLegacyResponsesFormat(channel: CodexResponsesChannel): string {
  * format (mirrors the backend legacy identity). Returns undefined when nothing
  * changes.
  */
-export function translateLegacyCodexModelPolicies(
+export function translateLegacyResponsesModelPolicies(
   channel: CodexResponsesChannel,
   policies: readonly ModelAPIFormatPolicy[] | null | undefined
 ): ModelAPIFormatPolicy[] | undefined {

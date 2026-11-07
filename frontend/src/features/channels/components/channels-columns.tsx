@@ -1014,7 +1014,7 @@ export const createColumns = (
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.name')} />,
       cell: ({ row }: { row: Row<Channel> }) => <NameCell row={row} globalDefaultMode={globalDefaultMode} />,
       meta: {
-        className: 'w-[15%] min-w-40 text-left',
+        className: 'w-30 min-w-30 text-left',
       },
       enableHiding: false,
       enableSorting: true,
@@ -1025,7 +1025,7 @@ export const createColumns = (
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.provider')} className='justify-center' />,
       cell: ProviderCell,
       meta: {
-        className: 'w-[19%] min-w-28 text-center',
+        className: 'w-22 min-w-22 text-center',
       },
       filterFn: (row, _id, value) => {
         return value.includes(row.original.type);
@@ -1038,7 +1038,7 @@ export const createColumns = (
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.status')} className='justify-center' />,
       cell: StatusSwitchCell,
       meta: {
-        className: 'w-[15%] min-w-20 text-center',
+        className: 'w-16 min-w-16 text-center',
       },
       enableSorting: true,
       enableHiding: false,
@@ -1049,7 +1049,7 @@ export const createColumns = (
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.quota')} className='justify-center' />,
       cell: QuotaCell,
       meta: {
-        className: 'w-96 min-w-96 text-center',
+        className: 'w-50 min-w-50 text-center',
       },
       enableSorting: false,
       enableHiding: true,
@@ -1060,7 +1060,7 @@ export const createColumns = (
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.tags')} className='justify-center' />,
       cell: TagsCell,
       meta: {
-        className: 'w-[10%] min-w-28 text-center',
+        className: 'w-28 min-w-28 text-center',
       },
       filterFn: (row, id, value) => {
         const tags = (row.getValue(id) as string[]) || [];
@@ -1088,7 +1088,7 @@ export const createColumns = (
       ),
       cell: SupportedModelsCell,
       meta: {
-        className: 'w-[18%] min-w-48 max-w-none text-center',
+        className: 'w-34 min-w-34 max-w-none text-center',
       },
       enableSorting: false,
     },
@@ -1100,7 +1100,7 @@ export const createColumns = (
       ),
       cell: ({ row }: { row: Row<Channel> }) => <EndpointProtocolsCell channel={row.original} />,
       meta: {
-        className: 'w-32 min-w-32 text-center',
+        className: 'w-22 min-w-22 text-center',
       },
       enableSorting: false,
       enableHiding: true,
@@ -1111,7 +1111,7 @@ export const createColumns = (
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('channels.columns.proxy')} className='justify-center' />,
       cell: ProxyCell,
       meta: {
-        className: 'w-[13%] min-w-28 text-center',
+        className: 'w-28 min-w-28 text-center',
       },
       enableSorting: false,
       enableHiding: true,
@@ -1133,7 +1133,7 @@ export const createColumns = (
         );
       },
       meta: {
-        className: 'w-32 min-w-32 text-center',
+        className: 'w-24 min-w-24 text-center',
       },
       enableSorting: false,
       enableHiding: true,
@@ -1145,7 +1145,7 @@ export const createColumns = (
       ),
       cell: OrderingWeightCell,
       meta: {
-        className: 'w-28 min-w-28 text-center',
+        className: 'w-16 min-w-16 text-center',
       },
       sortingFn: 'alphanumeric',
       enableSorting: true,
@@ -1156,7 +1156,7 @@ export const createColumns = (
       header: ({ column }) => <DataTableColumnHeader column={column} title={t('common.columns.createdAt')} className='justify-center' />,
       cell: CreatedAtCell,
       meta: {
-        className: 'w-28 min-w-28 text-center',
+        className: 'w-20 min-w-20 text-center',
       },
       enableSorting: true,
       enableHiding: true,
@@ -1170,7 +1170,7 @@ export const createColumns = (
             ),
             cell: ActionCell,
             meta: {
-              className: 'w-44 min-w-44 text-center',
+              className: 'w-24 min-w-24 text-center',
             },
             enableSorting: false,
             enableHiding: false,

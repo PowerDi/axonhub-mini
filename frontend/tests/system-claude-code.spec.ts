@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 import { signInAsAdmin } from './auth.utils';
 
+test.use({ storageState: { cookies: [], origins: [] } });
+
 // Mock the API so browser tests need only the frontend and never change live server policy.
 test('Claude Code safeguards can edit, save, reload, validate, and reset', async ({ page }, testInfo) => {
   const pageErrors: string[] = [];

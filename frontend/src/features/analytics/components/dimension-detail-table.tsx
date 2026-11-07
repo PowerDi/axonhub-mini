@@ -114,6 +114,8 @@ export function DimensionDetailTable({ channelStats, modelStats, apiKeyStats, us
                   <th className='text-foreground h-10 px-2 text-right text-xs font-medium'>{t('analytics.table.outputTokens')}</th>
                   <th className='text-foreground h-10 px-2 text-right text-xs font-medium'>{t('analytics.table.cacheHitRate')}</th>
                   <th className='text-foreground h-10 px-2 text-right text-xs font-medium'>{t('analytics.table.requests')}</th>
+                  <th className='text-foreground h-10 px-2 text-right text-xs font-medium'>{t('analytics.table.tokensPerSecond')}</th>
+                  <th className='text-foreground h-10 px-2 text-right text-xs font-medium'>{t('analytics.table.ttft')}</th>
                   <th className='text-foreground h-10 px-2 text-right text-xs font-medium'>{t('analytics.table.cost')}</th>
                 </tr>
               </thead>

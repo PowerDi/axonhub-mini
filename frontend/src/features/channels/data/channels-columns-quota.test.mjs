@@ -45,7 +45,7 @@ const channelQuerySource = read('features/channels/data/channels.ts').replace(/^
 const channelQueryTranspiled = ts.transpileModule(channelQuerySource, {
   compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2023 },
 }).outputText;
-const { buildQueryChannelsQuery } = await import(
+const { buildQueryChannelsQuery, DEFAULT_CHANNEL_COLUMN_VISIBILITY } = await import(
   `data:text/javascript;base64,${Buffer.from(
     'const { z, pageInfoSchema } = globalThis.__importStubs;\n' + channelQueryTranspiled
   ).toString('base64')}`
@@ -296,11 +296,12 @@ test('the search quota reaches the table with its production label', () => {
   );
 });
 
-test('channels table container allows horizontal scroll and wraps in min-w-max without table-fixed', () => {
+test('channels table uses bounded fixed layout with narrow-screen scrolling', () => {
   const tableSource = read('features/channels/components/channels-table.tsx');
   assert.doesNotMatch(tableSource, /overflow-x-hidden/, 'table container must not disable horizontal scroll');
-  assert.match(tableSource, /min-w-max/, 'table must be wrapped in min-w-max to preserve column widths');
-  assert.doesNotMatch(tableSource, /table-fixed/, 'table must not be table-fixed which crushes columns to 0');
+  assert.match(tableSource, /min-w-\[1120px\] table-fixed/, 'fixed layout must retain a usable minimum width on mobile');
+  assert.doesNotMatch(tableSource, /min-w-max/, 'intrinsic cell contents must not expand the desktop table');
+  assert.match(tableSource, /min-h-48/, 'empty/loading tables retain their minimum height');
 });
 
 test('channel columns have minimum widths and are not hidden by responsive display gates', () => {
@@ -341,4 +342,33 @@ test('mini model popover keeps the summary compact and the full list bounded', (
   assert.match(columnsSource, /max-h-\[320px\]/);
   assert.match(columnsSource, /<ScrollArea className='min-h-0'>/);
   assert.match(columnsSource, /<ChannelCircuitBreakerCell/);
+});
+
+
+test('default fixed column widths fit a 1120px desktop content area without mixing percentages', () => {
+  const ast = ts.createSourceFile('columns.tsx', columnsSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+  const widths = new Map();
+  const property = (node, name) => node.properties.find((prop) => prop.name?.getText(ast) === name)?.initializer;
+  const visit = (node) => {
+    if (ts.isObjectLiteralExpression(node)) {
+      const id = property(node, 'id') ?? property(node, 'accessorKey');
+      const meta = property(node, 'meta');
+      if (id && ts.isStringLiteral(id) && meta && ts.isObjectLiteralExpression(meta)) {
+        const className = property(meta, 'className');
+        if (className && ts.isStringLiteral(className)) {
+          assert.doesNotMatch(className.text, /w-\[[0-9.]+%\]/, `${id.text} must not mix percentage and fixed widths`);
+          const match = /(?:^| )w-(\d+)(?: |$)/.exec(className.text);
+          assert.ok(match, `${id.text} must declare a bounded width`);
+          widths.set(id.text, Number(match[1]) * 4);
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(ast);
+  assert.equal(widths.get('action'), 96);
+  assert.ok(widths.size >= 12);
+  const total = [...widths].filter(([id]) => DEFAULT_CHANNEL_COLUMN_VISIBILITY[id] !== false).reduce((sum, [, width]) => sum + width, 0);
+  assert.ok(total <= 1120, `default columns require ${total}px, exceeding desktop content width`);
+  assert.ok(total >= 1100, 'the guard must count all visible columns');
 });

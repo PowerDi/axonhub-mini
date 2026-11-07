@@ -893,6 +893,13 @@ function parseChannelNode(node: QueryChannelNodeWithQuota): ProviderQuotaChannel
       quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderCodexQuotaData },
     };
   }
+  if (node.type === 'xai_subscription') {
+    return {
+      ...base,
+      type: 'xai_subscription' as const,
+      quotaStatus: { ...base.quotaStatus, quotaData: node.providerQuotaStatus.quotaData as ProviderXAISubscriptionQuotaData },
+    };
+  }
   if (node.type === 'cline') {
     return {
       ...base,

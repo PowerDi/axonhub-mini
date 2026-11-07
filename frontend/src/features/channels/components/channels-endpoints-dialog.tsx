@@ -30,7 +30,7 @@ import {
   getConfigurableApiFormatsForChannelType,
   isResponsesFamilyFormat,
   toHttpBaseURL,
-  translateLegacyCodexModelPolicies,
+  translateLegacyResponsesModelPolicies,
 } from '../data/protocol-options';
 import { RELAY_PROTOCOL_LABEL_KEYS, getChannelRelayProtocols, isRelayProtocol, type RelayProtocol } from '../data/relay-protocols';
 import {
@@ -176,10 +176,10 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
   const [codexResponsesWebSocket, setCodexResponsesWebSocket] = useState(initialCodexResponses.enabled);
   const modelPolicies = useMemo(
     () =>
-      (isCodexChannel && translateLegacyCodexModelPolicies(channel, channel.settings?.modelApiFormatPolicies)) ||
+      translateLegacyResponsesModelPolicies(channel, channel.settings?.modelApiFormatPolicies) ||
       channel.settings?.modelApiFormatPolicies ||
       [],
-    [channel, isCodexChannel]
+    [channel]
   );
 
   const [endpoints, setEndpoints] = useState<ChannelEndpoint[]>(() => channel.endpoints ?? []);
@@ -384,7 +384,7 @@ export function ChannelsEndpointsDialog({ channel, open, onOpenChange }: Props) 
             transport: ep.transport || undefined,
           })),
         },
-        patch: isCodexChannel ? { modelApiFormatPolicies: modelPolicies } : {},
+        patch: { modelApiFormatPolicies: modelPolicies },
       });
 
       toast.success(t('channels.messages.updateSuccess'));

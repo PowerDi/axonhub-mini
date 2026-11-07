@@ -10,6 +10,7 @@
   "include": [
     "tests/ui-regression/**/*.ts",
     "tests/ui-regression/**/*.tsx",
-    "playwright.ui.config.ts"
+    "playwright.ui.config.ts",
+    "vite.ui.config.ts"
   ]
 }

@@ -39,3 +39,17 @@ export const profile = {
   modelIDs: [], loadBalanceStrategy: 'default', traceStickyMode: 'default',
 };
 export const pageInfo = { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null };
+
+export function channelForScenario(scenario: string | null) {
+  if (scenario === 'codex-endpoints' || scenario === 'legacy-policy') return legacyCodexChannel;
+  if (scenario === 'non-codex-ws-endpoints') return {
+    ...channel, type: 'openai_responses', name: 'Legacy Responses WS', baseURL: 'wss://api.openai.com/v1#', endpoints: [],
+    defaultEndpoints: [{ apiFormat: 'openai/responses-ws' }],
+  };
+  if (scenario === 'channel-duplicate-gcp') return {
+    ...channel, type: 'anthropic_gcp', name: 'GCP source', baseURL: 'https://us-east5-aiplatform.googleapis.com',
+    credentials: { gcp: { region: 'us-east5', projectID: 'ui-project', jsonData: '{"type":"service_account"}' } },
+    defaultEndpoints: [{ apiFormat: 'anthropic/messages' }], endpoints: [], settings: {},
+  };
+  return channel;
+}
