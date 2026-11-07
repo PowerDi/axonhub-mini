@@ -11,6 +11,7 @@ import (
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm/httpclient"
+	"github.com/looplj/axonhub/llm/pipeline"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -346,4 +347,19 @@ func TestHammerRetryOnTraceStickyCandidate(t *testing.T) {
 		assert.Zero(t, outbound.state.HammerAttempts)
 		assert.True(t, outbound.state.HammerStartedAt.IsZero())
 	})
+}
+
+// Non-contention 5xx and empty responses intentionally stay on a hammer
+// channel indefinitely. They must not consume the bounded 429 hammer budget.
+func TestHammerKeepsRetrying5xxAndEmptyResponses(t *testing.T) {
+	for _, err := range []error{newUpstream500("internal server error"), pipeline.ErrEmptyResponse} {
+		t.Run(err.Error(), func(t *testing.T) {
+			outbound := newHammerOutbound(&objects.ChannelHammerRetry{MaxRetries: hammerIntPtr(2)})
+			for range 20 {
+				require.True(t, outbound.OverridesSameChannelLimit())
+				require.True(t, outbound.CanRetry(err))
+			}
+			require.Zero(t, outbound.state.HammerAttempts)
+		})
+	}
 }

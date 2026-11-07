@@ -99,7 +99,7 @@ func WithRetry(maxChannelRetries, maxSameChannelRetries int, retryDelay time.Dur
 
 // WithRetriesDisabled marks the pipeline as running with the global retry policy
 // switched off. A channel-level override only adjusts the retry count while the
-// policy is enabled; it must not switch retries back on.
+// policy is enabled; the independent hammer budget is not affected.
 func WithRetriesDisabled() Option {
 	return func(p *pipeline) {
 		p.retriesDisabled = true
@@ -363,7 +363,7 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 		if !timeoutRetry {
 			if channelRetryable, ok := p.Outbound.(ChannelRetryable); ok {
 				budget, hasBudget := p.Outbound.(SameChannelRetryBudget)
-				overridden := !p.retriesDisabled && hasBudget && budget.OverridesSameChannelLimit()
+				overridden := hasBudget && budget.OverridesSameChannelLimit()
 				if (overridden || sameChannelRetries < p.maxSameChannelRetriesFor()) && channelRetryable.CanRetry(lastErr) {
 					if err := channelRetryable.PrepareForRetry(ctx); err == nil {
 						sameChannelRetries++
@@ -387,7 +387,7 @@ func (p *pipeline) Process(ctx context.Context, request *httpclient.Request) (*R
 		// 2. If same-channel retry not possible/exhausted, try channel switching
 		if !canRetry {
 			if retryable, ok := p.Outbound.(Retryable); ok {
-				if channelSwitches < p.maxChannelRetries && retryable.HasMoreChannels() {
+				if !p.retriesDisabled && channelSwitches < p.maxChannelRetries && retryable.HasMoreChannels() {
 					if err := retryable.NextChannel(ctx); err == nil {
 						channelSwitches++
 						sameChannelRetries = 0 // Reset same-channel attempts for new channel
