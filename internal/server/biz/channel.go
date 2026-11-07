@@ -1001,27 +1001,9 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		}
 	}
 
-	// Model-list edits can strand per-model API format policies on models the
-	// channel no longer serves: the policies stay in settings and keep filtering
-	// endpoint selection for models that are gone. Load the stored settings for
-	// write-only callers (write_channels without read_channels — the scoped
-	// decision permits only this internal read required to preserve the write
-	// invariant) so the routability check below sees the merged state.
-	if input.SupportedModels != nil && input.Settings == nil {
-		existing, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) (*ent.Channel, error) {
-			return svc.entFromContext(queryCtx).Channel.Query().
-				Where(channel.IDEQ(id)).
-				Select(channel.FieldSettings).
-				Only(queryCtx)
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to load channel settings for model policy sync: %w", err)
-		}
-
-		if existing.Settings != nil {
-			input.Settings = existing.Settings
-		}
-	}
+	// Model-list-only edits do not change settings or endpoint identities.
+	// Do not attach a loaded settings snapshot: it could overwrite a later PATCH
+	// without a version guard. Identity edits normalize settings below instead.
 
 	if input.Settings != nil {
 		// Always normalize and validate override settings.

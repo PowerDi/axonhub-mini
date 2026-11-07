@@ -1,6 +1,7 @@
 package biz
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"testing"
@@ -252,4 +253,39 @@ func TestUpdateChannelSettingsInput_MiniFields(t *testing.T) {
 	require.Equal(t, 3, *stored.HammerRetry.MaxRetries, "patching must not mutate cached settings")
 	require.True(t, stored.ReasoningFilter)
 	require.Len(t, stored.ModelAPIFormatPolicies, 1)
+}
+
+// Insert a real settings PATCH at the final model-update mutation boundary.
+// This deterministic interleaving catches a stale settings snapshot overwrite
+// without relying on goroutine timing or SQLite cross-connection locks.
+func TestModelOnlyUpdatePreservesInterleavedSettingsPatch(t *testing.T) {
+	ctx, svc := setupRoutabilityDB(t)
+	client := svc.entFromContext(ctx)
+	created := createRoutabilityChannel(t, ctx, client, "model-only-settings", channel.StatusDisabled,
+		&objects.ChannelSettings{ExtraModelPrefix: "keep", ReasoningFilter: false}, nil)
+	patched := false
+	client.Channel.Use(func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, mutation ent.Mutation) (ent.Value, error) {
+			cm := mutation.(*ent.ChannelMutation)
+			if _, changesModels := cm.SupportedModels(); changesModels && !patched {
+				patched = true
+				_, err := svc.UpdateChannelSettings(ctx, created.ID, &UpdateChannelSettingsInput{
+					ReasoningFilter: lo.ToPtr(true), MaxSingleChannelRetries: lo.ToPtr(7),
+				})
+				if err != nil {
+					return nil, err
+				}
+			}
+			return next.Mutate(ctx, mutation)
+		})
+	})
+	input := &ent.UpdateChannelInput{SupportedModels: []string{"deepseek-chat", "new-model"}}
+	updated, err := svc.UpdateChannel(ctx, created.ID, input)
+	require.NoError(t, err)
+	require.True(t, patched)
+	require.Equal(t, input.SupportedModels, updated.SupportedModels)
+	require.True(t, updated.Settings.ReasoningFilter, "model-only update must not overwrite the later PATCH")
+	require.Equal(t, 7, *updated.Settings.MaxSingleChannelRetries)
+	require.Equal(t, "keep", updated.Settings.ExtraModelPrefix)
+	require.Nil(t, input.Settings, "model-only edits must not acquire a settings write")
 }
