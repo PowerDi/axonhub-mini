@@ -2,11 +2,16 @@
 package orchestrator
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/looplj/axonhub/internal/authz"
+	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/enttest"
 	"github.com/looplj/axonhub/internal/objects"
+	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
 )
 
@@ -304,4 +309,74 @@ func TestPolicyStarvesRequest(t *testing.T) {
 		require.False(t, PolicyStarvesRequest(endpoints, unknownReq, policy))
 		require.True(t, PolicyStarvesRequest(nil, unknownReq, policy))
 	})
+}
+
+func TestSelectAPIFormat_DecisionsRequiresExplicitEndpoint(t *testing.T) {
+	// Given a chat-only channel surface and a Decisions request
+	endpoints := []objects.ChannelEndpoint{
+		{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+	}
+
+	// When the request is routed
+	format := SelectAPIFormat(endpoints, &llm.Request{
+		RequestType: llm.RequestTypeDecisions,
+		APIFormat:   llm.APIFormatOpenAIDecisions,
+	})
+
+	// Then no incompatible fallback format is selected
+	require.Empty(t, format)
+}
+
+func TestSelectAPIFormat_SystemOneRequiresExplicitEndpoint(t *testing.T) {
+	endpoints := []objects.ChannelEndpoint{
+		{APIFormat: llm.APIFormatOpenAIChatCompletion.String()},
+		{APIFormat: llm.APIFormatAnthropicMessage.String()},
+	}
+
+	require.Empty(t, SelectAPIFormat(endpoints, &llm.Request{
+		RequestType: llm.RequestTypeSystemOne,
+		APIFormat:   llm.APIFormatTypeSafeSystemOne,
+	}))
+
+	typesafeEndpoints := []objects.ChannelEndpoint{
+		{APIFormat: llm.APIFormatTypeSafeSystemOne.String()},
+	}
+
+	require.Equal(t, llm.APIFormatTypeSafeSystemOne.String(), SelectAPIFormat(typesafeEndpoints, &llm.Request{
+		RequestType: llm.RequestTypeSystemOne,
+		APIFormat:   llm.APIFormatTypeSafeSystemOne,
+	}))
+}
+
+func TestSpecifiedChannelSelector_DecisionsWithoutEndpointReturnsNoCandidate(t *testing.T) {
+	// Given a specified channel with a model and only a Chat endpoint
+	ctx := authz.WithTestBypass(context.Background())
+	client := enttest.NewEntClient(t, "sqlite3", "file:specified-channel-decisions?mode=memory&_fk=1")
+	t.Cleanup(func() { require.NoError(t, client.Close()) })
+
+	channelEntity, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).
+		SetName("chat-only").
+		SetBaseURL("https://example.test").
+		SetCredentials(objects.ChannelCredentials{APIKey: "test-key"}).
+		SetSupportedModels([]string{"decisions-model"}).
+		SetDefaultTestModel("decisions-model").
+		SetEndpoints([]objects.ChannelEndpoint{{APIFormat: llm.APIFormatOpenAIChatCompletion.String()}}).
+		Save(ctx)
+	require.NoError(t, err)
+
+	channelService := biz.NewChannelServiceForTest(client)
+	t.Cleanup(channelService.Stop)
+	selector := NewSpecifiedChannelSelector(channelService, objects.GUID{Type: "Channel", ID: channelEntity.ID})
+
+	// When the specified selector receives a forced Decisions request
+	candidates, err := selector.Select(ctx, &llm.Request{
+		Model:       "decisions-model",
+		RequestType: llm.RequestTypeDecisions,
+		APIFormat:   llm.APIFormatOpenAIDecisions,
+	})
+
+	// Then the incompatible channel is not retained with an empty API format
+	require.NoError(t, err)
+	require.Empty(t, candidates)
 }

@@ -2132,3 +2132,57 @@ func TestPersistentOutboundTransformer_RetrySelectionCounts(t *testing.T) {
 	require.Error(t, processor.NextChannel(ctx)) // exhausted candidates are not attempts
 	assertCounts(3, 2)
 }
+
+func TestFinalizeTransportRequestUsesSwitchedCandidate(t *testing.T) {
+	firstOutbound := new(mockTransportFinalizer)
+	firstOutbound.mockTransformer = new(mockTransformer)
+	firstOutbound.marker = "websocket"
+	secondOutbound := new(mockTransportFinalizer)
+	secondOutbound.mockTransformer = new(mockTransformer)
+	secondOutbound.marker = "http"
+
+	firstEntChannel := new(ent.Channel)
+	firstEntChannel.ID = 1
+	firstEntChannel.Name = "websocket"
+	firstChannel := new(biz.Channel)
+	firstChannel.Channel = firstEntChannel
+	firstChannel.Outbound = firstOutbound
+	var firstModel biz.ChannelModelEntry
+	firstModel.RequestModel = "gpt-5"
+	firstModel.ActualModel = "gpt-5"
+	firstCandidate := new(ChannelModelsCandidate)
+	firstCandidate.Channel = firstChannel
+	firstCandidate.Models = []biz.ChannelModelEntry{firstModel}
+
+	secondEntChannel := new(ent.Channel)
+	secondEntChannel.ID = 2
+	secondEntChannel.Name = "http"
+	secondChannel := new(biz.Channel)
+	secondChannel.Channel = secondEntChannel
+	secondChannel.Outbound = secondOutbound
+	var secondModel biz.ChannelModelEntry
+	secondModel.RequestModel = "gpt-5"
+	secondModel.ActualModel = "gpt-5"
+	secondCandidate := new(ChannelModelsCandidate)
+	secondCandidate.Channel = secondChannel
+	secondCandidate.Models = []biz.ChannelModelEntry{secondModel}
+
+	state := new(PersistenceState)
+	state.CurrentCandidateIndex = 0
+	state.ChannelModelsCandidates = []*ChannelModelsCandidate{firstCandidate, secondCandidate}
+	processor := new(PersistentOutboundTransformer)
+	processor.wrapped = firstOutbound
+	processor.state = state
+	middleware := finalizeTransportRequest(processor)
+	request := new(httpclient.Request)
+	request.Headers = make(http.Header)
+
+	first, err := middleware.OnOutboundRawRequest(context.Background(), request)
+	require.NoError(t, err)
+	require.Equal(t, "websocket", first.Headers.Get("X-Test-Transport"))
+
+	require.NoError(t, processor.NextChannel(context.Background()))
+	second, err := middleware.OnOutboundRawRequest(context.Background(), request)
+	require.NoError(t, err)
+	require.Equal(t, "http", second.Headers.Get("X-Test-Transport"))
+}
