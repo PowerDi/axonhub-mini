@@ -27,7 +27,7 @@ export function TopProjects() {
 
   if (error) {
     return (
-      <div className='text-sm text-(--destructive-soft-fg)'>
+      <div className='text-sm text-red-500'>
         {t('dashboard.charts.errorLoadingTopProjects')} {error.message}
       </div>
     );

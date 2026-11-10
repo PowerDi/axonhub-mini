@@ -109,7 +109,7 @@ export function TokensByChannelChart({ timePeriod }: TokensByChannelChartProps) 
     <div className='relative space-y-6'>
       {hasError ? (
         <div className='flex h-[300px] items-center justify-center'>
-          <div className='text-sm text-(--destructive-soft-fg)'>
+          <div className='text-sm text-red-500'>
             {t('dashboard.charts.errorLoadingTokenData')} {error.message}
           </div>
         </div>
@@ -121,8 +121,13 @@ export function TokensByChannelChart({ timePeriod }: TokensByChannelChartProps) 
         <>
           <ResponsiveContainer width='100%' height={320}>
             <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' strokeOpacity={0.6} vertical={false} />
-              <XAxis dataKey='name' tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }} tickLine={false} axisLine={false} />
+              <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' vertical={false} />
+              <XAxis
+                dataKey='name'
+                tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
+                tickLine={false}
+                axisLine={false}
+              />
               <YAxis
                 tickLine={false}
                 axisLine={false}

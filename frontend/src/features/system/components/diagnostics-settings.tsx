@@ -12,7 +12,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useClearCache, useExportCacheDiagnostics } from '../data/system';
@@ -25,6 +25,10 @@ export function DiagnosticsSettings() {
   return (
     <div className='space-y-6'>
       <Card>
+        <CardHeader>
+          <CardTitle>{t('system.diagnostics.title')}</CardTitle>
+          <CardDescription>{t('system.diagnostics.description')}</CardDescription>
+        </CardHeader>
         <CardContent className='space-y-6'>
           <div className='rounded-lg border p-3 sm:p-4'>
             <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4'>
@@ -49,7 +53,7 @@ export function DiagnosticsSettings() {
                       <AlertDialogTitle>{t('system.diagnostics.cache.clearConfirmTitle')}</AlertDialogTitle>
                       <AlertDialogDescription>{t('system.diagnostics.cache.clearConfirmDescription')}</AlertDialogDescription>
                     </AlertDialogHeader>
-                    <AlertDialogFooter className='flex-col sm:flex-row gap-2'>
+                    <AlertDialogFooter>
                       <AlertDialogCancel className='w-full sm:w-auto mt-0'>{t('system.diagnostics.cache.clearCancel')}</AlertDialogCancel>
                       <AlertDialogAction onClick={() => clearCache()} className='w-full sm:w-auto'>{t('system.diagnostics.cache.clearConfirm')}</AlertDialogAction>
                     </AlertDialogFooter>

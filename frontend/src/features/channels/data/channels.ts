@@ -112,6 +112,11 @@ const CREATE_CHANNEL_MUTATION = `
           from
           to
         }
+        modelProtocols {
+          model
+          apiFormats
+          enabled
+        }
         modelApiFormatPolicies {
           model
           exclude
@@ -222,6 +227,11 @@ const DUPLICATE_CHANNEL_MUTATION = `
         modelMappings {
           from
           to
+        }
+        modelProtocols {
+          model
+          apiFormats
+          enabled
         }
         modelApiFormatPolicies {
           model
@@ -334,6 +344,11 @@ const BULK_CREATE_CHANNELS_MUTATION = `
           from
           to
         }
+        modelProtocols {
+          model
+          apiFormats
+          enabled
+        }
         modelApiFormatPolicies {
           model
           exclude
@@ -443,6 +458,11 @@ const CHANNEL_FIELDS_FRAGMENT = `
         modelMappings {
           from
           to
+        }
+        modelProtocols {
+          model
+          apiFormats
+          enabled
         }
         modelApiFormatPolicies {
           model
@@ -710,6 +730,11 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
             from
             to
           }
+          modelProtocols {
+            model
+            apiFormats
+            enabled
+          }
           modelApiFormatPolicies {
             model
             exclude
@@ -968,6 +993,11 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
             from
             to
           }
+          modelProtocols {
+            model
+            apiFormats
+            enabled
+          }
           modelApiFormatPolicies {
             model
             exclude
@@ -1211,6 +1241,11 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
             modelMappings {
               from
               to
+            }
+            modelProtocols {
+              model
+              apiFormats
+              enabled
             }
             modelApiFormatPolicies {
               model

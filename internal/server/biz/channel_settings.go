@@ -27,6 +27,7 @@ import (
 // (mergeChannelSettingsForUpdate) and makes those semantics available to
 // direct GraphQL callers.
 type UpdateChannelSettingsInput struct {
+	ModelProtocols              []objects.ModelProtocol                 `json:"modelProtocols"`
 	ExtraModelPrefix            *string                                 `json:"extraModelPrefix"`
 	ModelMappings               []objects.ModelMapping                  `json:"modelMappings"`
 	AutoTrimedModelPrefixes     []string                                `json:"autoTrimedModelPrefixes"`
@@ -110,6 +111,9 @@ func (i *UpdateChannelSettingsInput) Apply(base *objects.ChannelSettings) object
 	}
 	if i.RetryableErrorPatterns != nil {
 		merged.RetryableErrorPatterns = i.RetryableErrorPatterns
+	}
+	if i.ModelProtocols != nil {
+		merged.ModelProtocols = i.ModelProtocols
 	}
 	if i.ModelAPIFormatPolicies != nil {
 		merged.ModelAPIFormatPolicies = i.ModelAPIFormatPolicies

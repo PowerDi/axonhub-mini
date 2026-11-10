@@ -1,13 +1,13 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { SortingState } from '@tanstack/react-table';
-import { IconPlus, IconSettings, IconDownload } from '@tabler/icons-react';
+import { IconPlus, IconSettings, IconAlertCircle } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { useDebounce } from '@/hooks/use-debounce';
 import { usePermissions } from '@/hooks/usePermissions';
 import { revealFocusedHorizontalButton, useHorizontalScroll } from '@/hooks/use-horizontal-scroll';
 import { Button } from '@/components/ui/button';
 import { Main } from '@/components/layout/main';
-import { Header } from '@/components/layout/header';
+import { PageHeader } from '@/components/layout/page-header';
 import { PermissionGuard } from '@/components/permission-guard';
 import { useOnboardingInfo } from '@/features/system/data/system';
 import { createColumns } from './components/models-columns';
@@ -93,9 +93,6 @@ function CreateButton() {
   );
 }
 
-// Secondary to ImportUnassociatedButton: it adds models by typing IDs one at a
-// time, which the import flow does in bulk from what the channels already serve.
-// Kept because a model can be registered before any channel serves it.
 function BulkAddButton() {
   const { t } = useTranslation();
   const { setOpen } = useModels();
@@ -120,16 +117,14 @@ function SettingsButton() {
   );
 }
 
-// Primary way to add models: it reads what the channels already serve, so the
-// user picks from real upstream model IDs instead of typing them.
-function ImportUnassociatedButton() {
+function DetectUnassociatedButton() {
   const { t } = useTranslation();
   const { setOpen } = useModels();
 
   return (
     <Button variant='outline' className='shrink-0' onClick={() => setOpen('unassociated')}>
-      <IconDownload className='mr-2 h-4 w-4' />
-      {t('models.actions.importUnassociated')}
+      <IconAlertCircle className='mr-2 h-4 w-4' />
+      {t('models.actions.detectUnassociated')}
     </Button>
   );
 }
@@ -140,7 +135,7 @@ function ActionButtons() {
     <div ref={scrollRef} onFocusCapture={revealFocusedHorizontalButton} data-testid='model-actions-scroller' className='flex min-w-0 max-w-full gap-2 overflow-x-auto p-1'>
       <PermissionGuard requiredScope='write_channels'>
         <>
-          <ImportUnassociatedButton />
+          <DetectUnassociatedButton />
           <SettingsButton />
           <BulkAddButton />
           <CreateButton />
@@ -169,18 +164,13 @@ export default function ModelsManagement() {
 
   return (
     <ModelsProvider>
-      <Header fixed>
-        <div className='flex w-full flex-1 flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-0'>
-          <div className='min-w-0'>
-            <h2 className='text-lg font-normal tracking-tight'>{t('models.title')}</h2>
-            <p className='text-muted-foreground text-sm'>{t('models.description')}</p>
-            <div className='mt-1'>
-              <ModelsCatalogStatus />
-            </div>
-          </div>
-          <ActionButtons />
-        </div>
-      </Header>
+      <PageHeader
+        title={t('models.title')}
+        description={t('models.description')}
+        metadata={<ModelsCatalogStatus />}
+        actions={<ActionButtons />}
+        actionLayout='scroll'
+      />
 
       <Main fixed>
         <ModelsContent />

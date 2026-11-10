@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Search, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Main } from '@/components/layout/main';
-import { Header } from '@/components/layout/header';
+import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
 import { DateRangePicker, type DateTimeRangeValue } from '@/components/date-range-picker';
 import { buildDateRangeWhereClause } from '@/utils/date-range';
@@ -74,21 +74,14 @@ export default function UsageStatisticsPage() {
   if (error) {
     return (
       <div className='flex-1 space-y-4 p-8 pt-6'>
-        <div className='text-(--destructive-soft-fg)'>{t('common.loadError')} {error.message}</div>
+        <div className='text-red-500'>{t('common.loadError')} {error.message}</div>
       </div>
     );
   }
 
   return (
-    <div className='flex flex-1 flex-col overflow-hidden'>
-      <Header fixed>
-        <div className='flex flex-1 items-center justify-between'>
-          <div>
-            <h2 className='text-lg font-normal tracking-tight'>{t('sidebar.items.usageStats')}</h2>
-            <p className='text-sm text-muted-foreground'>{t('usageStats.description')}</p>
-          </div>
-        </div>
-      </Header>
+    <>
+      <PageHeader title={t('sidebar.items.usageStats')} description={t('usageStats.description')} />
 
       <Main fixed className='flex flex-col'>
         <div className='flex items-center justify-between gap-4 mb-4 flex-shrink-0'>
@@ -117,7 +110,7 @@ export default function UsageStatisticsPage() {
           </div>
         </div>
 
-        <div className='relative flex-1 overflow-auto overflow-x-hidden rounded-2xl border border-[var(--table-border)]'>
+        <div className='shadow-soft relative flex-1 overflow-auto overflow-x-hidden rounded-2xl border border-[var(--table-border)]'>
           {filteredData.length === 0 ? (
             <div className='flex h-[200px] items-center justify-center bg-[var(--table-background)] rounded-2xl'>
               <div className='text-muted-foreground text-sm'>
@@ -139,7 +132,7 @@ export default function UsageStatisticsPage() {
                 {filteredData.map((item, index) => (
                   <TableRow
                     key={item.userId}
-                    className='group/row'
+                    className='group/row table-row-hover rounded-xl border-0 !bg-[var(--table-background)] transition-all duration-200 ease-in-out'
                   >
                     <TableCell className='text-muted-foreground text-center text-xs border-0 bg-inherit px-4 py-3'>{index + 1}</TableCell>
                     <TableCell className='font-medium border-0 bg-inherit px-4 py-3'>{item.userName}</TableCell>
@@ -158,7 +151,7 @@ export default function UsageStatisticsPage() {
           )}
         </div>
       </Main>
-    </div>
+    </>
   );
 }
 

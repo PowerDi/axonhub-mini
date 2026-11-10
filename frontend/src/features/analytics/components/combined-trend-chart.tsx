@@ -51,7 +51,7 @@ export function CombinedTrendChart({ data, isLoading, currencyCode }: CombinedTr
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className='hover-card'>
         <CardHeader>
           <CardTitle>{t('analytics.chart.trendTitle')}</CardTitle>
         </CardHeader>
@@ -71,7 +71,7 @@ export function CombinedTrendChart({ data, isLoading, currencyCode }: CombinedTr
   const costMax = Math.max(0.1, maxCost * 1.1);
 
   return (
-    <Card>
+    <Card className='hover-card'>
       <CardHeader>
         <CardTitle>{t('analytics.chart.trendTitle')}</CardTitle>
       </CardHeader>

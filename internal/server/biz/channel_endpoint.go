@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/ent/channel"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm"
@@ -376,23 +377,6 @@ func (c *Channel) ResolveEndpoints() []objects.ChannelEndpoint {
 	return mergeEndpoints(c.DefaultEndpoints(), NormalizeEndpoints(c.Endpoints, c.BaseURL))
 }
 
-// ForcedAPIFormats returns the api formats force-specified for the given request
-// model, or nil when the model has no override. Results are in configured
-// priority order. Backed by the per-model API format policies: an entry's
-// "allow" list is the set of formats the model is restricted to.
-func (c *Channel) ForcedAPIFormats(model string) []string {
-	if c == nil || c.Channel == nil || c.Settings == nil || model == "" {
-		return nil
-	}
-
-	policy := c.ModelAPIFormatPolicy(model)
-	if policy == nil || len(policy.Allow) == 0 {
-		return nil
-	}
-
-	return policy.Allow
-}
-
 func (c *Channel) platformTypeForGeminiEndpoint() string {
 	if c == nil || c.Channel == nil {
 		return ""
@@ -403,4 +387,115 @@ func (c *Channel) platformTypeForGeminiEndpoint() string {
 	}
 
 	return ""
+}
+
+func ValidateModelProtocols(settings *objects.ChannelSettings, channelType channel.Type, endpoints []objects.ChannelEndpoint) error {
+	source := &ent.Channel{Type: channelType, Endpoints: endpoints}
+	return validateModelProtocols(normalizeModelProtocols(settings, source), source)
+}
+
+func validateModelProtocols(settings *objects.ChannelSettings, source *ent.Channel) error {
+	if settings == nil || len(settings.ModelProtocols) == 0 {
+		return nil
+	}
+
+	available := make(map[string]struct{})
+	for _, ep := range (&Channel{Channel: source}).ResolveEndpoints() {
+		available[ep.APIFormat] = struct{}{}
+	}
+
+	seen := make(map[string]struct{}, len(settings.ModelProtocols))
+	for i, mp := range settings.ModelProtocols {
+		if mp.Model == "" {
+			return fmt.Errorf("modelProtocols[%d]: model is required", i)
+		}
+
+		if _, dup := seen[mp.Model]; dup {
+			return fmt.Errorf("modelProtocols[%d]: duplicate model %q", i, mp.Model)
+		}
+
+		seen[mp.Model] = struct{}{}
+
+		if len(mp.APIFormats) == 0 {
+			return fmt.Errorf("modelProtocols[%d] (%s): at least one api_format is required", i, mp.Model)
+		}
+
+		// Manually disabled overrides no longer need to track endpoint changes while
+		// off. Overrides for removed models are deleted by model-list normalization.
+		if !mp.IsEnabled() {
+			continue
+		}
+
+		for _, format := range mp.APIFormats {
+			if _, ok := available[format]; !ok {
+				return fmt.Errorf("modelProtocols[%d] (%s): api_format %q is not configured on this channel", i, mp.Model, format)
+			}
+		}
+	}
+
+	return nil
+}
+
+func RemoveRemovedModelProtocolOverrides(settings *objects.ChannelSettings, supportedModels []string) bool {
+	if settings == nil || len(settings.ModelProtocols) == 0 {
+		return false
+	}
+
+	available := modelProtocolAvailableModels(settings, supportedModels)
+	kept := make([]objects.ModelProtocol, 0, len(settings.ModelProtocols))
+	changed := false
+	for _, protocol := range settings.ModelProtocols {
+		if _, present := available[protocol.Model]; present {
+			kept = append(kept, protocol)
+			continue
+		}
+
+		changed = true
+	}
+
+	if changed {
+		settings.ModelProtocols = kept
+	}
+
+	return changed
+}
+
+func modelProtocolAvailableModels(settings *objects.ChannelSettings, supportedModels []string) map[string]struct{} {
+	probe := new(Channel)
+	probe.Channel = new(ent.Channel)
+	probe.Channel.SupportedModels = supportedModels
+	probe.Channel.Settings = settings
+	entries := probe.GetModelEntries()
+	available := make(map[string]struct{}, len(entries)+len(supportedModels))
+	for model := range entries {
+		available[model] = struct{}{}
+	}
+	// Hidden-original/mapped settings only affect exposure. Direct models remain
+	// valid override targets because runtime matching also considers actual names.
+	for _, model := range supportedModels {
+		available[model] = struct{}{}
+		if settings.LowercaseModelID {
+			available[strings.ToLower(model)] = struct{}{}
+		}
+	}
+
+	return available
+}
+
+func (c *Channel) ForcedAPIFormats(model string) []string {
+	if c == nil || c.Channel == nil || c.Settings == nil || model == "" {
+		return nil
+	}
+
+	for _, mp := range normalizeModelProtocols(c.Settings, c.Channel).ModelProtocols {
+		if mp.Model == model && mp.IsEnabled() {
+			return mp.APIFormats
+		}
+	}
+
+	// Keep the legacy Mini accessor compatible with persisted allow policies.
+	if policy := c.ModelAPIFormatPolicy(model); policy != nil {
+		return policy.Allow
+	}
+	return nil
 }

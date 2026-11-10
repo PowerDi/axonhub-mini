@@ -94,25 +94,25 @@ const ChannelOrderingItemComponent = memo(function ChannelOrderingItemComponent(
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'enabled':
-        return 'bg-success/10 text-(--success-soft-fg) border-success/40 dark:text-(--success-soft-fg) dark:border-success/40';
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:border-emerald-800';
       case 'disabled':
-        return 'bg-muted text-muted-foreground border-border dark:bg-muted dark:text-muted-foreground dark:border-border';
+        return 'bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-900 dark:text-gray-400 dark:border-gray-700';
       case 'archived':
-        return 'bg-warning/10 text-(--warning-soft-fg) border-warning/40 dark:text-(--warning-soft-fg) dark:border-warning/40';
+        return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-800';
       default:
-        return 'bg-muted text-muted-foreground border-border dark:bg-muted dark:text-muted-foreground dark:border-border';
+        return 'bg-gray-50 text-gray-600 border-gray-200 dark:bg-gray-900 dark:text-gray-400 dark:border-gray-700';
     }
   };
 
   const getTypeColor = (type: string) => {
     const colors = {
-      openai: 'bg-info/10 text-(--info-soft-fg) border-info/40 dark:text-(--info-soft-fg)',
-      anthropic: 'bg-primary/10 text-primary border-primary/40 dark:text-primary',
-      deepseek: 'bg-info/10 text-(--info-soft-fg) border-info/40 dark:text-(--info-soft-fg)',
-      doubao: 'bg-warning/10 text-(--warning-soft-fg) border-warning/40 dark:text-(--warning-soft-fg)',
-      kimi: 'bg-primary/10 text-primary border-primary/40 dark:text-primary',
+      openai: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400',
+      anthropic: 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-400',
+      deepseek: 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950 dark:text-indigo-400',
+      doubao: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-400',
+      kimi: 'bg-pink-50 text-pink-700 border-pink-200 dark:bg-pink-950 dark:text-pink-400',
     };
-    return colors[type as keyof typeof colors] || 'bg-muted text-muted-foreground border-border dark:bg-muted dark:text-muted-foreground';
+    return colors[type as keyof typeof colors] || 'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-900 dark:text-gray-400';
   };
 
   const style = {
@@ -402,7 +402,7 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
                   {hasChanges && (
                     <Badge
                       variant='outline'
-                      className='border-warning/40 bg-warning/10 dark:border-warning/40 text-(--warning-soft-fg) dark:text-(--warning-soft-fg)'
+                      className='border-amber-200 bg-amber-50 text-amber-600 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400'
                     >
                       {t('common.unsavedChanges', 'Unsaved changes')}
                     </Badge>
@@ -433,12 +433,12 @@ export function ChannelsBulkOrderingDialog({ open, onOpenChange }: ChannelsBulkO
           )}
         </div>
 
-        <DialogFooter className='flex-shrink-0'>
+        <DialogFooter pinned>
           <div className='flex w-full items-center justify-between'>
             <div className='text-muted-foreground text-xs'>
               {hasChanges && (
                 <span className='flex items-center gap-1'>
-                  <div className='bg-warning h-2 w-2 rounded-full'></div>
+                  <div className='h-2 w-2 rounded-full bg-amber-500'></div>
                   {t('common.unsavedChanges', 'You have unsaved changes')}
                 </span>
               )}

@@ -351,7 +351,7 @@ export function ChannelsModelApiFormatPolicyDialog({ open, onOpenChange, current
                             />
                             <p className='text-muted-foreground text-xs'>{t('channels.dialogs.modelApiFormatPolicy.allowOverridesHint')}</p>
                             {starved && (
-                              <div className='bg-warning/10 flex items-center gap-2 rounded-md px-3 py-2 text-sm text-(--warning-soft-fg)'>
+                              <div className='bg-amber-500/10 flex items-center gap-2 rounded-md px-3 py-2 text-sm text-amber-600'>
                                 <AlertTriangle className='h-4 w-4 shrink-0' />
                                 <span>
                                   {t('channels.dialogs.modelApiFormatPolicy.zeroEndpointWarning', {

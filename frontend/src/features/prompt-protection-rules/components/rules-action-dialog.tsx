@@ -313,9 +313,9 @@ export function RulesActionDialog() {
                         </span>
                       </div>
                     ) : previewMutation.data?.hasMatch ? (
-                      <div className='flex items-start gap-2 text-(--success-soft-fg) dark:text-(--success-soft-fg)'>
-                        <CheckCircle2 className='mt-0.5 h-4 w-4 flex-shrink-0' />
-                        <pre className='font-mono text-xs whitespace-pre-wrap'>{previewMutation.data.result}</pre>
+                      <div className='flex items-start gap-2 text-green-600 dark:text-green-400'>
+                        <CheckCircle2 className='h-4 w-4 mt-0.5 flex-shrink-0' />
+                        <pre className='whitespace-pre-wrap font-mono text-xs'>{previewMutation.data.result}</pre>
                       </div>
                     ) : previewMutation.isPending ? (
                       <div className='text-muted-foreground'>{t('common.loading')}</div>

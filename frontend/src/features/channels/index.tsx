@@ -5,7 +5,7 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Main } from '@/components/layout/main';
-import { Header } from '@/components/layout/header';
+import { PageHeader } from '@/components/layout/page-header';
 import { createColumns } from './components/channels-columns';
 import { ChannelsErrorBanner } from './components/channels-error-banner';
 import { ChannelsPrimaryButtons } from './components/channels-primary-buttons';
@@ -21,7 +21,6 @@ import {
   useChannelProbeData,
   type ChannelListColumnVisibility,
 } from './data/channels';
-import { useProvidersData } from '@/features/models/data/providers';
 import { useQuotaRoutingSettings } from '@/features/system/data/system';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/stores/authStore';
@@ -30,7 +29,6 @@ const ChannelsDialogs = lazy(() => import('./components/channels-dialogs').then(
 
 function ChannelsContent() {
   const { t } = useTranslation();
-  useProvidersData();
   const { channelPermissions, hasSystemScope } = usePermissions();
   const { data: quotaRoutingSettings } = useQuotaRoutingSettings();
   const queryClient = useQueryClient();
@@ -330,15 +328,7 @@ export default function ChannelsManagement() {
 
   return (
     <ChannelsProvider>
-      <Header fixed>
-        <div className='flex w-full flex-1 flex-col gap-2 md:flex-row md:items-center md:justify-between md:gap-0'>
-          <div className='min-w-0'>
-            <h2 className='text-lg font-normal tracking-tight'>{t('channels.title')}</h2>
-            <p className='text-sm text-muted-foreground'>{t('channels.description')}</p>
-          </div>
-          <ChannelsPrimaryButtons />
-        </div>
-      </Header>
+      <PageHeader title={t('channels.title')} description={t('channels.description')} actions={<ChannelsPrimaryButtons />} actionLayout='scroll' />
 
       <Main fixed className='py-2 sm:py-6 [--page-body-min-height:34rem]'>
         <ChannelsContent />

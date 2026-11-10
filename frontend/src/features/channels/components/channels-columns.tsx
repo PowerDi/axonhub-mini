@@ -182,15 +182,15 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
 
   return (
     <div className='flex items-center justify-center gap-1'>
-      <Button variant='ghost' size='icon-xs' onClick={handleEdit}>
+      <Button variant='ghost' size='icon-sm' onClick={handleEdit}>
         <IconEdit className='size-3.5' />
       </Button>
-      <Button variant='ghost' size='icon-xs' onClick={handleDefaultTest} disabled={testChannel.isPending}>
+      <Button variant='ghost' size='icon-sm' onClick={handleDefaultTest} disabled={testChannel.isPending}>
         <IconPlayerPlay className='size-3.5' />
       </Button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant='ghost' size='icon-xs' data-testid='row-actions'>
+          <Button variant='ghost' size='icon-sm' data-testid='row-actions'>
             <DotsHorizontalIcon className='size-3.5' />
           </Button>
         </DropdownMenuTrigger>
@@ -214,7 +214,7 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
             <DropdownMenuItem
               onClick={() => resetCircuitBreakers.mutate(channel.id)}
               disabled={resetCircuitBreakers.isPending}
-              className='text-(--warning-soft-fg)! hover:bg-warning/10!'
+              className='text-amber-600! hover:bg-amber-500/10!'
             >
               <IconAlertTriangle size={16} className='mr-2' />
               {t('channels.actions.resetCircuitBreakers')}
@@ -335,7 +335,7 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
                 setCurrentRow(channel);
                 setOpen('disabledAPIKeys');
               }}
-              className='text-(--warning-soft-fg)! hover:bg-warning/10!'
+              className='text-amber-600! hover:bg-amber-500/10!'
             >
               <IconKeyOff size={16} className='mr-2' />
               {t('channels.actions.disabledAPIKeys', { count: channel.disabledAPIKeys?.length ?? 0 })}
@@ -347,7 +347,7 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
                 setCurrentRow(channel);
                 setOpen('errorResolved');
               }}
-              className='text-(--success-soft-fg)! hover:bg-success/10!'
+              className='text-green-600! hover:bg-green-500/10!'
             >
               <IconCheck size={16} className='mr-2' />
               {t('channels.actions.markErrorResolved')}
@@ -359,7 +359,7 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
               setCurrentRow(channel);
               setOpen('archive');
             }}
-            className={isArchived ? 'text-(--success-soft-fg)! hover:bg-success/10!' : 'text-(--warning-soft-fg)! hover:bg-warning/10!'}
+            className={isArchived ? 'text-green-600! hover:bg-green-500/10!' : 'text-amber-600! hover:bg-amber-500/10!'}
           >
             {isArchived ? <IconCheck size={16} className='mr-2' /> : <IconArchive size={16} className='mr-2' />}
             {t(isArchived ? 'common.buttons.restore' : 'common.buttons.archive')}
@@ -369,7 +369,7 @@ const ActionCell = memo(({ row }: { row: Row<Channel> }) => {
               setCurrentRow(channel);
               setOpen('delete');
             }}
-            className='text-(--destructive-soft-fg)! hover:bg-destructive/10!'
+            className='text-destructive! hover:bg-destructive/10!'
           >
             <IconTrash size={16} className='mr-2' />
             {t('common.buttons.delete')}
@@ -386,7 +386,7 @@ const ExpandCell = ({ row }: { row: any }) => (
   <div className='flex justify-center'>
     <Button
       variant='ghost'
-      size='icon-xs'
+      size='icon-sm'
       onClick={(e) => {
         e.stopPropagation();
         row.toggleExpanded();
@@ -450,7 +450,7 @@ const NameCell = memo(({ row, globalDefaultMode }: { row: Row<Channel>; globalDe
       <div className='flex min-w-0 max-w-56 items-center gap-2'>
         {nameElement}
         {hasError && <IconAlertTriangle className='text-destructive h-4 w-4 shrink-0' />}
-        {hasDisabledKeys && <IconKeyOff className='h-4 w-4 shrink-0 text-(--warning-soft-fg)' />}
+        {hasDisabledKeys && <IconKeyOff className='h-4 w-4 shrink-0 text-amber-600' />}
         {quotaRoutingIndicator === 'exhausted' && (
           <>
             <IconCoin className='h-4 w-4 shrink-0 text-destructive' aria-hidden='true' />
@@ -484,7 +484,7 @@ const NameCell = memo(({ row, globalDefaultMode }: { row: Row<Channel>; globalDe
             </p>
           )}
           {hasDisabledKeys && (
-            <p className='text-sm text-(--warning-soft-fg)'>{t('channels.actions.disabledAPIKeys', { count: disabledKeysCount })}</p>
+            <p className='text-sm text-amber-600'>{t('channels.actions.disabledAPIKeys', { count: disabledKeysCount })}</p>
           )}
           {quotaRoutingIndicator === 'exhausted' && <p className='text-destructive text-sm'>{t('quota.status.exhausted')}</p>}
           {quotaRoutingIndicator === 'backpressure' && <p className='text-sm text-amber-500'>{t('quota.status.backpressure')}</p>}

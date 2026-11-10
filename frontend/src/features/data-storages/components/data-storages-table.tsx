@@ -49,7 +49,7 @@ export function DataStoragesTable({
   });
 
   return (
-    <div className='flex flex-1 flex-col gap-3 overflow-hidden'>
+    <div className='flex flex-1 flex-col overflow-hidden'>
       <div className='flex items-center gap-2'>
         <Input
           placeholder={t('dataStorages.filters.searchByName')}
@@ -63,16 +63,16 @@ export function DataStoragesTable({
         <Table className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className='group/row'>
+              <TableRow key={headerGroup.id} className='group/row border-0'>
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
+                  <TableHead key={header.id} className='text-muted-foreground border-0 text-xs font-semibold tracking-wider uppercase'>
                     {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody>
+          <TableBody className='space-y-1 !bg-[var(--table-background)] p-2'>
             {loading ? (
               <TableSkeleton rows={pageSize} columns={columns.length} />
             ) : table.getRowModel().rows?.length ? (
@@ -80,7 +80,7 @@ export function DataStoragesTable({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && 'selected'}
-                  className='group/row'
+                  className='group/row table-row-hover rounded-xl border-0 !bg-[var(--table-background)] transition-all duration-200 ease-in-out'
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} className='border-0 bg-inherit px-4 py-3'>
@@ -90,8 +90,8 @@ export function DataStoragesTable({
                 </TableRow>
               ))
             ) : (
-              <TableRow className='hover:bg-transparent'>
-                <TableCell colSpan={columns.length} className='h-24 text-center'>
+              <TableRow className='!bg-[var(--table-background)]'>
+                <TableCell colSpan={columns.length} className='h-24 !bg-[var(--table-background)] text-center'>
                   {t('common.noData')}
                 </TableCell>
               </TableRow>
@@ -100,7 +100,7 @@ export function DataStoragesTable({
         </Table>
       </div>
 
-      <div className='flex-shrink-0' data-testid='data-storages-pagination'>
+      <div className='mt-4 flex-shrink-0' data-testid='data-storages-pagination'>
         <ServerSidePagination
           pageInfo={pageInfo}
           pageSize={pageSize}

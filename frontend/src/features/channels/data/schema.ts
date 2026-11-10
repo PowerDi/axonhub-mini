@@ -217,6 +217,17 @@ export const modelMappingSchema = z.object({
 export type ModelMapping = z.infer<typeof modelMappingSchema>;
 
 // Model API Format Policy
+export const modelProtocolSchema = z.object({
+  model: z.string().min(1),
+  apiFormats: z.array(z.string().min(1)).min(1),
+  // Older channels do not persist this flag; those overrides remain active.
+  enabled: z
+    .boolean()
+    .nullish()
+    .transform((value) => value ?? true),
+});
+export type ModelProtocol = z.infer<typeof modelProtocolSchema>;
+
 export const modelApiFormatPolicySchema = z.object({
   model: z.string().min(1),
   exclude: z.array(z.string()).optional().nullable(),
@@ -385,6 +396,7 @@ export type ChannelResponseTimeout = z.infer<typeof channelResponseTimeoutSchema
 export const channelSettingsSchema = z.object({
   extraModelPrefix: z.string().optional(),
   modelMappings: z.array(modelMappingSchema).optional().nullable(),
+  modelProtocols: z.array(modelProtocolSchema).optional().nullable(),
   modelApiFormatPolicies: z.array(modelApiFormatPolicySchema).optional().nullable(),
   autoTrimedModelPrefixes: z.array(z.string()).optional().nullable(),
   hideOriginalModels: z.boolean().optional(),

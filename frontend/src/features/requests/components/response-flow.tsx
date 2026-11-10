@@ -1,13 +1,13 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CopyIcon } from 'lucide-react';
-import { copyTextToClipboard } from '@/lib/clipboard';
 import { Reasoning, ReasoningTrigger, ReasoningContent } from '@/components/ai-elements/reasoning';
 import { Response as UIResponse } from '@/components/ai-elements/response';
 import { Message, MessageContent } from '@/components/ai-elements/message';
 import { Tool, ToolHeader, ToolContent } from '@/components/ai-elements/tool';
 import { CodeBlock } from '@/components/ai-elements/code-block';
 import { Badge } from '@/components/ui/badge';
+import { copyTextToClipboard } from '@/lib/clipboard';
 
 import { parseResponse } from '../utils/response-parser';
 
@@ -52,8 +52,8 @@ export function ResponseFlow({ chunks, body, isLive, reasoningDurationMs }: Resp
     <div className='bg-muted/10 rounded-xl border p-6'>
       {isLive && (
         <div className='mb-4 flex justify-end'>
-          <Badge variant='success' className='gap-1.5 px-2 py-0.5'>
-            <span className='bg-success h-2 w-2 animate-pulse rounded-full' />
+          <Badge className='bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300 gap-1.5 border-none px-2 py-0.5'>
+            <span className='h-2 w-2 rounded-full bg-green-500 animate-pulse' />
             Live
           </Badge>
         </div>
@@ -106,7 +106,9 @@ export function ResponseFlow({ chunks, body, isLive, reasoningDurationMs }: Resp
                           Copy
                         </button>
                       </div>
-                      <CodeBlock code={JSON.stringify(parseJson(tc.function?.arguments || '{}'), null, 2)} language='json' />
+                      <div className='bg-muted/50 rounded-md'>
+                        <CodeBlock code={JSON.stringify(parseJson(tc.function?.arguments || '{}'), null, 2)} language='json' />
+                      </div>
                     </div>
                   </ToolContent>
                 </Tool>

@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
+import { IconCheck, IconMoon, IconSun, IconPalette } from '@tabler/icons-react';
+import { sansFonts, serifFonts, monoFonts, fontStacks, fontLabels } from '@/config/fonts';
 import { Type } from 'lucide-react';
-import { IconCheck, IconMoon, IconSun } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { useFont } from '@/context/font-context';
 import { useTheme } from '@/context/theme-context';
-import { sansFonts, serifFonts, monoFonts, fontStacks, fontLabels } from '@/config/fonts';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -19,13 +19,26 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 export function ThemeSwitch() {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, colorScheme, setColorScheme } = useTheme();
   const { sansFont, serifFont, monoFont, setSansFont, setSerifFont, setMonoFont } = useFont();
   const { t } = useTranslation();
 
+  const colorSchemes = [
+    { name: 'blue', label: t('theme.colors.blue'), color: 'bg-blue-500' },
+    { name: 'green', label: t('theme.colors.green'), color: 'bg-green-500' },
+    { name: 'purple', label: t('theme.colors.purple'), color: 'bg-purple-500' },
+    { name: 'orange', label: t('theme.colors.orange'), color: 'bg-orange-500' },
+    { name: 'red', label: t('theme.colors.red'), color: 'bg-red-500' },
+    { name: 'black', label: t('theme.colors.black'), color: 'bg-black' },
+    { name: 'cream', label: t('theme.colors.cream'), color: 'bg-amber-100' },
+    { name: 'claude', label: t('theme.colors.claude'), color: 'bg-amber-600' },
+    { name: 'starry', label: t('theme.colors.starry'), color: 'bg-blue-600' },
+    { name: 'mini', label: t('theme.colors.mini'), color: 'bg-blue-500' },
+  ] as const;
+
   /* Update theme-color meta tag when theme is updated */
   useEffect(() => {
-    const themeColor = theme === 'dark' ? '#0b0b0c' : '#ffffff';
+    const themeColor = theme === 'dark' ? '#020817' : '#fff';
     const metaThemeColor = document.querySelector("meta[name='theme-color']");
     if (metaThemeColor) metaThemeColor.setAttribute('content', themeColor);
   }, [theme]);
@@ -51,6 +64,25 @@ export function ThemeSwitch() {
           {t('theme.system')}
           <IconCheck size={14} className={cn('ml-auto', theme !== 'system' && 'hidden')} />
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>
+            <IconPalette size={14} className='mr-2' />
+            {t('theme.colorScheme')}
+            <div className={cn('ml-auto h-3 w-3 rounded-full', colorSchemes.find((s) => s.name === colorScheme)?.color || 'bg-blue-500')} />
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            {colorSchemes.map((scheme) => (
+              <DropdownMenuItem key={scheme.name} onClick={() => setColorScheme(scheme.name)} className='flex items-center justify-between'>
+                <div className='flex items-center'>
+                  <div className={cn('mr-2 h-3 w-3 rounded-full', scheme.color)} />
+                  {scheme.label}
+                </div>
+                <IconCheck size={14} className={cn('ml-auto', colorScheme !== scheme.name && 'hidden')} />
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
         <DropdownMenuSeparator />
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>

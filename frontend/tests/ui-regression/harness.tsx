@@ -1,3 +1,7 @@
+import { AuthenticatedLayout } from '@/authenticated-layout';
+import { FontProvider } from '@/context/font-context';
+import { ChannelsModelMappingDialog } from '@/features/channels/components/channels-model-mapping-dialog';
+import { Button } from '@/components/ui/button';
 import { createRootRoute, createRouter, createMemoryHistory, RouterProvider } from '@tanstack/react-router';
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -56,6 +60,21 @@ function ChannelTableFixture() {
   </div>;
 }
 
+function NativeUIFixture() {
+  const [panel, setPanel] = useState<'aliases' | 'channel' | null>(null);
+  return <AuthenticatedLayout>
+    <main className='p-6'>
+      <h1>Native interface acceptance</h1>
+      <div className='flex gap-3 py-4'>
+        <Button data-testid='open-alias-settings' onClick={() => setPanel('aliases')}>Model aliases</Button>
+        <Button data-testid='open-channel-settings' onClick={() => setPanel('channel')}>Channel settings</Button>
+      </div>
+      <ChannelsModelMappingDialog currentRow={currentChannel} open={panel === 'aliases'} onOpenChange={(open) => { if (!open) setPanel(null); }} />
+      <ChannelsActionDialog currentRow={currentChannel} open={panel === 'channel'} onOpenChange={(open) => { if (!open) setPanel(null); }} />
+    </main>
+  </AuthenticatedLayout>;
+}
+
 function Harness() {
   const [open, setOpen] = useState(true);
   const [submitted, setSubmitted] = useState<unknown>(null);
@@ -71,6 +90,7 @@ function Harness() {
     {scenario === 'channel-edit' && <ChannelsActionDialog currentRow={currentChannel} open={open} onOpenChange={setOpen} />}
     {scenario === 'profiles' && <ApiKeyProfilesDialog open={open} onOpenChange={setOpen} initialData={{ activeProfile: profile.name, profiles: [apiKeyProfileSchema.parse(profile)] }} onSubmit={(value) => { setSubmitted(value); setOpen(false); }} />}
     {scenario === 'template' && <ApiKeyCreateTemplateDialog open={open} onOpenChange={setOpen} />}
+    {scenario === 'native-ui' && <NativeUIFixture />}
     {scenario === 'channels-table' && <ChannelTableFixture />}
     {scenario === 'schemas' && <output data-testid='schema-regression'>{JSON.stringify(schemaResults)}</output>}
     {scenario === 'analytics' && <div className='p-6 space-y-6'>
@@ -85,5 +105,5 @@ function Harness() {
 const router = createRouter({ routeTree: createRootRoute({ component: Harness }), history: createMemoryHistory({ initialEntries: ['/'] }) });
 
 createRoot(document.getElementById('root')!).render(
-  <ThemeProvider><QueryClientProvider client={queryClient}><ChannelsProvider><ApiKeysProvider><RouterProvider router={router} /></ApiKeysProvider></ChannelsProvider></QueryClientProvider></ThemeProvider>
+  <ThemeProvider><FontProvider><QueryClientProvider client={queryClient}><ChannelsProvider><ApiKeysProvider><RouterProvider router={router} /></ApiKeysProvider></ChannelsProvider></QueryClientProvider></FontProvider></ThemeProvider>
 );

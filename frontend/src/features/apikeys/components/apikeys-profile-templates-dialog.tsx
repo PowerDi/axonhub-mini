@@ -209,7 +209,7 @@ export function ApiKeysProfileTemplatesDialog({ open, onOpenChange }: ApiKeysPro
             <AlertDialogAction
               onClick={confirmDelete}
               disabled={deleteTemplate.isPending}
-              className='bg-destructive/10 hover:bg-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 text-(--destructive-soft-fg)'
+              className='bg-destructive/10 hover:bg-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 text-destructive'
             >
               {deleteTemplate.isPending ? t('common.buttons.saving') : t('apikeys.templates.deleteButton')}
             </AlertDialogAction>

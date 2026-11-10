@@ -38,9 +38,9 @@ export const ChannelLimiterCell = memo(({ stats }: ChannelLimiterCellProps) => {
           <span
             className={cn(
               'text-xs tabular-nums',
-              isFull && 'text-(--destructive-soft-fg)',
-              isWarn && 'text-(--warning-soft-fg)',
-              !isFull && !isWarn && 'text-(--info-soft-fg)'
+              isFull && 'text-red-500',
+              isWarn && 'text-yellow-600',
+              !isFull && !isWarn && 'text-blue-500'
             )}
           >
             {inFlight}/{capacity}
@@ -49,8 +49,8 @@ export const ChannelLimiterCell = memo(({ stats }: ChannelLimiterCellProps) => {
             <span
               className={cn(
                 'text-muted-foreground text-[10px] tabular-nums',
-                queueIsFull && 'text-(--destructive-soft-fg)',
-                queueIsBusy && 'text-(--warning-soft-fg)'
+                queueIsFull && 'text-red-500',
+                queueIsBusy && 'text-yellow-600'
               )}
             >
               Q {waiting}/{queueSize}

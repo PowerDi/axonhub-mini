@@ -205,6 +205,7 @@ input ChannelProviderQuotaSettingsInput {
 type ChannelSettings {
   extraModelPrefix: String
   modelMappings: [ModelMapping!]
+  modelProtocols: [ModelProtocol!]
   modelApiFormatPolicies: [ModelAPIFormatPolicy!]
   autoTrimedModelPrefixes: [String!]
   hideOriginalModels: Boolean
@@ -311,6 +312,18 @@ input ModelMappingInput {
   to: String!
 }
 
+type ModelProtocol {
+  model: String!
+  apiFormats: [String!]!
+  enabled: Boolean
+}
+
+input ModelProtocolInput {
+  model: String!
+  apiFormats: [String!]!
+  enabled: Boolean
+}
+
 type ModelAPIFormatPolicy {
   model: String!
   exclude: [String!]
@@ -326,6 +339,7 @@ input ModelAPIFormatPolicyInput {
 input ChannelSettingsInput {
   extraModelPrefix: String
   modelMappings: [ModelMappingInput!]
+  modelProtocols: [ModelProtocolInput!]
   modelApiFormatPolicies: [ModelAPIFormatPolicyInput!]
   autoTrimedModelPrefixes: [String!]
   hideOriginalModels: Boolean
@@ -374,6 +388,7 @@ input UpdateChannelSettingsInput {
   apiKeyRoundRobinSwitchAfter: Int
   providerQuota: ChannelProviderQuotaSettingsInput
   quotaRoutingMode: ChannelQuotaRoutingMode
+  modelProtocols: [ModelProtocolInput!]
   modelApiFormatPolicies: [ModelAPIFormatPolicyInput!]
   hammerRetry: ChannelHammerRetryInput
   reasoningFilter: Boolean

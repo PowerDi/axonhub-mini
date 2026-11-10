@@ -44,6 +44,8 @@ import { TagsAutocompleteInput } from '@/components/ui/tags-autocomplete-input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AutoComplete } from '@/components/auto-complete';
+import { ConfirmDialog } from '@/components/confirm-dialog';
+import { ApiKeyStrategyFields, type APIKeyStrategyValue } from './channel-api-key-strategy';
 import { SelectDropdown } from '@/components/select-dropdown';
 import {
   usePassThroughSettings,
@@ -54,7 +56,7 @@ import {
   useUserAgentPassThroughSettings,
 } from '@/features/system/data/system';
 import { isSuggestedModel } from '../../models/data/model-suggestions';
-import { antigravityOAuthExchange, antigravityOAuthStart } from '../data/antigravity';
+import { ANTIGRAVITY_BASE_URLS, antigravityOAuthExchange, antigravityOAuthStart } from '../data/antigravity';
 import {
   useCreateChannel,
   useDuplicateChannel,
@@ -86,6 +88,7 @@ import {
 } from '../data/config_providers';
 import {
   buildCodexResponsesEndpoints,
+  getInitialApiFormatForChannel,
   getCodexResponsesWebSocketState,
   getCodexResponsesWebSocketURL,
   hasCodexResponsesWebSocketOverrideReplacement,
@@ -108,10 +111,12 @@ import { xaiDecodeSSO, xaiOAuthExchange, xaiOAuthStart } from '../data/xai';
 import { ProxyConfig, useOAuthFlow } from '../hooks/use-oauth-flow';
 import { mergeChannelSettingsForUpdate } from '../utils/merge';
 import { isValidModelPattern, matchesModelPattern } from '../utils/pattern';
-import { ApiKeyStrategyFields, type APIKeyStrategyValue } from './channel-api-key-strategy';
 import { ProxyType } from './channels-proxy-dialog';
 import { CopilotDeviceFlow } from './copilot-device-flow';
 import { ManualModelBadge } from './manual-model-badge';
+import { ChannelModelAliases } from './channel-model-preview';
+import { filterChannelModelGroups, groupChannelModelEntries } from '../data/channel-model-aliases';
+import { useChannelModelPreview } from '../data/use-channel-model-preview';
 
 interface Props {
   currentRow?: Channel;
@@ -119,6 +124,7 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   showModelsPanel?: boolean;
+  onOpenModelMapping?: () => void;
 }
 
 const MAX_MODELS_DISPLAY = 2;
@@ -417,8 +423,8 @@ const SupportedModelItem = memo(({ model, isManual, onRemove }: { model: string;
     <Button
       type='button'
       variant='ghost'
-      size='icon-xs'
-      className='hover:bg-destructive/10 shrink-0 text-(--destructive-soft-fg)'
+      size='icon-sm'
+      className='hover:bg-destructive/10 shrink-0 text-destructive'
       onClick={onRemove}
     >
       <X className='h-3 w-3' />
@@ -475,6 +481,20 @@ function extractCodexAuthJSONText(apiKey: string | null | undefined): string | u
   } catch {
     return undefined;
   }
+}
+
+type AuthMode = 'official' | 'auth-json' | 'third-party';
+
+// Codex and Claude Code rows derive these values from stored credentials. The
+// form state starts from them, so opening a saved channel is not an unsaved edit.
+function getSavedAuthMode(row: Channel | undefined): AuthMode | undefined {
+  if (row?.type === 'codex') return isOfficialCodexChannel(row) ? 'official' : 'third-party';
+  if (row?.type === 'claudecode') return isOfficialClaudeCodeChannel(row) ? 'official' : 'third-party';
+  return undefined;
+}
+
+function getSavedCodexAuthJSONText(row: Channel | undefined): string {
+  return row?.type === 'codex' ? extractCodexAuthJSONText(row.credentials?.apiKey ?? undefined) || '' : '';
 }
 
 // Codex forms edit only an HTTP(S) Base URL: official and auth.json rows show the
@@ -560,7 +580,14 @@ function getCodexThirdPartyCredentialError(channel: {
   return undefined;
 }
 
-export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpenChange, showModelsPanel = false }: Props) {
+export function ChannelsActionDialog({
+  currentRow,
+  duplicateFromRow,
+  open,
+  onOpenChange,
+  showModelsPanel = false,
+  onOpenModelMapping,
+}: Props) {
   const { t } = useTranslation();
   const isEdit = !!currentRow;
   const isDuplicate = !!duplicateFromRow && !isEdit;
@@ -574,7 +601,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const { data: allTags = [], isLoading: isLoadingTags } = useAllChannelTags();
   const { data: proxyPresets = [] } = useProxyPresets();
   const saveProxyPreset = useSaveProxyPreset();
-  const { hasSystemScope } = usePermissions();
+  const { hasSystemScope, channelPermissions } = usePermissions();
   const { data: quotaRoutingSettings } = useQuotaRoutingSettings();
   const canReadSystemSettings = hasSystemScope('read_settings');
   const { data: userAgentPassThroughSettings } = useUserAgentPassThroughSettings({ enabled: canReadSystemSettings });
@@ -593,6 +620,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   // Expandable panel states
   const [showFetchedModelsPanel, setShowFetchedModelsPanel] = useState(false);
   const [showSupportedModelsPanel, setShowSupportedModelsPanel] = useState(false);
+  const [confirmOpenModelMapping, setConfirmOpenModelMapping] = useState(false);
+  const modelPreview = useChannelModelPreview(supportedModels, initialRow?.settings, open && showSupportedModelsPanel);
   const [fetchedModelsSearch, setFetchedModelsSearch] = useState('');
   const [supportedModelsSearch, setSupportedModelsSearch] = useState('');
   const [selectedFetchedModels, setSelectedFetchedModels] = useState<string[]>([]);
@@ -611,8 +640,8 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const [confirmRemoveSelectedOpen, setConfirmRemoveSelectedOpen] = useState(false);
   const [confirmRemoveKey, setConfirmRemoveKey] = useState<string | null>(null);
   const [confirmDisableKey, setConfirmDisableKey] = useState<string | null>(null);
-  const [authMode, setAuthMode] = useState<'official' | 'auth-json' | 'third-party'>('official');
-  const [codexAuthJSONText, setCodexAuthJSONText] = useState('');
+  const [authMode, setAuthMode] = useState<AuthMode>(() => getSavedAuthMode(initialRow) ?? 'official');
+  const [codexAuthJSONText, setCodexAuthJSONText] = useState(() => getSavedCodexAuthJSONText(initialRow));
   const [xaiSSOToken, setXaiSSOToken] = useState('');
   const [isImportingXAISSO, setIsImportingXAISSO] = useState(false);
   const [patternError, setPatternError] = useState<string | null>(null);
@@ -750,7 +779,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     exchangeFn: codexOAuthExchange,
     proxyConfig,
     onSuccess: (credentials) => {
-      form.setValue('credentials.apiKey', credentials);
+      form.setValue('credentials.apiKey', credentials, { shouldDirty: true });
     },
   });
 
@@ -759,7 +788,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     exchangeFn: claudecodeOAuthExchange,
     proxyConfig,
     onSuccess: (credentials) => {
-      form.setValue('credentials.apiKey', credentials);
+      form.setValue('credentials.apiKey', credentials, { shouldDirty: true });
     },
   });
 
@@ -768,7 +797,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     exchangeFn: xaiOAuthExchange,
     proxyConfig,
     onSuccess: (credentials) => {
-      form.setValue('credentials.apiKey', credentials);
+      form.setValue('credentials.apiKey', credentials, { shouldDirty: true });
     },
   });
 
@@ -777,7 +806,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     exchangeFn: antigravityOAuthExchange,
     proxyConfig,
     onSuccess: (credentials) => {
-      form.setValue('credentials.apiKey', credentials);
+      form.setValue('credentials.apiKey', credentials, { shouldDirty: true });
     },
   });
   const { reset: resetCodexOAuth } = codexOAuth;
@@ -834,12 +863,9 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     setUseKimiCoding(initialRow.type === 'moonshot_coding');
 
     // Detect authMode for codex and claudecode
-    if (initialRow.type === 'codex') {
-      setAuthMode(isOfficialCodexChannel(initialRow) ? 'official' : 'third-party');
-      setCodexAuthJSONText(extractCodexAuthJSONText(initialRow.credentials?.apiKey) || '');
-    } else if (initialRow.type === 'claudecode') {
-      setAuthMode(isOfficialClaudeCodeChannel(initialRow) ? 'official' : 'third-party');
-    }
+    const savedAuthMode = getSavedAuthMode(initialRow);
+    if (savedAuthMode) setAuthMode(savedAuthMode);
+    if (initialRow.type === 'codex') setCodexAuthJSONText(getSavedCodexAuthJSONText(initialRow));
   }, [initialRow]);
 
   useEffect(() => {
@@ -1073,6 +1099,24 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               settings: undefined,
             },
   });
+  const { dirtyFields } = form.formState;
+  const hasFormChanges = Object.keys(dirtyFields).length > 0;
+
+  // These controls live outside react-hook-form, but navigating away must still
+  // warn before discarding their edits.
+  const localSettingsSnapshot = JSON.stringify({
+    supportedModels, manualModels, proxyType, proxyUrl, proxyUsername, proxyPassword,
+    passThroughUserAgent, passThroughBody, quotaRoutingMode, retryableStatusCodesText,
+    retryableErrorPatternsText, maxSingleChannelRetriesText, responseTimeoutMode,
+    streamFirstEventTimeoutText, nonStreamResponseTimeoutText, apiKeyStrategy,
+    apiKeyRoundRobinSwitchAfter, authMode, codexAuthJSONText, xaiSSOToken,
+    selectedProvider, selectedApiFormat, responsesTransport, codexResponsesWebSocket,
+    useGeminiVertex, useAnthropicAws, useKimiCoding,
+  });
+  const initialLocalSettings = useRef(localSettingsSnapshot);
+  useEffect(() => {
+    if (!open) initialLocalSettings.current = localSettingsSnapshot;
+  }, [open, localSettingsSnapshot]);
 
   const vertexApiKeyFields = useFieldArray({ control: form.control, name: 'credentials.vertexApiKeys' });
   const apiKeys = form.watch('credentials.apiKeys');
@@ -1224,11 +1268,11 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
         if (!isEdit) {
           setFetchedModels([]);
           setUseFetchedModels(false);
-          // Set default Base URL only if empty
-          const baseURL = getDefaultBaseURL('antigravity');
-          const currentURL = form.getValues('baseURL');
-          if (baseURL && !isDuplicate && (!currentURL || currentURL === '')) {
-            form.setValue('baseURL', baseURL);
+          if (!isDuplicate) {
+            const baseURL = getDefaultBaseURL('antigravity');
+            if (baseURL) {
+              form.resetField('baseURL', { defaultValue: baseURL });
+            }
           }
         }
         return;
@@ -1511,7 +1555,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
             </Button>
           </div>
 
-          <p className='mt-2 text-xs text-(--warning-soft-fg)'>{t('channels.dialogs.proxy.oauthHint')}</p>
+          <p className='mt-2 text-xs text-amber-600'>{t('channels.dialogs.proxy.oauthHint')}</p>
           <p className='text-muted-foreground mt-2 text-xs'>{description}</p>
         </div>
       </div>
@@ -2187,14 +2231,12 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
     return supportedModels.slice(0, MAX_MODELS_DISPLAY);
   }, [supportedModels]);
 
-  // Filtered supported models based on search
+  const modelGroups = useMemo(() => groupChannelModelEntries(supportedModels, modelPreview.data ?? []), [supportedModels, modelPreview.data]);
+
+  // Searching an alias retains its upstream model and all sibling aliases.
   const filteredSupportedModels = useMemo(() => {
-    if (!debouncedSupportedModelsSearch.trim()) {
-      return supportedModels;
-    }
-    const search = debouncedSupportedModelsSearch.toLowerCase();
-    return supportedModels.filter((model) => model.toLowerCase().includes(search));
-  }, [supportedModels, debouncedSupportedModelsSearch]);
+    return filterChannelModelGroups(modelGroups, debouncedSupportedModelsSearch);
+  }, [modelGroups, debouncedSupportedModelsSearch]);
 
   // Virtual scrolling for fetched models
   const fetchedModelsVirtualizer = useVirtualizer({
@@ -2208,86 +2250,106 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
   const supportedModelsVirtualizer = useVirtualizer({
     count: filteredSupportedModels.length,
     getScrollElement: () => supportedModelsParentRef.current,
-    estimateSize: () => 40,
+    estimateSize: () => 80,
+    getItemKey: (index) => filteredSupportedModels[index].model,
     overscan: 5,
   });
+
+  // Restores every edit to the saved row; used when closing and when switching
+  // to alias settings after the user agreed to discard unsaved changes.
+  const resetDialogState = () => {
+    form.reset();
+    setAuthMode(getSavedAuthMode(initialRow) ?? 'official');
+    setNewModel('');
+    setSupportedModels(initialRow?.supportedModels || []);
+    setManualModels(initialRow?.manualModels || []);
+    setSelectedDefaultModels([]);
+    setFetchedModels([]);
+    setUseFetchedModels(false);
+    // Reset expandable panel states
+    setShowFetchedModelsPanel(false);
+    setShowSupportedModelsPanel(false);
+    setShowApiKeysPanel(false);
+    setFetchedModelsSearch('');
+    setSupportedModelsSearch('');
+    setSelectedFetchedModels([]);
+    setShowNotAddedModelsOnly(false);
+    setApplyPatternFilter(false);
+    setSupportedModelsExpanded(false);
+    setApiKeysSearch('');
+    setSelectedKeysToRemove(new Set());
+    setConfirmRemoveSelectedOpen(false);
+    setConfirmRemoveKey(null);
+    setConfirmDisableKey(null);
+    setShowApiKey(false);
+    // Reset proxy state
+    if (initialRow?.settings?.proxy?.type) {
+      setProxyType(initialRow.settings.proxy.type as ProxyType);
+    } else {
+      setProxyType(ProxyType.ENVIRONMENT);
+    }
+    setProxyUrl(initialRow?.settings?.proxy?.url || '');
+    setProxyUsername(initialRow?.settings?.proxy?.username || '');
+    setProxyPassword(initialRow?.settings?.proxy?.password || '');
+    setPassThroughUserAgent(initialRow?.settings?.passThroughUserAgent ?? null);
+    setPassThroughBody(initialRow?.settings?.passThroughBody ?? null);
+    setQuotaRoutingMode(recallQuotaRoutingMode(initialRow?.settings));
+    setRetryableStatusCodesText(formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes));
+    setRetryableErrorPatternsText(formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns));
+    setHammerRetryEnabled(Boolean(initialRow?.settings?.hammerRetry));
+    setHammerRetryDelayMs(initialRow?.settings?.hammerRetry?.retryDelayMs?.toString() ?? '');
+    setHammerMaxRetries(initialRow?.settings?.hammerRetry?.maxRetries?.toString() ?? '');
+    setHammerMaxDurationMs(initialRow?.settings?.hammerRetry?.maxDurationMs?.toString() ?? '');
+    setHammerErrorPatternsText(formatRetryableErrorPatterns(initialRow?.settings?.hammerRetry?.errorPatterns));
+    setHammerConsecutiveHardFailures(initialRow?.settings?.hammerRetry?.consecutiveHardFailureLimit?.toString() ?? '');
+    setMaxSingleChannelRetriesText(formatMaxSingleChannelRetries(initialRow?.settings?.maxSingleChannelRetries));
+    setApiKeyStrategy(initialRow?.settings?.apiKeyStrategy ?? 'sticky');
+    setApiKeyRoundRobinSwitchAfter(initialRow?.settings?.apiKeyRoundRobinSwitchAfter ?? 1);
+
+    setResponseTimeoutMode(initialRow?.settings?.responseTimeout?.mode === 'CUSTOM' ? 'CUSTOM' : 'INHERIT');
+    setStreamFirstEventTimeoutText(
+      formatResponseTimeoutSeconds(initialRow?.settings?.responseTimeout?.streamFirstEventTimeoutSeconds)
+    );
+    setNonStreamResponseTimeoutText(
+      formatResponseTimeoutSeconds(initialRow?.settings?.responseTimeout?.nonStreamResponseTimeoutSeconds)
+    );
+    // Reset provider and API format state
+    if (initialRow) {
+      setSelectedProvider(getProviderFromChannelType(initialRow.type) || 'openai');
+      setSelectedApiFormat(
+        getInitialApiFormatForChannel(
+          initialRow.type,
+          CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || OPENAI_CHAT_COMPLETIONS,
+          initialRow.settings?.modelProtocols
+        )
+      );
+      setResponsesTransport(getResponsesTransportFromChannel(initialRow));
+      setUseGeminiVertex(initialRow.type === 'gemini_vertex');
+      setUseAnthropicAws(initialRow.type === 'anthropic_aws');
+      setUseKimiCoding(initialRow.type === 'moonshot_coding');
+    } else {
+      setSelectedProvider('openai');
+      setSelectedApiFormat(OPENAI_CHAT_COMPLETIONS);
+      setResponsesTransport('http');
+      setUseGeminiVertex(false);
+      setUseAnthropicAws(false);
+      setUseKimiCoding(false);
+    }
+  };
+
+  // A controlled open change does not run the Dialog close handler, so discard
+  // edits explicitly before switching to alias settings.
+  const openModelMapping = () => {
+    resetDialogState();
+    onOpenModelMapping?.();
+  };
 
   return (
     <>
       <Dialog
         open={open}
         onOpenChange={(state) => {
-          if (!state) {
-            form.reset();
-            setSupportedModels(initialRow?.supportedModels || []);
-            setManualModels(initialRow?.manualModels || []);
-            setSelectedDefaultModels([]);
-            setFetchedModels([]);
-            setUseFetchedModels(false);
-            // Reset expandable panel states
-            setShowFetchedModelsPanel(false);
-            setShowSupportedModelsPanel(false);
-            setShowApiKeysPanel(false);
-            setFetchedModelsSearch('');
-            setSupportedModelsSearch('');
-            setSelectedFetchedModels([]);
-            setShowNotAddedModelsOnly(false);
-            setApplyPatternFilter(false);
-            setSupportedModelsExpanded(false);
-            setApiKeysSearch('');
-            setSelectedKeysToRemove(new Set());
-            setConfirmRemoveSelectedOpen(false);
-            setConfirmRemoveKey(null);
-            setConfirmDisableKey(null);
-            setShowApiKey(false);
-            // Reset proxy state
-            if (initialRow?.settings?.proxy?.type) {
-              setProxyType(initialRow.settings.proxy.type as ProxyType);
-            } else {
-              setProxyType(ProxyType.ENVIRONMENT);
-            }
-            setProxyUrl(initialRow?.settings?.proxy?.url || '');
-            setProxyUsername(initialRow?.settings?.proxy?.username || '');
-            setProxyPassword(initialRow?.settings?.proxy?.password || '');
-            setPassThroughUserAgent(initialRow?.settings?.passThroughUserAgent ?? null);
-            setPassThroughBody(initialRow?.settings?.passThroughBody ?? null);
-            setQuotaRoutingMode(recallQuotaRoutingMode(initialRow?.settings));
-            setRetryableStatusCodesText(formatRetryableStatusCodes(initialRow?.settings?.retryableStatusCodes));
-            setRetryableErrorPatternsText(formatRetryableErrorPatterns(initialRow?.settings?.retryableErrorPatterns));
-            setHammerRetryEnabled(Boolean(initialRow?.settings?.hammerRetry));
-            setHammerRetryDelayMs(initialRow?.settings?.hammerRetry?.retryDelayMs?.toString() ?? '');
-            setHammerMaxRetries(initialRow?.settings?.hammerRetry?.maxRetries?.toString() ?? '');
-            setHammerMaxDurationMs(initialRow?.settings?.hammerRetry?.maxDurationMs?.toString() ?? '');
-            setHammerErrorPatternsText(formatRetryableErrorPatterns(initialRow?.settings?.hammerRetry?.errorPatterns));
-            setHammerConsecutiveHardFailures(initialRow?.settings?.hammerRetry?.consecutiveHardFailureLimit?.toString() ?? '');
-            setMaxSingleChannelRetriesText(formatMaxSingleChannelRetries(initialRow?.settings?.maxSingleChannelRetries));
-            setApiKeyStrategy(initialRow?.settings?.apiKeyStrategy ?? 'sticky');
-            setApiKeyRoundRobinSwitchAfter(initialRow?.settings?.apiKeyRoundRobinSwitchAfter ?? 1);
-
-            setResponseTimeoutMode(initialRow?.settings?.responseTimeout?.mode === 'CUSTOM' ? 'CUSTOM' : 'INHERIT');
-            setStreamFirstEventTimeoutText(
-              formatResponseTimeoutSeconds(initialRow?.settings?.responseTimeout?.streamFirstEventTimeoutSeconds)
-            );
-            setNonStreamResponseTimeoutText(
-              formatResponseTimeoutSeconds(initialRow?.settings?.responseTimeout?.nonStreamResponseTimeoutSeconds)
-            );
-            // Reset provider and API format state
-            if (initialRow) {
-              setSelectedProvider(getProviderFromChannelType(initialRow.type) || 'openai');
-              setSelectedApiFormat(CHANNEL_CONFIGS[initialRow.type as ChannelType]?.apiFormat || OPENAI_CHAT_COMPLETIONS);
-              setResponsesTransport(getResponsesTransportFromChannel(initialRow));
-              setUseGeminiVertex(initialRow.type === 'gemini_vertex');
-              setUseAnthropicAws(initialRow.type === 'anthropic_aws');
-              setUseKimiCoding(initialRow.type === 'moonshot_coding');
-            } else {
-              setSelectedProvider('openai');
-              setSelectedApiFormat(OPENAI_CHAT_COMPLETIONS);
-              setResponsesTransport('http');
-              setUseGeminiVertex(false);
-              setUseAnthropicAws(false);
-              setUseKimiCoding(false);
-            }
-          }
+          if (!state) resetDialogState();
           onOpenChange(state);
         }}
       >
@@ -2557,7 +2619,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                   </Button>
                                 </div>
 
-                                <p className='mt-2 text-xs text-(--warning-soft-fg)'>{t('channels.dialogs.proxy.oauthHint')}</p>
+                                <p className='mt-2 text-xs text-amber-600'>{t('channels.dialogs.proxy.oauthHint')}</p>
                                 <p className='text-muted-foreground mt-2 text-xs'>
                                   {t('channels.dialogs.fields.apiFormat.antigravity.description')}
                                 </p>
@@ -2797,30 +2859,47 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                       <FormField
                         control={form.control}
                         name='baseURL'
-                        render={({ field, fieldState }) => (
-                          <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
-                            <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
-                              {t('channels.dialogs.fields.baseURL.label')}
-                            </FormLabel>
-                            <div className='space-y-1 md:col-span-6'>
-                              <Input
-                                placeholder={baseURLPlaceholder}
-                                autoComplete='new-password'
-                                data-form-type='other'
-                                aria-invalid={!!fieldState.error}
-                                data-testid='channel-base-url-input'
-                                disabled={
-                                  (isCodexType && authMode !== 'third-party') ||
-                                  (isClaudeCodeType && authMode === 'official') ||
-                                  isXAISubscriptionType ||
-                                  selectedProvider === 'antigravity'
-                                }
-                                {...field}
-                              />
-                              <FormMessage />
-                            </div>
-                          </FormItem>
-                        )}
+                        render={({ field, fieldState }) => {
+                          const antigravityItems = ANTIGRAVITY_BASE_URLS.some((item) => item.value === field.value)
+                            ? ANTIGRAVITY_BASE_URLS
+                            : field.value
+                              ? [...ANTIGRAVITY_BASE_URLS, { label: field.value, value: field.value }]
+                              : ANTIGRAVITY_BASE_URLS;
+
+                          return (
+                            <FormItem className='grid grid-cols-1 items-start gap-x-6 gap-y-2 md:grid-cols-8'>
+                              <FormLabel className='pt-2 font-medium md:col-span-2 md:text-right'>
+                                {t('channels.dialogs.fields.baseURL.label')}
+                              </FormLabel>
+                              <div className='space-y-1 md:col-span-6'>
+                                {selectedProvider === 'antigravity' ? (
+                                  <SelectDropdown
+                                    defaultValue={field.value || getDefaultBaseURL('antigravity')}
+                                    onValueChange={field.onChange}
+                                    items={antigravityItems}
+                                    isControlled
+                                    data-testid='channel-base-url-select'
+                                  />
+                                ) : (
+                                  <Input
+                                    placeholder={baseURLPlaceholder}
+                                    autoComplete='new-password'
+                                    data-form-type='other'
+                                    aria-invalid={!!fieldState.error}
+                                    data-testid='channel-base-url-input'
+                                    disabled={
+                                      (isCodexType && authMode !== 'third-party') ||
+                                      (isClaudeCodeType && authMode === 'official') ||
+                                      isXAISubscriptionType
+                                    }
+                                    {...field}
+                                  />
+                                )}
+                                <FormMessage />
+                              </div>
+                            </FormItem>
+                          );
+                        }}
                       />
 
                       {isGeminiVertex && (
@@ -3289,7 +3368,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                               <Button
                                 type='button'
                                 variant='ghost'
-                                size='xs'
+                                size='sm'
                                 onClick={() => {
                                   setShowSupportedModelsPanel(true);
                                   setShowFetchedModelsPanel(false);
@@ -3516,7 +3595,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                             </SelectContent>
                           </Select>
                           {passThroughBody === true && (
-                            <p className='text-xs text-(--warning-soft-fg) dark:text-(--warning-soft-fg)'>
+                            <p className='text-xs text-amber-600 dark:text-amber-600'>
                               {t('channels.dialogs.bodyPassThrough.warning')}
                             </p>
                           )}
@@ -3543,7 +3622,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                         </div>
                         <div className='space-y-2 md:col-span-6'>
                           <div className='flex items-center gap-2'>
-                            <Switch checked={hammerRetryEnabled} onCheckedChange={setHammerRetryEnabled} />
+                            <Switch data-testid='channel-hammer-retry-switch' checked={hammerRetryEnabled} onCheckedChange={setHammerRetryEnabled} />
                             <span className='text-muted-foreground text-sm'>
                               {hammerRetryEnabled ? t('channels.dialogs.hammerRetry.enabled') : t('channels.dialogs.hammerRetry.disabled')}
                             </span>
@@ -3631,7 +3710,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                 />
                                 <p className='text-muted-foreground text-xs'>{t('channels.dialogs.hammerRetry.errorPatterns.hint')}</p>
                               </div>
-                              <p className='text-xs text-(--warning-soft-fg) dark:text-(--warning-soft-fg)'>
+                              <p className='text-xs text-amber-600 dark:text-amber-600'>
                                 {t('channels.dialogs.hammerRetry.warning')}
                               </p>
                             </div>
@@ -3873,7 +3952,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               >
                 <div className='mb-3 flex items-center justify-between'>
                   <h3 className='text-sm font-semibold'>{t('channels.dialogs.fields.supportedModels.fetchedModelsLabel')}</h3>
-                  <Button type='button' variant='ghost' size='icon-xs' onClick={closeFetchedModelsPanel}>
+                  <Button type='button' variant='ghost' size='icon-sm' onClick={closeFetchedModelsPanel}>
                     <ChevronLeft className='h-4 w-4' />
                   </Button>
                 </div>
@@ -3907,10 +3986,10 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                     )}
                   </div>
                   <div className='flex gap-1'>
-                    <Button type='button' variant='outline' size='xs' onClick={selectAllFilteredModels}>
+                    <Button type='button' variant='outline' size='sm' onClick={selectAllFilteredModels}>
                       {t('channels.dialogs.buttons.selectAll')}
                     </Button>
-                    <Button type='button' variant='outline' size='xs' onClick={deselectAllFetchedModels}>
+                    <Button type='button' variant='outline' size='sm' onClick={deselectAllFetchedModels}>
                       {t('channels.dialogs.buttons.deselectAll')}
                     </Button>
                   </div>
@@ -3990,7 +4069,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               >
                 <div className='mb-3 flex items-center justify-between'>
                   <h3 className='text-sm font-medium'>{t('channels.dialogs.fields.apiKey.panelTitle', { count: apiKeysCount })}</h3>
-                  <Button type='button' variant='ghost' size='icon-xs' onClick={closeApiKeysPanel}>
+                  <Button type='button' variant='ghost' size='icon-sm' onClick={closeApiKeysPanel}>
                     <ChevronLeft className='h-4 w-4' />
                   </Button>
                 </div>
@@ -4119,7 +4198,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                           type='button'
                                           variant='ghost'
                                           size='icon-sm'
-                                          className='hover:bg-warning/10 text-(--warning-soft-fg)'
+                                          className='hover:bg-amber-500/10 text-amber-600'
                                           disabled={disableAPIKey.isPending || isFetchingDisabledKeys}
                                         >
                                           <Ban className='h-4 w-4' />
@@ -4173,7 +4252,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                                         type='button'
                                         variant='ghost'
                                         size='icon-sm'
-                                        className='hover:bg-destructive/10 text-(--destructive-soft-fg)'
+                                        className='hover:bg-destructive/10 text-destructive'
                                       >
                                         <Trash2 className='size-4' />
                                       </Button>
@@ -4251,7 +4330,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               >
                 <div className='mb-3 flex items-center justify-between'>
                   <div className='flex items-center gap-2'>
-                    <Button type='button' variant='ghost' size='icon-xs' onClick={closeSupportedModelsPanel}>
+                    <Button type='button' variant='ghost' size='icon-sm' onClick={closeSupportedModelsPanel}>
                       <PanelLeft className='size-4' />
                     </Button>
                     <h3 className='text-sm font-medium'>
@@ -4265,7 +4344,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                   </div>
                   <Popover open={showClearAllPopover} onOpenChange={setShowClearAllPopover}>
                     <PopoverTrigger asChild>
-                      <Button type='button' variant='ghost' size='icon-xs' disabled={supportedModels.length === 0}>
+                      <Button type='button' variant='ghost' size='icon-sm' disabled={supportedModels.length === 0}>
                         <X className='size-4' />
                       </Button>
                     </PopoverTrigger>
@@ -4302,12 +4381,35 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                 <div className='relative mb-3'>
                   <Search className='text-muted-foreground absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2' />
                   <Input
-                    placeholder={t('channels.dialogs.fields.supportedModels.searchPlaceholder')}
+                    placeholder={t('channels.modelPreview.search')}
                     value={supportedModelsSearch}
                     onChange={(e) => setSupportedModelsSearch(e.target.value)}
                     className='h-8 pl-8 text-sm'
                   />
                 </div>
+
+                {isEdit && onOpenModelMapping && channelPermissions.canWrite && (
+                  <Button
+                    type='button'
+                    variant='outline'
+                    size='sm'
+                    className='mb-3 shrink-0'
+                    onClick={() => {
+                      if (
+                        hasFormChanges ||
+                        localSettingsSnapshot !== initialLocalSettings.current
+                      ) {
+                        setConfirmOpenModelMapping(true);
+                      } else {
+                        openModelMapping();
+                      }
+                    }}
+                  >
+                    {t('channels.modelPreview.openSettings')}
+                  </Button>
+                )}
+                {modelPreview.isUpdating && <p role='status' className='text-muted-foreground mb-2 text-xs'>{t('channels.modelPreview.loading')}</p>}
+                {modelPreview.isError && <p role='alert' className='text-destructive mb-2 text-xs'>{t('common.errors.loadFailed')}</p>}
 
                 {/* Model List */}
                 <div ref={supportedModelsParentRef} className='min-h-0 flex-1 overflow-auto pr-3'>
@@ -4319,20 +4421,23 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
                     }}
                   >
                     {supportedModelsVirtualizer.getVirtualItems().map((virtualItem) => {
-                      const model = filteredSupportedModels[virtualItem.index];
+                      const group = filteredSupportedModels[virtualItem.index];
+                      const model = group.model;
                       return (
                         <div
                           key={virtualItem.key}
+                          data-index={virtualItem.index}
+                          ref={supportedModelsVirtualizer.measureElement}
                           style={{
                             position: 'absolute',
                             top: 0,
                             left: 0,
                             width: '100%',
-                            height: `${virtualItem.size}px`,
                             transform: `translateY(${virtualItem.start}px)`,
                           }}
                         >
                           <SupportedModelItem model={model} isManual={isModelManual(model)} onRemove={() => removeModel(model)} />
+                          {modelPreview.data && !modelPreview.isError && !modelPreview.isUpdating && <ChannelModelAliases group={group} />}
                         </div>
                       );
                     })}
@@ -4341,7 +4446,7 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
               </div>
             </div>
           </div>
-          <DialogFooter className='flex-shrink-0'>
+          <DialogFooter pinned>
             <Button type='button' variant='outline' onClick={() => onOpenChange(false)}>
               {t('common.buttons.cancel')}
             </Button>
@@ -4362,6 +4467,18 @@ export function ChannelsActionDialog({ currentRow, duplicateFromRow, open, onOpe
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ConfirmDialog
+        open={confirmOpenModelMapping}
+        onOpenChange={setConfirmOpenModelMapping}
+        title={t('channels.modelPreview.openSettings')}
+        desc={t('channels.modelPreview.unsavedChanges')}
+        cancelBtnText={t('common.buttons.cancel')}
+        confirmText={t('channels.modelPreview.openSettings')}
+        handleConfirm={() => {
+          setConfirmOpenModelMapping(false);
+          openModelMapping();
+        }}
+      />
     </>
   );
 }

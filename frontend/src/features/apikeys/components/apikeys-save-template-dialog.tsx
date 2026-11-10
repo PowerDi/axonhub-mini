@@ -150,7 +150,7 @@ export function ApiKeySaveTemplateDialog({ open, onOpenChange, profileData, proj
                       <Input {...field} placeholder={t('apikeys.templates.namePlaceholder')} />
                     </FormControl>
                     {matchingTemplate && (
-                      <p className='text-sm text-(--warning-soft-fg)'>
+                      <p className='text-sm text-amber-600'>
                         {t('apikeys.templates.overwriteHint', { name: matchingTemplate.name })}
                       </p>
                     )}
@@ -173,7 +173,7 @@ export function ApiKeySaveTemplateDialog({ open, onOpenChange, profileData, proj
                 )}
               />
 
-              <DialogFooter className='gap-2 pt-2'>
+              <DialogFooter className='pt-2'>
                 <Button type='button' variant='outline' onClick={() => onOpenChange(false)} disabled={isSubmitting}>
                   {t('common.buttons.cancel')}
                 </Button>
@@ -209,7 +209,7 @@ export function ApiKeySaveTemplateDialog({ open, onOpenChange, profileData, proj
                 void overwriteTemplate();
               }}
               disabled={updateTemplate.isPending}
-              className='bg-destructive/10 hover:bg-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 text-(--destructive-soft-fg)'
+              className='bg-destructive/10 hover:bg-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 text-destructive'
             >
               {updateTemplate.isPending
                 ? t('common.buttons.saving')

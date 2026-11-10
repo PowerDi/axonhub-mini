@@ -113,7 +113,7 @@ function PieChartCard({ title, data, valueKey, valueFormatter, otherLabel }: Pie
 
   if (total === 0) {
     return (
-      <Card>
+      <Card className='hover-card'>
         <CardHeader className='pb-2'>
           <CardTitle>{title}</CardTitle>
         </CardHeader>
@@ -164,7 +164,7 @@ function PieChartCard({ title, data, valueKey, valueFormatter, otherLabel }: Pie
   if (isCompact) {
     // 紧凑模式：饼图在上，图例在下
     return (
-      <Card ref={cardRef}>
+      <Card ref={cardRef} className='hover-card'>
         <CardHeader className='pb-2'>
           <CardTitle>{title}</CardTitle>
         </CardHeader>
@@ -216,7 +216,7 @@ function PieChartCard({ title, data, valueKey, valueFormatter, otherLabel }: Pie
 
   // 宽松模式：饼图在左，图例在右
   return (
-    <Card ref={cardRef}>
+    <Card ref={cardRef} className='hover-card'>
       <CardHeader className='pb-2'>
         <CardTitle>{title}</CardTitle>
       </CardHeader>

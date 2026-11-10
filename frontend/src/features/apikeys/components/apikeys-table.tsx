@@ -14,7 +14,6 @@ import {
 } from '@tanstack/react-table';
 import { IconX, IconUserOff, IconArchive, IconCheck } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TableSkeleton } from '@/components/ui/table-skeleton';
@@ -198,13 +197,13 @@ export function ApiKeysTable({
         <Table className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
           <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className='group/row'>
+              <TableRow key={headerGroup.id} className='group/row border-0'>
                 {headerGroup.headers.map((header) => {
                   return (
                     <TableHead
                       key={header.id}
                       colSpan={header.colSpan}
-                      className={header.column.columnDef.meta?.className ?? ''}
+                      className={`${header.column.columnDef.meta?.className ?? ''} text-muted-foreground border-0 text-xs font-semibold tracking-wider uppercase`}
                     >
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
@@ -213,7 +212,7 @@ export function ApiKeysTable({
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody>
+          <TableBody className='space-y-1 !bg-[var(--table-background)] p-2'>
             {loading ? (
               <TableSkeleton rows={pageSize} columns={columns.length} />
             ) : table.getRowModel().rows?.length ? (
@@ -221,18 +220,18 @@ export function ApiKeysTable({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && 'selected'}
-                  className='group/row'
+                  className='group/row table-row-hover rounded-xl border-0 !bg-[var(--table-background)] transition-all duration-200 ease-in-out'
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className={cell.column.columnDef.meta?.className ?? ''}>
+                    <TableCell key={cell.id} className={`${cell.column.columnDef.meta?.className ?? ''} border-0 bg-inherit px-4 py-3`}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
-              <TableRow className='hover:bg-transparent'>
-                <TableCell colSpan={columns.length} className='h-24 text-center'>
+              <TableRow className='!bg-[var(--table-background)]'>
+                <TableCell colSpan={columns.length} className='h-24 !bg-[var(--table-background)] text-center'>
                   {t('common.noData')}
                 </TableCell>
               </TableRow>
@@ -240,7 +239,7 @@ export function ApiKeysTable({
           </TableBody>
         </Table>
       </div>
-      <div className='flex-shrink-0' data-testid='api-keys-pagination'>
+      <div data-testid='api-keys-pagination' className='mt-4 flex-shrink-0'>
         <ServerSidePagination
           pageInfo={pageInfo}
           pageSize={pageSize}
@@ -255,44 +254,43 @@ export function ApiKeysTable({
       {/* Floating Bulk Actions Bar */}
       {selectedCount > 0 && canWrite && (
         <div className='fixed bottom-6 left-1/2 z-50 -translate-x-1/2'>
-          <div className='bg-popover flex items-center gap-2 rounded-lg px-2 py-1.5 shadow-lg ring-1 ring-foreground/10'>
-            <div className='flex items-center gap-1.5 px-1'>
-              <Badge variant='secondary' className='tabular-nums'>
+          <div className='bg-background flex items-center gap-2 rounded-lg border px-4 py-2 shadow-lg'>
+            <Button variant='ghost' size='icon' className='h-8 w-8' onClick={() => setRowSelection({})}>
+              <IconX className='h-4 w-4' />
+            </Button>
+            <div className='flex items-center gap-1.5 px-2'>
+              <span className='bg-primary text-primary-foreground flex h-6 min-w-6 items-center justify-center rounded px-1.5 text-xs font-medium'>
                 {selectedCount}
-              </Badge>
+              </span>
               <span className='text-muted-foreground text-sm'>{t('common.selected')}</span>
             </div>
-            <div className='bg-border mx-1 h-6 w-px' />
+            <div className='bg-border mx-2 h-6 w-px' />
             <Button
               variant='ghost'
               size='icon'
-              className='text-(--destructive-soft-fg) hover:bg-destructive/10'
+              className='text-destructive h-8 w-8 hover:bg-red-100 hover:text-red-700'
               onClick={() => openDialog('bulkDisable')}
               title={t('common.buttons.disable')}
             >
-              <IconUserOff className='size-4' />
+              <IconUserOff className='h-4 w-4' />
             </Button>
             <Button
               variant='ghost'
               size='icon'
-              className='text-(--success-soft-fg) hover:bg-success/10'
+              className='h-8 w-8 text-green-600 hover:bg-green-100 hover:text-green-700'
               onClick={() => openDialog('bulkEnable')}
               title={t('common.buttons.enable')}
             >
-              <IconCheck className='size-4' />
+              <IconCheck className='h-4 w-4' />
             </Button>
             <Button
               variant='ghost'
               size='icon'
-              className='text-(--warning-soft-fg) hover:bg-warning/10'
+              className='h-8 w-8 text-orange-600 hover:bg-orange-100 hover:text-orange-700'
               onClick={() => openDialog('bulkArchive')}
               title={t('common.buttons.archive')}
             >
-              <IconArchive className='size-4' />
-            </Button>
-            <div className='bg-border mx-1 h-6 w-px' />
-            <Button variant='ghost' size='icon' onClick={() => setRowSelection({})}>
-              <IconX className='size-4' />
+              <IconArchive className='h-4 w-4' />
             </Button>
           </div>
         </div>

@@ -90,7 +90,7 @@ export function UsersInviteDialog({ open, onOpenChange }: Props) {
               control={form.control}
               name='desc'
               render={({ field }) => (
-                <FormItem>
+                <FormItem className=''>
                   <FormLabel>Description (optional)</FormLabel>
                   <FormControl>
                     <Textarea className='resize-none' placeholder='Add a personal note to your invitation (optional)' {...field} />
@@ -101,7 +101,7 @@ export function UsersInviteDialog({ open, onOpenChange }: Props) {
             />
           </form>
         </Form>
-        <DialogFooter className='gap-y-2'>
+        <DialogFooter>
           <DialogClose asChild>
             <Button variant='outline'>Cancel</Button>
           </DialogClose>

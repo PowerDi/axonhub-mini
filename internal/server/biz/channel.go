@@ -28,6 +28,7 @@ import (
 	"github.com/looplj/axonhub/internal/pkg/xerrors"
 	"github.com/looplj/axonhub/internal/scopes"
 	"github.com/looplj/axonhub/internal/server/biz/provider_quota"
+	"github.com/looplj/axonhub/internal/server/events"
 	"github.com/looplj/axonhub/internal/server/scheduler"
 	"github.com/looplj/axonhub/llm/httpclient"
 	"github.com/looplj/axonhub/llm/transformer"
@@ -109,7 +110,10 @@ type ChannelServiceParams struct {
 	Ent             *ent.Client
 	SystemService   *SystemService
 	WebhookNotifier *WebhookNotifier
-	HttpClient      *httpclient.HttpClient
+	// EventBus publishes plugin events. Nil skips publication; the business
+	// operation still runs. Tests construct the service without a bus.
+	EventBus   *events.Bus `optional:"true"`
+	HttpClient *httpclient.HttpClient
 }
 
 func NewChannelService(params ChannelServiceParams) *ChannelService {
@@ -119,6 +123,7 @@ func NewChannelService(params ChannelServiceParams) *ChannelService {
 		},
 		SystemService:             params.SystemService,
 		WebhookNotifier:           params.WebhookNotifier,
+		EventBus:                  params.EventBus,
 		httpClient:                params.HttpClient,
 		channelPerfMetrics:        make(map[int]*channelMetrics),
 		apiKeyErrorCounts:         make(map[int]map[string]map[int]int),
@@ -172,6 +177,9 @@ type ChannelService struct {
 
 	SystemService   *SystemService
 	WebhookNotifier *WebhookNotifier
+	// EventBus publishes plugin events. Nil skips publication and does not
+	// skip the business operation.
+	EventBus *events.Bus
 
 	httpClient *httpclient.HttpClient
 
@@ -581,10 +589,17 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 	if err := validateEndpointsForChannelType(input.Type, input.Endpoints, baseURL); err != nil {
 		return nil, fmt.Errorf("invalid endpoints: %w", err)
 	}
+	input.Settings = normalizeModelProtocols(input.Settings, &ent.Channel{Type: input.Type, BaseURL: baseURL, Endpoints: input.Endpoints})
 	input.Settings = normalizeModelAPIFormatPolicies(input.Settings, &ent.Channel{Type: input.Type, BaseURL: baseURL, Endpoints: input.Endpoints})
 	input.Endpoints = normalizePolicyEndpoints(&ent.Channel{Type: input.Type, BaseURL: baseURL, Endpoints: input.Endpoints, Settings: input.Settings})
 
 	if input.Settings != nil {
+		if len(input.SupportedModels) > 0 {
+			RemoveRemovedModelProtocolOverrides(input.Settings, input.SupportedModels)
+		}
+		if err := validateModelProtocols(input.Settings, &ent.Channel{Type: input.Type, BaseURL: baseURL, Endpoints: input.Endpoints}); err != nil {
+			return nil, fmt.Errorf("invalid model protocols: %w", err)
+		}
 		if input.Settings.BodyOverrideOperations != nil {
 			if err := ValidateBodyOverrideOperations(input.Settings.BodyOverrideOperations); err != nil {
 				return nil, fmt.Errorf("invalid body override operations: %w", err)
@@ -1071,6 +1086,17 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 		}
 		proposed := &ent.Channel{Type: channelType, BaseURL: baseURL, Endpoints: endpoints}
 		normalizedSettings := normalizeUpdatedModelAPIFormatPolicies(policySettings, existing, proposed)
+		protocolSource := proposed
+		if input.Settings == nil {
+			protocolSource = existing
+		}
+		normalizedSettings = normalizeModelProtocols(normalizedSettings, protocolSource)
+		if input.SupportedModels != nil {
+			RemoveRemovedModelProtocolOverrides(normalizedSettings, input.SupportedModels)
+		}
+		if err := validateModelProtocols(normalizedSettings, proposed); err != nil {
+			return nil, fmt.Errorf("invalid model protocols: %w", err)
+		}
 		if input.Settings != nil || normalizedSettings != policySettings {
 			input.Settings = normalizedSettings
 		}
@@ -1119,6 +1145,20 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 
 		if input.SupportedModels != nil {
 			mut.SetSupportedModels(input.SupportedModels)
+			if input.Settings == nil {
+				latest, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) (*ent.Channel, error) {
+					return db.Channel.Query().Where(channel.IDEQ(id)).Select(channel.FieldSettings, channel.FieldUpdatedAt).Only(queryCtx)
+				})
+				if err != nil {
+					return fmt.Errorf("load settings for model override cleanup: %w", err)
+				}
+				if latest.Settings != nil {
+					settings := *latest.Settings
+					if RemoveRemovedModelProtocolOverrides(&settings, input.SupportedModels) {
+						mut.SetSettings(&settings).Where(channel.UpdatedAtEQ(latest.UpdatedAt))
+					}
+				}
+			}
 		}
 
 		if input.ManualModels != nil {
@@ -1300,7 +1340,10 @@ func (svc *ChannelService) SaveChannelEndpoints(ctx context.Context, input SaveC
 		return nil, errors.New("xAI subscription channels do not support custom endpoints")
 	}
 
-	settings := normalizeModelAPIFormatPolicies(ch.Settings, ch)
+	settings := normalizeModelProtocols(normalizeModelAPIFormatPolicies(ch.Settings, ch), ch)
+	if err := validateModelProtocols(settings, &ent.Channel{Type: ch.Type, BaseURL: ch.BaseURL, Endpoints: input.Endpoints}); err != nil {
+		return nil, fmt.Errorf("invalid endpoints for configured model protocols: %w", err)
+	}
 	input.Endpoints = normalizePolicyEndpoints(&ent.Channel{Type: ch.Type, BaseURL: ch.BaseURL, Endpoints: input.Endpoints, Settings: settings})
 	// Endpoint edits can starve existing per-model policies: reject when a
 	// policy ends up with zero usable endpoints and no other enabled channel

@@ -244,7 +244,7 @@ export function ChannelsBulkTestDialog() {
         case 'testing':
           return <Badge variant='secondary'>{t('channels.dialogs.bulkTest.testing')}</Badge>;
         case 'success':
-          return <Badge className='border-success/40 bg-success/10 text-(--success-soft-fg)'>{t('channels.dialogs.bulkTest.success')}</Badge>;
+          return <Badge className='border-green-500/40 bg-green-500/10 text-green-600'>{t('channels.dialogs.bulkTest.success')}</Badge>;
         case 'failed':
           return <Badge variant='destructive'>{t('channels.dialogs.bulkTest.failed')}</Badge>;
         case 'skipped':
@@ -276,17 +276,17 @@ export function ChannelsBulkTestDialog() {
                 {completedCount}/{selectedChannels.length}
               </div>
             </div>
-            <div className='rounded-lg border bg-success/10 p-3'>
-              <div className='text-xs text-(--success-soft-fg)'>{t('channels.dialogs.bulkTest.summary.success', { count: successCount })}</div>
-              <div className='mt-1 text-lg font-semibold text-(--success-soft-fg)'>{successCount}</div>
+            <div className='rounded-lg border bg-green-500/10 p-3'>
+              <div className='text-xs text-green-600'>{t('channels.dialogs.bulkTest.summary.success', { count: successCount })}</div>
+              <div className='mt-1 text-lg font-semibold text-green-600'>{successCount}</div>
             </div>
             <div className='rounded-lg border bg-destructive/10 p-3'>
-              <div className='text-xs text-(--destructive-soft-fg)'>{t('channels.dialogs.bulkTest.summary.failed', { count: failedCount })}</div>
-              <div className='mt-1 text-lg font-semibold text-(--destructive-soft-fg)'>{failedCount}</div>
+              <div className='text-xs text-destructive'>{t('channels.dialogs.bulkTest.summary.failed', { count: failedCount })}</div>
+              <div className='mt-1 text-lg font-semibold text-destructive'>{failedCount}</div>
             </div>
-            <div className='rounded-lg border bg-warning/10 p-3'>
-              <div className='text-xs text-(--warning-soft-fg)'>{t('channels.dialogs.bulkTest.summary.skipped', { count: skippedCount })}</div>
-              <div className='mt-1 text-lg font-semibold text-(--warning-soft-fg)'>{skippedCount}</div>
+            <div className='rounded-lg border bg-amber-500/10 p-3'>
+              <div className='text-xs text-amber-600'>{t('channels.dialogs.bulkTest.summary.skipped', { count: skippedCount })}</div>
+              <div className='mt-1 text-lg font-semibold text-amber-600'>{skippedCount}</div>
             </div>
           </div>
 
@@ -334,13 +334,13 @@ export function ChannelsBulkTestDialog() {
                             </div>
                           ) : result?.error ? (
                             <div className='max-w-full overflow-hidden'>
-                              <ErrorDisplay error={result.error} messageClassName='block max-w-full break-all text-xs font-medium text-(--destructive-soft-fg) whitespace-pre-wrap' />
+                              <ErrorDisplay error={result.error} messageClassName='block max-w-full break-all text-xs font-medium text-destructive whitespace-pre-wrap' />
                               {result.message && <TestResponseSummary message={result.message} className='mt-1 max-w-full' />}
                             </div>
                           ) : result?.message ? (
                             <TestResponseSummary message={result.message} className='max-w-full' />
                           ) : result?.status === 'success' ? (
-                            <span className='block truncate text-xs text-(--success-soft-fg)'>{t('channels.dialogs.bulkTest.success')}</span>
+                            <span className='block truncate text-xs text-green-600'>{t('channels.dialogs.bulkTest.success')}</span>
                           ) : (
                             <span className='text-muted-foreground block truncate text-xs'>-</span>
                           )}
@@ -354,7 +354,7 @@ export function ChannelsBulkTestDialog() {
           </div>
         </div>
 
-        <DialogFooter className='shrink-0 !flex-col gap-2 border-t pt-4 sm:!flex-row sm:items-center sm:justify-between'>
+        <DialogFooter pinned divided layout='content' align='between' className='sm:items-center'>
           <div className='text-muted-foreground min-w-0 text-sm'>
             {recoverableChannels.length > 0
               ? t('channels.dialogs.bulkTest.recoverButton', { count: recoverableChannels.length })

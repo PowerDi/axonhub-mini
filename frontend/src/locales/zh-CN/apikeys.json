@@ -146,11 +146,6 @@
   "apikeys.profiles.regexSupported": "支持正则表达式",
   "apikeys.profiles.allowedChannels": "允许的渠道",
   "apikeys.profiles.allowedChannelsDescription": "选择此配置可以使用的渠道。如果未选择任何渠道，则允许使用所有渠道。",
-  "apikeys.profiles.excludedChannels": "排除的渠道",
-  "apikeys.profiles.excludedChannelsDescription": "选择要为此配置排除的渠道。如果未选择任何渠道，则不排除任何渠道。",
-  "apikeys.profiles.channelIDsMatchMode": "匹配模式",
-  "apikeys.profiles.channelIDsMatchModeInclude": "仅允许所选",
-  "apikeys.profiles.channelIDsMatchModeExclude": "排除所选",
   "apikeys.profiles.allowedChannelTags": "允许的渠道标签",
   "apikeys.profiles.allowedChannelTagsDescription": "选择标签来过滤此配置可用的渠道。如果未选择任何标签，则禁用标签过滤。",
   "apikeys.profiles.excludedChannelTags": "排除的渠道标签",
@@ -256,5 +251,10 @@
   "apikeys.templateTransfer.saveSuccess": "模板“{{name}}”已保存到目标项目",
   "apikeys.templateTransfer.overwriteSuccess": "目标项目中的模板“{{name}}”已覆盖",
   "apikeys.templateTransfer.saveError": "保存模板失败，请确认你拥有目标项目的 API Key 管理权限。",
-  "apikeys.templateTransfer.exportSuccess": "模板“{{name}}”已导出"
+  "apikeys.templateTransfer.exportSuccess": "模板“{{name}}”已导出",
+  "apikeys.profiles.excludedChannels": "排除的渠道",
+  "apikeys.profiles.excludedChannelsDescription": "选择要为此配置排除的渠道。如果未选择任何渠道，则不排除任何渠道。",
+  "apikeys.profiles.channelIDsMatchMode": "匹配模式",
+  "apikeys.profiles.channelIDsMatchModeInclude": "仅允许所选",
+  "apikeys.profiles.channelIDsMatchModeExclude": "排除所选"
 }

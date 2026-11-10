@@ -57,9 +57,9 @@ export function CopilotDeviceFlow({ onSuccess, onError, existingCredentials }: C
   if (hasExistingCredentials && !deviceFlow.userCode && !deviceFlow.isComplete && !deviceFlow.error) {
     return (
       <div className='mt-3 space-y-2'>
-        <div className='rounded-lg border border-success/40 bg-success/10 p-3'>
-          <div className='text-(--success-soft-fg) flex items-center gap-2'>
-            <CheckCircle2 className='size-5' />
+        <div className='rounded-md border border-green-500/50 bg-green-50/10 p-3'>
+          <div className='flex items-center gap-2 text-green-600'>
+            <CheckCircle2 className='h-5 w-5' />
             <span className='font-medium'>
               {t('channels.dialogs.github_copilot.messages.alreadyConnected')}
             </span>
@@ -74,7 +74,7 @@ export function CopilotDeviceFlow({ onSuccess, onError, existingCredentials }: C
             size='sm'
             className='mt-2'
           >
-            <RefreshCw className='mr-2 size-4' />
+            <RefreshCw className='mr-2 h-4 w-4' />
             {t('channels.dialogs.github_copilot.buttons.reauthenticate')}
           </Button>
         </div>
@@ -86,9 +86,9 @@ export function CopilotDeviceFlow({ onSuccess, onError, existingCredentials }: C
   if (deviceFlow.isComplete) {
     return (
       <div className='mt-3 space-y-2'>
-        <div className='rounded-lg border border-success/40 bg-success/10 p-3'>
-          <div className='text-(--success-soft-fg) flex items-center gap-2'>
-            <CheckCircle2 className='size-5' />
+        <div className='rounded-md border border-green-500 p-3'>
+          <div className='flex items-center gap-2 text-green-600'>
+            <CheckCircle2 className='h-5 w-5' />
             <span className='font-medium'>
               {t('channels.dialogs.github_copilot.messages.authSuccess')}
             </span>
@@ -105,9 +105,9 @@ export function CopilotDeviceFlow({ onSuccess, onError, existingCredentials }: C
   if (deviceFlow.error) {
     return (
       <div className='mt-3 space-y-2'>
-        <div className='rounded-lg border border-destructive/40 bg-destructive/10 p-3'>
-          <div className='text-(--destructive-soft-fg) flex items-center gap-2'>
-            <AlertCircle className='size-5' />
+        <div className='rounded-md border border-destructive p-3'>
+          <div className='flex items-center gap-2 text-destructive'>
+            <AlertCircle className='h-5 w-5' />
             <span className='font-medium'>{t('common.error')}</span>
           </div>
           <p className='text-muted-foreground mt-1 text-xs'>{deviceFlow.error}</p>
@@ -118,7 +118,7 @@ export function CopilotDeviceFlow({ onSuccess, onError, existingCredentials }: C
             size='sm'
             className='mt-2'
           >
-            <RefreshCw className='mr-2 size-4' />
+            <RefreshCw className='mr-2 h-4 w-4' />
             {t('common.buttons.retry')}
           </Button>
         </div>
@@ -130,7 +130,7 @@ export function CopilotDeviceFlow({ onSuccess, onError, existingCredentials }: C
   if (deviceFlow.userCode) {
     return (
       <div className='mt-3 space-y-2'>
-        <div className='rounded-lg border p-3'>
+        <div className='rounded-md border p-3'>
           <div className='flex items-center gap-2'>
             {deviceFlow.isPolling && <Loader2 className='h-5 w-5 animate-spin' />}
             <span className='font-medium'>
@@ -143,7 +143,7 @@ export function CopilotDeviceFlow({ onSuccess, onError, existingCredentials }: C
               {t('channels.dialogs.github_copilot.labels.userCode')}
             </FormLabel>
             <div className='flex items-center gap-2'>
-              <div className='flex-1 rounded-md bg-muted p-3 text-center'>
+              <div className='flex-1 bg-muted p-3 rounded-md text-center'>
                 <span className='text-2xl font-mono font-bold tracking-wider'>
                   {deviceFlow.userCode}
                 </span>
@@ -156,7 +156,7 @@ export function CopilotDeviceFlow({ onSuccess, onError, existingCredentials }: C
                 size='icon'
                 title={t('copilot_device.copy_code')}
               >
-                <Copy className='size-4' />
+                <Copy className='h-4 w-4' />
               </Button>
             </div>
           </div>
@@ -168,7 +168,7 @@ export function CopilotDeviceFlow({ onSuccess, onError, existingCredentials }: C
               onClick={handleOpenGitHub}
               className='w-full'
             >
-              <ExternalLink className='mr-2 size-4' />
+              <ExternalLink className='mr-2 h-4 w-4' />
               {t('channels.dialogs.github_copilot.buttons.openGitHub')}
             </Button>
             <p className='text-xs text-center text-muted-foreground'>
@@ -176,7 +176,7 @@ export function CopilotDeviceFlow({ onSuccess, onError, existingCredentials }: C
             </p>
           </div>
 
-          <div className='mt-3 rounded-md bg-muted/50 p-3'>
+          <div className='bg-muted/50 p-3 rounded-md mt-3'>
             <ol className='text-sm space-y-1 list-decimal list-inside text-muted-foreground'>
               <li>{t('copilot_device.step_1')}</li>
               <li>{t('copilot_device.step_2')}</li>
@@ -193,7 +193,7 @@ export function CopilotDeviceFlow({ onSuccess, onError, existingCredentials }: C
             size='sm'
             className='mt-2 w-full'
           >
-            <RefreshCw className='mr-2 size-4' />
+            <RefreshCw className='mr-2 h-4 w-4' />
             {t('common.buttons.retry')}
           </Button>
         </div>
@@ -204,7 +204,7 @@ export function CopilotDeviceFlow({ onSuccess, onError, existingCredentials }: C
   // Initial state - Start OAuth button
   return (
     <div className='mt-3 space-y-2'>
-      <div className='rounded-lg border p-3'>
+      <div className='rounded-md border p-3'>
         <Button
           type='button'
           variant='secondary'

@@ -310,7 +310,7 @@ export function ChannelsDisabledAPIKeysDialog({ open, onOpenChange }: ChannelsDi
                             )}
                           </div>
                           {dk.expiresAt && new Date(dk.expiresAt).getTime() > now && (
-                            <div className='text-xs text-(--info-soft-fg)'>
+                            <div className='text-xs text-blue-500'>
                               {t('channels.dialogs.disabledAPIKeys.expiresIn', {
                                 time: formatDuration(new Date(dk.expiresAt), i18n.language),
                               })}
@@ -382,7 +382,7 @@ export function ChannelsDisabledAPIKeysDialog({ open, onOpenChange }: ChannelsDi
           )}
         </div>
 
-        <DialogFooter className='flex items-center justify-between sm:justify-between'>
+        <DialogFooter align='between' className='items-center'>
           <div>
             {disabledKeys.length > 0 && (
               <Popover open={confirmEnableAll} onOpenChange={setConfirmEnableAll}>

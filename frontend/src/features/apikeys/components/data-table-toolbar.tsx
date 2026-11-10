@@ -8,7 +8,7 @@ import { DateRangePicker } from '@/components/date-range-picker';
 import type { DateTimeRangeValue } from '@/utils/date-range';
 import { formatUserName } from '@/lib/utils';
 import { DataTableFacetedFilter } from '@/components/data-table-faceted-filter';
-import { useUsers } from '@/features/users/data/users';
+import { useApiKeyCreators } from '../data/creator-options';
 import { ApiKeyStatus } from '../data/schema';
 
 interface DataTableToolbarProps<TData> {
@@ -30,15 +30,7 @@ export function DataTableToolbar<TData>({
   const hasDateRange = !!dateRange?.from || !!dateRange?.to;
   const isFiltered = table.getState().columnFilters.length > 0 || hasDateRange;
 
-  const { data: usersData } = useUsers(
-    {
-      first: 100,
-      orderBy: { field: 'CREATED_AT', direction: 'DESC' },
-    },
-    {
-      disableAutoFetch: !canViewCreators,
-    }
-  );
+  const { data: usersData } = useApiKeyCreators(canViewCreators);
 
   const userOptions = useMemo(() => {
     if (!canViewCreators || !usersData?.edges) return [];
@@ -65,12 +57,13 @@ export function DataTableToolbar<TData>({
   ];
 
   return (
-    <div className='flex flex-wrap items-center gap-2 sm:gap-3'>
+    <div className='flex items-center justify-between'>
+      <div className='flex flex-1 flex-wrap items-center gap-2'>
         <Input
           placeholder={t('apikeys.filters.filterName')}
           value={(table.getColumn('name')?.getFilterValue() as string) ?? ''}
           onChange={(event) => table.getColumn('name')?.setFilterValue(event.target.value)}
-          className='w-[200px] lg:w-[240px]'
+          className='h-8 w-[150px] lg:w-[250px]'
         />
         {table.getColumn('status') && (
           <DataTableFacetedFilter column={table.getColumn('status')} title={t('apikeys.filters.status')} options={statusOptions} />
@@ -87,12 +80,13 @@ export function DataTableToolbar<TData>({
               onDateRangeChange?.(undefined);
               onResetFilters?.();
             }}
-            className='px-2 lg:px-2.5'
+            className='h-8 px-2 lg:px-3'
           >
             {t('common.filters.reset')}
-            <Cross2Icon className='size-3.5' />
+            <Cross2Icon className='ml-2 h-4 w-4' />
           </Button>
         )}
+      </div>
     </div>
   );
 }

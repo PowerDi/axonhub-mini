@@ -638,7 +638,7 @@ export const PromptInput = ({
         type='file'
       />
       <form className={cn('w-full', className)} onSubmit={handleSubmit} {...props}>
-        <InputGroup className='rounded-xl'>{children}</InputGroup>
+        <InputGroup>{children}</InputGroup>
       </form>
     </>
   );

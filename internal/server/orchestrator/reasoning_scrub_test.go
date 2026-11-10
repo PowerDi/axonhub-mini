@@ -349,7 +349,7 @@ func TestReasoningScrubRawMiddlewaresKeepSanitizedResponsesBody(t *testing.T) {
 			clean := []byte(`{"model":"test-model","store":false,"input":[{"role":"user","content":"complete safe history"}]}`)
 			request := &httpclient.Request{APIFormat: string(format), Body: clean}
 			for _, middleware := range []pipeline.Middleware{
-				applyPassThroughRequestBody(p, nil), applyResponsesTransportRequestBody(p, nil), applyResponsesContinuationBody(p), verifyResponsesAttempt(p),
+				applyPassThroughRequestBody(p, nil), applyResponsesTransportRequestBody(p), applyResponsesContinuationBody(p), verifyResponsesAttempt(p),
 			} {
 				var err error
 				request, err = middleware.OnOutboundRawRequest(t.Context(), request)

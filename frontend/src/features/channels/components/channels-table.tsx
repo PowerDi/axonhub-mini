@@ -383,7 +383,7 @@ export function ChannelsTable({
             <Button
               variant='ghost'
               size='icon'
-              className='text-(--info-soft-fg) hover:bg-info/10'
+              className='text-blue-600 hover:bg-blue-500/10'
               onClick={() => setOpen('bulkManageTags')}
               title={t('channels.actions.bulkManageTags')}
               aria-label={t('channels.actions.bulkManageTags')}
@@ -393,7 +393,7 @@ export function ChannelsTable({
             <Button
               variant='ghost'
               size='icon'
-              className='text-(--info-soft-fg) hover:bg-info/10'
+              className='text-blue-600 hover:bg-blue-500/10'
               onClick={() => setOpen('bulkApplyTemplate')}
               title={t('channels.templates.bulk.applyButton')}
             >
@@ -402,7 +402,7 @@ export function ChannelsTable({
             <Button
               variant='ghost'
               size='icon'
-              className='text-(--warning-soft-fg) hover:bg-warning/10'
+              className='text-amber-600 hover:bg-amber-500/10'
               onClick={() => setOpen('bulkAutoDisable')}
               title={t('channels.bulkAutoDisable.button')}
             >
@@ -411,7 +411,7 @@ export function ChannelsTable({
             <Button
               variant='ghost'
               size='icon'
-              className='text-(--destructive-soft-fg) hover:bg-destructive/10'
+              className='text-destructive hover:bg-destructive/10'
               onClick={() => setOpen('bulkClearTemplate')}
               title={t('channels.templates.bulkClear.button')}
             >
@@ -420,7 +420,7 @@ export function ChannelsTable({
             <Button
               variant='ghost'
               size='icon'
-              className='text-(--info-soft-fg) hover:bg-info/10'
+              className='text-blue-600 hover:bg-blue-500/10'
               onClick={() => setOpen('bulkTest')}
               title={t('channels.actions.bulkTest')}
             >
@@ -429,7 +429,7 @@ export function ChannelsTable({
             <Button
               variant='ghost'
               size='icon'
-              className='text-(--success-soft-fg) hover:bg-success/10'
+              className='text-green-600 hover:bg-green-500/10'
               onClick={() => setOpen('bulkEnable')}
               title={t('common.buttons.enable')}
             >
@@ -438,7 +438,7 @@ export function ChannelsTable({
             <Button
               variant='ghost'
               size='icon'
-              className='text-(--warning-soft-fg) hover:bg-warning/10'
+              className='text-amber-600 hover:bg-amber-500/10'
               onClick={() => setOpen('bulkDisable')}
               title={t('common.buttons.disable')}
             >
@@ -447,7 +447,7 @@ export function ChannelsTable({
             <Button
               variant='ghost'
               size='icon'
-              className='text-(--warning-soft-fg) hover:bg-warning/10'
+              className='text-amber-600 hover:bg-amber-500/10'
               onClick={() => setOpen('bulkArchive')}
               title={t('common.buttons.archive')}
             >
@@ -456,7 +456,7 @@ export function ChannelsTable({
             <Button
               variant='ghost'
               size='icon'
-              className='text-(--destructive-soft-fg) hover:bg-destructive/10'
+              className='text-destructive hover:bg-destructive/10'
               onClick={() => setOpen('bulkDelete')}
               title={t('common.buttons.delete')}
             >

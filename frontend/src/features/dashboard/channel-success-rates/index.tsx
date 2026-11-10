@@ -124,15 +124,15 @@ export default function DashboardChannelSuccessRates() {
   };
 
   function getSuccessRateColor(rate: number): string {
-    if (rate >= 95) return 'text-(--success-soft-fg)';
-    if (rate >= 50) return 'text-(--warning-soft-fg)';
-    return 'text-(--destructive-soft-fg)';
+    if (rate >= 95) return 'text-green-600';
+    if (rate >= 50) return 'text-yellow-600';
+    return 'text-red-600';
   }
 
   function getProgressBarColor(rate: number): string {
-    if (rate >= 95) return 'bg-success';
-    if (rate >= 50) return 'bg-warning';
-    return 'bg-destructive';
+    if (rate >= 95) return 'bg-green-600';
+    if (rate >= 50) return 'bg-yellow-600';
+    return 'bg-red-600';
   }
 
   function formatNumber(num: number): string {
@@ -141,8 +141,8 @@ export default function DashboardChannelSuccessRates() {
 
   if (error) {
     return (
-      <ContentSection title={t('dashboard.channelSuccessRates.pageTitle')} desc=''>
-        <div className='text-(--destructive-soft-fg)'>加载失败: {error.message}</div>
+      <ContentSection title={t('dashboard.channelSuccessRates.pageTitle')} desc="">
+        <div className="text-red-500">加载失败: {error.message}</div>
       </ContentSection>
     );
   }
@@ -270,8 +270,8 @@ export default function DashboardChannelSuccessRates() {
               const showTokens = tokens && tokens.totalTokens > 0;
 
               return (
-                <Card key={channel.channelId} className='min-w-0'>
-                  <CardContent className='space-y-3'>
+                <Card key={channel.channelId} className="hover-card min-w-0">
+                  <CardContent className="space-y-3">
                     {/* Channel info */}
                     <div className='flex items-center gap-3'>
                       <ActivityIcon className='text-muted-foreground h-5 w-5 shrink-0' />
@@ -279,7 +279,7 @@ export default function DashboardChannelSuccessRates() {
                         <p className='truncate font-medium'>{channel.channelName}</p>
                         <span className='text-muted-foreground text-xs'>{channel.channelType}</span>
                       </div>
-                      {channel.channelDisabled && <AlertTriangleIcon className='h-5 w-5 shrink-0 text-(--destructive-soft-fg)' />}
+                      {channel.channelDisabled && <AlertTriangleIcon className="h-5 w-5 shrink-0 text-red-500" />}
                     </div>
 
                     {/* Success rate display */}
@@ -301,13 +301,13 @@ export default function DashboardChannelSuccessRates() {
                     </div>
 
                     {/* Success/Failed counts */}
-                    <div className='flex gap-3 text-sm'>
-                      <span className='flex items-center gap-1'>
-                        <CheckCircle2Icon className='h-4 w-4 text-(--success-soft-fg)' />
+                    <div className="flex gap-3 text-sm">
+                      <span className="flex items-center gap-1">
+                        <CheckCircle2Icon className="h-4 w-4 text-green-500" />
                         {formatNumber(channel.successCount)}
                       </span>
-                      <span className='flex items-center gap-1'>
-                        <XCircleIcon className='h-4 w-4 text-(--destructive-soft-fg)' />
+                      <span className="flex items-center gap-1">
+                        <XCircleIcon className="h-4 w-4 text-red-500" />
                         {formatNumber(channel.failedCount)}
                       </span>
                     </div>

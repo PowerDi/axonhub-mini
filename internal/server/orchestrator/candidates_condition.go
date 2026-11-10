@@ -77,17 +77,16 @@ func populateAPIFormat(ctx context.Context, candidates []*ChannelModelsCandidate
 			continue
 		}
 
-		// Keep beta12's entry-aligned protocol selection, using mini's filters
-		// instead of introducing a second model-protocol configuration system.
+		// Preserve per-entry formats while applying Mini restrictions before native preferences.
 		endpoints := c.Channel.ResolveEndpoints()
 		if len(c.Models) > 0 {
 			models := make([]biz.ChannelModelEntry, 0, len(c.Models))
 			formats := make([]string, 0, len(c.Models))
 			for _, entry := range c.Models {
-				if PolicyStarvesRequest(endpoints, req, entry.Policy) {
+				format, usable := selectChannelModelAPIFormat(ctx, c.Channel, entry, req.Model, req)
+				if !usable {
 					continue
 				}
-				format := SelectAPIFormatForModel(endpoints, req, entry.Policy)
 				if requiresExplicitEndpoint(req.RequestType) && format == "" {
 					continue
 				}
@@ -102,7 +101,8 @@ func populateAPIFormat(ctx context.Context, candidates []*ChannelModelsCandidate
 			c.APIFormat = formats[0]
 		} else {
 			c.modelAPIFormats = nil
-			c.APIFormat = SelectAPIFormat(endpoints, req)
+			endpoints, forced := applyForcedAPIFormatsForRequest(ctx, c.Channel, c.Models, req.Model, req.RequestType, endpoints)
+			c.APIFormat = selectEndpointAPIFormat(endpoints, req, forced)
 		}
 		if requiresExplicitEndpoint(req.RequestType) && c.APIFormat == "" {
 			continue

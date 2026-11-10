@@ -38,9 +38,7 @@ const THREAD_CURSOR_OPTIONS = {
 } as const;
 
 export default function ThreadDetailPage() {
-  const { threadId } = useParams({ from: '/_authenticated/project/threads/$threadId' as any }) as {
-    threadId: string;
-  };
+  const { threadId } = useParams({ from: '/_authenticated/project/threads/$threadId' });
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const locale = i18n.language === 'zh' ? zhCN : enUS;
@@ -107,7 +105,10 @@ export default function ThreadDetailPage() {
   };
 
   const handleBack = () => {
-    navigate({ to: '/project/threads' as any, search: getSearchParams() as any });
+    navigate({
+      to: '/project/threads',
+      search: getSearchParams() as any,
+    });
   };
 
   const handleViewTrace = (traceId: string) => {
@@ -327,7 +328,7 @@ export default function ThreadDetailPage() {
             </div>
           ) : (
             <div className='flex h-full items-center justify-center p-6'>
-              <Card>
+              <Card className='border-0 shadow-sm'>
                 <CardContent className='py-16'>
                   <div className='flex h-full items-center justify-center'>
                     <div className='space-y-4 text-center'>

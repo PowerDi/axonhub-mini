@@ -430,18 +430,18 @@ export default function Playground() {
       <div className='bg-background flex h-full min-h-0 w-full flex-col overflow-y-auto lg:flex-row lg:overflow-hidden'>
         {/* Settings Sidebar */}
 
-        <div className='bg-card m-4 flex max-h-[60vh] w-auto flex-col rounded-xl ring-1 ring-foreground/10 md:max-h-none md:w-[340px] md:min-w-[280px] md:max-w-[400px]'>
+        <div className='bg-card shadow-soft border-border m-4 flex max-h-[60vh] min-h-0 w-auto shrink-0 flex-col rounded-2xl border border-r lg:max-h-none lg:w-[340px] lg:max-w-[400px] lg:min-w-[280px] lg:shrink'>
           <div className='border-b p-4'>
-            <h1 className='text-lg font-normal tracking-tight'>{t('playground.title')}</h1>
+            <h1 className='text-xl font-bold tracking-tight'>{t('playground.title')}</h1>
             <p className='text-muted-foreground mt-1 text-xs leading-relaxed'>{t('playground.description')}</p>
           </div>
 
           <ScrollArea className='min-h-0 flex-1 p-4'>
             <div className='space-y-6'>
               <div className='space-y-3'>
-                <Label className='text-xs font-medium'>{t('playground.settings.modelSource')}</Label>
+                <Label className='text-xs font-semibold'>{t('playground.settings.modelSource')}</Label>
                 <Tabs value={modelSource} onValueChange={handleModelSourceChange}>
-                  <TabsList className={cn('w-full', canUseModelGateway && '[&>*]:flex-1')}>
+                  <TabsList className={cn('grid w-full', canUseModelGateway ? 'grid-cols-2' : 'grid-cols-1')}>
                     <TabsTrigger value='channel'>{t('playground.settings.channel')}</TabsTrigger>
                     {canUseModelGateway && <TabsTrigger value='model_gateway'>{t('playground.settings.modelGateway')}</TabsTrigger>}
                   </TabsList>
@@ -450,7 +450,7 @@ export default function Playground() {
 
               {modelSource === 'channel' && (
                 <div className='space-y-3'>
-                  <Label htmlFor='channel' className='text-xs font-medium'>
+                  <Label htmlFor='channel' className='text-xs font-semibold'>
                     {t('playground.settings.channel')}
                   </Label>
                   <AutoCompleteSelect
@@ -465,7 +465,7 @@ export default function Playground() {
               )}
 
               <div className='space-y-3'>
-                <Label htmlFor='model' className='text-xs font-medium'>
+                <Label htmlFor='model' className='text-xs font-semibold'>
                   {t('playground.settings.model')}
                 </Label>
                 <AutoCompleteSelect
@@ -524,7 +524,7 @@ export default function Playground() {
               </div>
 
               <div className='space-y-3'>
-                <Label htmlFor='maxTokens' className='text-xs font-medium'>
+                <Label htmlFor='maxTokens' className='text-xs font-semibold'>
                   {t('playground.settings.maxTokens')}
                 </Label>
                 <Input
@@ -534,11 +534,12 @@ export default function Playground() {
                   max='4000'
                   value={maxTokens}
                   onChange={(e) => setMaxTokens(parseInt(e.target.value))}
+                  className='h-9'
                 />
               </div>
 
               <div className='space-y-3'>
-                <Label htmlFor='systemPrompt' className='text-xs font-medium'>
+                <Label htmlFor='systemPrompt' className='text-xs font-semibold'>
                   {t('playground.settings.systemPrompt')}
                 </Label>
                 <Textarea
@@ -557,10 +558,10 @@ export default function Playground() {
             <Button
               onClick={handleRetry}
               variant='outline'
-              className='w-full text-xs'
+              className='h-9 w-full text-xs'
               disabled={isLoading || messages.length === 0 || messages.every((msg) => msg.role !== 'assistant')}
             >
-              <IconRefresh className='size-3' />
+              <IconRefresh className='mr-2 h-3 w-3' />
               {isLoading
                 ? t('playground.chat.generating')
                 : messages.length === 0
@@ -570,17 +571,17 @@ export default function Playground() {
                     : t('playground.chat.retry')}
             </Button>
 
-            <Button onClick={handleClear} variant='outline' className='w-full text-xs' disabled={isLoading}>
-              <IconTrash className='size-3' />
+            <Button onClick={handleClear} variant='outline' className='h-9 w-full text-xs' disabled={isLoading}>
+              <IconTrash className='mr-2 h-3 w-3' />
               {t('playground.chat.clear')}
             </Button>
           </div>
         </div>
 
         {/* Chat Area */}
-        <div className='flex flex-1 flex-col p-4'>
-          <div className='bg-card flex h-full flex-col rounded-xl p-6 ring-1 ring-foreground/10'>
-            <Conversation className='max-h-[50vh] flex-1 md:max-h-none'>
+        <div className='flex min-h-[50vh] min-w-0 flex-1 flex-col p-4 lg:min-h-0'>
+          <div className='shadow-soft border-border bg-card flex h-full min-h-0 flex-col rounded-2xl border p-6'>
+            <Conversation className='max-h-[50vh] min-h-0 flex-1 lg:max-h-none'>
               <ConversationContent>
                 {messages.length === 0 ? (
                   <ConversationEmptyState

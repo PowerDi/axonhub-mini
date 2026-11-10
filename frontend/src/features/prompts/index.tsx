@@ -7,7 +7,7 @@ import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { Main } from '@/components/layout/main';
-import { Header } from '@/components/layout/header';
+import { PageHeader } from '@/components/layout/page-header';
 import { PermissionGuard } from '@/components/permission-guard';
 import { createColumns } from './components/prompts-columns';
 import { PromptsDialogs } from './components/prompts-dialogs';
@@ -153,15 +153,7 @@ export default function PromptsManagement() {
 
   return (
     <PromptsProvider>
-      <Header fixed>
-        <div className='flex flex-1 items-center justify-between'>
-          <div>
-            <h2 className='text-lg font-normal tracking-tight'>{t('prompts.title')}</h2>
-            <p className='text-sm text-muted-foreground'>{t('prompts.description')}</p>
-          </div>
-          <ActionButtons />
-        </div>
-      </Header>
+      <PageHeader title={t('prompts.title')} description={t('prompts.description')} actions={<ActionButtons />} />
 
       <Main fixed>
         <PromptsContent />

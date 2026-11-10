@@ -6,7 +6,7 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import useInterval from '@/hooks/useInterval';
 import { Main } from '@/components/layout/main';
-import { Header } from '@/components/layout/header';
+import { PageHeader } from '@/components/layout/page-header';
 import { ThreadsTable } from './components/threads-table';
 import type { Thread } from './data/schema';
 import { useThreads } from './data/threads';
@@ -138,14 +138,7 @@ export default function ThreadsManagement() {
 
   return (
     <>
-      <Header fixed>
-        <div className='flex flex-1 items-center justify-between'>
-          <div>
-            <h2 className='text-lg font-normal tracking-tight'>{t('threads.title')}</h2>
-            <p className='text-muted-foreground text-sm'>{t('threads.description')}</p>
-          </div>
-        </div>
-      </Header>
+      <PageHeader title={t('threads.title')} description={t('threads.description')} />
 
       <Main fixed>
         <ThreadsContent />

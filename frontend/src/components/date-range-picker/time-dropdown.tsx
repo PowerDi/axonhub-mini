@@ -35,13 +35,13 @@ export function TimeDropdown({
   return (
     <div
       className={cn(
-        'bg-popover text-popover-foreground absolute top-[calc(100%+8px)] left-0 z-50 flex h-[220px] w-full overflow-hidden rounded-lg',
-        'ring-foreground/10 shadow-md ring-1'
+        'absolute left-0 top-[calc(100%+8px)] z-50 flex h-[220px] w-full overflow-hidden rounded-md',
+        'border border-gray-200 bg-white shadow-2xl dark:border-white/10 dark:bg-[#121214]'
       )}
       role='dialog'
     >
       <TimeCol label='HH' items={hours} active={value.hh} onPick={(hh) => onChange({ ...value, hh })} />
-      <div className='no-scrollbar border-border flex-1 overflow-y-auto border-x p-1 text-center'>
+      <div className='no-scrollbar flex-1 overflow-y-auto border-x border-gray-100 p-1 text-center dark:border-white/5'>
         <TimeColInner label='MM' items={minutes} active={value.mm} onPick={(mm) => onChange({ ...value, mm })} />
       </div>
       <TimeCol label='SS' items={seconds} active={value.ss} onPick={(ss) => onChange({ ...value, ss })} />
@@ -49,7 +49,7 @@ export function TimeDropdown({
       {onClose && (
         <button
           type='button'
-          className='text-muted-foreground hover:text-foreground absolute -top-8 right-0 text-[11px] font-medium transition-colors'
+          className='absolute -top-8 right-0 text-[11px] font-semibold uppercase tracking-widest text-gray-400 hover:text-gray-200'
           onClick={onClose}
         >
           {closeLabel}
@@ -81,7 +81,9 @@ function TimeColInner({ label, items, active, onPick }: { label: string; items: 
             type='button'
             className={cn(
               'w-full rounded-md py-2 text-sm transition-colors',
-              isActive ? 'border-primary/20 bg-primary/10 text-primary font-semibold' : 'text-muted-foreground hover:bg-muted'
+              isActive
+                ? 'glass-highlight border border-primary/20 font-semibold text-primary'
+                : 'text-gray-400 hover:bg-gray-100 dark:text-gray-500 dark:hover:bg-white/5'
             )}
             onClick={() => onPick(txt)}
           >

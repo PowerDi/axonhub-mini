@@ -117,7 +117,7 @@ export function DataTableToolbar<TData>({
         <Button
           variant='outline'
           onClick={onExitErrorOnlyMode}
-          className='hover:bg-warning/10 border-(--warning-soft-fg)/40 text-(--warning-soft-fg)'
+          className='hover:bg-amber-500/10 border-(--warning-soft-fg)/40 text-amber-600'
         >
           {t('channels.errorBanner.exitErrorOnlyButton')}
         </Button>

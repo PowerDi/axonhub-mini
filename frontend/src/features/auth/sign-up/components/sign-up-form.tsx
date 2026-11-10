@@ -76,7 +76,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
   };
 
   if (isLoadingInvitation) {
-    return <p className='rounded-lg border border-border bg-muted px-4 py-3 text-sm text-muted-foreground'>{t('common.buttons.processing')}</p>;
+    return <p className='rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600'>{t('common.buttons.processing')}</p>;
   }
 
   if (invitationError) {
@@ -86,7 +86,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className={cn('grid gap-4', className)} {...props}>
-        <p className='rounded-lg border border-border bg-muted px-4 py-3 text-sm font-medium text-muted-foreground'>
+        <p className='rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-600'>
           {t('users.invitation.joinProject', { projectName })}
         </p>
         <FormField
@@ -96,7 +96,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
             <FormItem>
               <FormLabel>{t('users.form.email')}</FormLabel>
               <FormControl>
-                <Input type='email' placeholder='name@example.com' className='border-border !bg-white text-muted-foreground placeholder:text-muted-foreground focus:border-border focus:!bg-white focus:ring-2 focus:ring-border' {...field} />
+                <Input type='email' placeholder='name@example.com' className='border-slate-300 !bg-white text-slate-800 placeholder:text-slate-400 focus:border-[#A8844E] focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -110,7 +110,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
               <FormItem>
                 <FormLabel>{t('users.form.firstName')}</FormLabel>
                 <FormControl>
-                  <Input className='border-border !bg-white text-muted-foreground placeholder:text-muted-foreground focus:border-border focus:!bg-white focus:ring-2 focus:ring-border' {...field} />
+                  <Input className='border-slate-300 !bg-white text-slate-800 placeholder:text-slate-400 focus:border-[#A8844E] focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -123,7 +123,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
               <FormItem>
                 <FormLabel>{t('users.form.lastName')}</FormLabel>
                 <FormControl>
-                  <Input className='border-border !bg-white text-muted-foreground placeholder:text-muted-foreground focus:border-border focus:!bg-white focus:ring-2 focus:ring-border' {...field} />
+                  <Input className='border-slate-300 !bg-white text-slate-800 placeholder:text-slate-400 focus:border-[#A8844E] focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -137,7 +137,7 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
             <FormItem>
               <FormLabel>{t('users.form.password')}</FormLabel>
               <FormControl>
-                <PasswordInput placeholder='********' className='border-border !bg-white text-muted-foreground placeholder:text-muted-foreground focus:border-border focus:!bg-white focus:ring-2 focus:ring-border' {...field} />
+                <PasswordInput placeholder='********' className='border-slate-300 !bg-white text-slate-800 placeholder:text-slate-400 focus:border-[#A8844E] focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -150,14 +150,14 @@ export function SignUpForm({ className, ...props }: SignUpFormProps) {
             <FormItem>
               <FormLabel>{t('users.form.confirmPassword')}</FormLabel>
               <FormControl>
-                <PasswordInput placeholder='********' className='border-border !bg-white text-muted-foreground placeholder:text-muted-foreground focus:border-border focus:!bg-white focus:ring-2 focus:ring-border' {...field} />
+                <PasswordInput placeholder='********' className='border-slate-300 !bg-white text-slate-800 placeholder:text-slate-400 focus:border-[#A8844E] focus:!bg-white focus:ring-2 focus:ring-slate-200' {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
         <Button
-          className='bg-primary mt-2 w-full rounded-lg px-6 py-3 font-medium text-primary-foreground transition-all duration-300 hover:shadow-xl focus:ring-(--focus-ring) focus:ring-2 focus:ring-offset-2 disabled:opacity-50'
+          className='mt-2 w-full rounded-lg bg-[#1A2023] px-6 py-3 font-medium text-white shadow-lg transition-all duration-300 hover:bg-[#2A3138] hover:shadow-xl focus:ring-2 focus:ring-[#A8844E] focus:ring-offset-2 disabled:opacity-50'
           disabled={form.formState.isSubmitting}
         >
           {t('users.buttons.completeRegistration')}

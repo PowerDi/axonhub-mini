@@ -20,9 +20,10 @@ function between(start, end) {
   return source.slice(startIndex, endIndex);
 }
 
-test('legacy restrictions use the mini policy translator without a second policy editor', () => {
+test('native protocol preferences coexist with persisted Mini restrictions', () => {
   assert.match(source, /translateLegacyResponsesModelPolicies\(channel, channel\.settings\?\.modelApiFormatPolicies\)/);
-  assert.doesNotMatch(source, /modelProtocols|ModelProtocol|setNewProtocol/);
+  assert.match(source, /getInitialModelProtocols/);
+  assert.match(source, /patch: \{ modelProtocols, \.\.\.\(translatedPolicies/);
 });
 
 test('Codex shows a fixed Responses label with the shared WebSocket checkbox, derived URL and upgrade note', () => {
@@ -44,8 +45,9 @@ test('Codex projection starts from the persisted endpoints and derives the WebSo
   assert.match(source, /getCodexResponsesWebSocketURL\(toHttpBaseURL\(channel\.baseURL\), endpoints\)/);
 });
 
-test('Codex built-in Responses defaults are projected, not listed or validated as plain defaults', () => {
-  assert.match(source, /isCodexChannel \? defaults\.filter\(\(ep\) => !isResponsesFamilyFormat\(ep\.apiFormat\)\) : defaults/);
+test('Codex built-in Responses defaults are projected, not listed as plain defaults', () => {
+  assert.match(source, /channel\.type === 'codex' \? defaults\.filter/);
+  assert.match(source, /filter\(\(ep\) => !isResponsesFamilyFormat\(ep\.apiFormat\)\)/);
 });
 
 test('both Codex entry points share one serialization routine and the save sends the projected endpoints', () => {
@@ -64,11 +66,11 @@ test('Codex Responses rows are read-only previews while other endpoints stay rem
   assert.match(current, /handleRequestRemoveEndpoint\(ep\.apiFormat\)/);
 });
 
-test('disabling WebSocket is blocked only when it starves a mini model policy', () => {
-  const handler = between('const handleCodexWebSocketChange = useCallback', '[modelsStarvedByRemoving]');
+test('disabling WebSocket respects native preferences and Mini hard restrictions', () => {
+  const handler = between('const handleCodexWebSocketChange = useCallback', 'const handleDetectEndpoints');
+  assert.match(handler, /modelProtocols\.some/);
   assert.match(handler, /modelsStarvedByRemoving\(OPENAI_RESPONSES_WEBSOCKET\)/);
-  assert.match(handler, /if \(models\.length > 0\)/);
-  assert.match(handler, /setBlockedEndpointRemoval\(\{ apiFormat: OPENAI_RESPONSES_WEBSOCKET, models \}\)/);
+  assert.match(handler, /setBlockedEndpointRemoval\(OPENAI_RESPONSES_WEBSOCKET\)/);
   assert.match(handler, /setCodexResponsesWebSocket\(checked\)/);
 });
 

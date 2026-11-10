@@ -188,7 +188,33 @@ type TransformOptions struct {
 	ReasoningEffortMapping []llm.ReasoningEffortMapping `json:"reasoningEffortMapping,omitempty"`
 }
 
+// ModelProtocol force-specifies the outbound API protocols available for one model
+// of a channel. The channel must already have an endpoint configured for each
+// listed api_format (validated on save). When a request for the model arrives:
+// if the client's protocol is in the list, that endpoint is used directly (no
+// conversion); otherwise the first configured protocol is used and the request is
+// converted through the unified pipeline.
+type ModelProtocol struct {
+	// Model is the channel-facing model name (exact match against the request model).
+	Model string `json:"model"`
+
+	// APIFormats are the allowed outbound api_format values, in priority order.
+	APIFormats []string `json:"apiFormats"`
+
+	// Enabled controls whether this override participates in endpoint selection.
+	// A nil value is treated as enabled for backwards compatibility with entries
+	// written before the flag was introduced.
+	Enabled *bool `json:"enabled,omitempty"`
+}
+
+// IsEnabled reports whether this model protocol override is active. Missing
+// enabled values in older persisted settings intentionally default to true.
+func (m ModelProtocol) IsEnabled() bool {
+	return m.Enabled == nil || *m.Enabled
+}
+
 type ChannelSettings struct {
+	ModelProtocols []ModelProtocol `json:"modelProtocols,omitempty"`
 	// ExtraModelPrefix sets the channel accept the model with the extra prefix.
 	// e.g. a channel
 	// supported_modles is ["deepseek-chat", "deepseek-reasoner"]

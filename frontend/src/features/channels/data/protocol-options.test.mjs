@@ -50,8 +50,8 @@ test('includes ZenMux native video in the add-channel provider formats', () => {
   assert.deepEqual(getApiFormatsForProvider('zenmux', configs), ['openai/chat_completions', 'openai/responses', 'zenmux/video']);
 });
 
-test('maps ZenMux native video back to the ZenMux channel type', () => {
-  assert.equal(getChannelTypeForApiFormat('zenmux', 'zenmux/video', configs), 'zenmux');
+test('maps native video to the upstream ZenMux video channel type', () => {
+  assert.equal(getChannelTypeForApiFormat('zenmux', 'zenmux/video', configs), 'zenmux_video');
 });
 
 test('exposes the native video default endpoint to the endpoints dialog', () => {

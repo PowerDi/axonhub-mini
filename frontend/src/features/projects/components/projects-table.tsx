@@ -104,19 +104,19 @@ export function ProjectsTable({
   });
 
   return (
-    <div className='flex flex-1 flex-col gap-3 overflow-hidden' data-testid='projects-table'>
+    <div className='flex flex-1 flex-col overflow-hidden' data-testid='projects-table'>
       <DataTableToolbar table={table} />
-      <div className='relative flex-1 overflow-auto rounded-lg border'>
-        <Table data-testid='projects-table'>
-          <TableHeader className='sticky top-0 z-20'>
+      <div className='shadow-soft relative mt-4 flex-1 overflow-auto md:overflow-x-hidden rounded-2xl border border-[var(--table-border)]'>
+        <Table data-testid='projects-table' className='border-separate border-spacing-0 rounded-2xl bg-[var(--table-background)]'>
+          <TableHeader className='sticky top-0 z-20 bg-[var(--table-header)] shadow-sm'>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className='group/row'>
+              <TableRow key={headerGroup.id} className='group/row border-0'>
                 {headerGroup.headers.map((header) => {
                   return (
                     <TableHead
                       key={header.id}
                       colSpan={header.colSpan}
-                      className={header.column.columnDef.meta?.className ?? ''}
+                      className={`${header.column.columnDef.meta?.className ?? ''} text-muted-foreground border-0 text-xs font-semibold tracking-wider uppercase`}
                     >
                       {header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
                     </TableHead>
@@ -125,7 +125,7 @@ export function ProjectsTable({
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody>
+          <TableBody className='space-y-1 !bg-[var(--table-background)] p-2'>
             {loading ? (
               <TableSkeleton rows={pageSize} columns={columns.length} />
             ) : table.getRowModel().rows?.length ? (
@@ -133,18 +133,18 @@ export function ProjectsTable({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && 'selected'}
-                  className='group/row'
+                  className='group/row table-row-hover rounded-xl border-0 !bg-[var(--table-background)] transition-all duration-200 ease-in-out'
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className={cell.column.columnDef.meta?.className ?? ''}>
+                    <TableCell key={cell.id} className={`${cell.column.columnDef.meta?.className ?? ''} border-0 bg-inherit px-4 py-3`}>
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : (
-              <TableRow className='hover:bg-transparent'>
-                <TableCell colSpan={columns.length} className='h-24 text-center'>
+              <TableRow className='!bg-[var(--table-background)]'>
+                <TableCell colSpan={columns.length} className='h-24 !bg-[var(--table-background)] text-center'>
                   {t('common.noData')}
                 </TableCell>
               </TableRow>
@@ -152,7 +152,7 @@ export function ProjectsTable({
           </TableBody>
         </Table>
       </div>
-      <div className='flex-shrink-0' data-testid='pagination'>
+      <div className='mt-4 flex-shrink-0'>
         <ServerSidePagination
           pageInfo={pageInfo}
           pageSize={pageSize}
@@ -162,6 +162,7 @@ export function ProjectsTable({
           onNextPage={onNextPage}
           onPreviousPage={onPreviousPage}
           onPageSizeChange={onPageSizeChange}
+          data-testid='pagination'
         />
       </div>
     </div>

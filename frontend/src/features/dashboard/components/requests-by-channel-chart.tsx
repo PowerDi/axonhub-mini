@@ -132,7 +132,7 @@ export function RequestsByChannelChart({ timePeriod }: RequestsByChannelChartPro
     <div className='relative space-y-6'>
       {hasError ? (
         <div className='flex h-[300px] items-center justify-center'>
-          <div className='text-sm text-(--destructive-soft-fg)'>
+          <div className='text-sm text-red-500'>
             {t('dashboard.charts.errorLoadingChannelData')} {error.message}
           </div>
         </div>
@@ -144,7 +144,7 @@ export function RequestsByChannelChart({ timePeriod }: RequestsByChannelChartPro
         <>
           <ResponsiveContainer width='100%' height={320}>
             <BarChart data={chartData} barSize={32}>
-              <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' strokeOpacity={0.6} vertical={false} />
+              <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' vertical={false} />
               <XAxis dataKey='name' hide />
               <YAxis yAxisId='left' tickLine={false} axisLine={false} width={60} tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }} />
               <YAxis

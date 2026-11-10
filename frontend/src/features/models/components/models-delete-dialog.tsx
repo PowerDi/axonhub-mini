@@ -51,7 +51,7 @@ export function ModelsDeleteDialog() {
           <AlertDialogAction
             onClick={handleDelete}
             disabled={deleteModel.isPending}
-            className='bg-destructive/10 text-(--destructive-soft-fg) hover:bg-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30'
+            className='bg-destructive text-destructive-foreground hover:bg-destructive/90'
           >
             {t('common.buttons.delete')}
           </AlertDialogAction>

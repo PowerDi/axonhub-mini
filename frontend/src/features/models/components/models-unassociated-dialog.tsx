@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -345,9 +345,9 @@ export function ModelsUnassociatedDialog() {
           </div>
         ) : data && data.length > 0 ? (
           <>
-            <div className='flex flex-shrink-0 items-center gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 dark:border-warning/40'>
-              <IconAlertCircle className='h-5 w-5 shrink-0 text-(--warning-soft-fg) dark:text-(--warning-soft-fg)' />
-              <div className='text-sm text-(--warning-soft-fg) dark:text-(--warning-soft-fg)'>
+            <div className='flex flex-shrink-0 items-center gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-900 dark:bg-yellow-950'>
+              <IconAlertCircle className='h-5 w-5 shrink-0 text-yellow-600 dark:text-yellow-500' />
+              <div className='text-sm text-yellow-800 dark:text-yellow-200'>
                 {t('models.unassociated.summary', {
                   channelCount: data.length,
                   modelCount: totalUnassociated,
@@ -466,12 +466,12 @@ export function ModelsUnassociatedDialog() {
                                 </Badge>
                               )}
                               {metadata && !metadata.matched && (
-                                <Badge variant='outline' className='text-xs text-(--warning-soft-fg) dark:text-(--warning-soft-fg)'>
+                                <Badge variant='outline' className='text-xs text-amber-600 dark:text-amber-400'>
                                   {t('models.unassociated.needsReview')}
                                 </Badge>
                               )}
                               {target?.status === 'archived' && (
-                                <Badge variant='outline' className='text-xs text-(--warning-soft-fg) dark:text-(--warning-soft-fg)'>
+                                <Badge variant='outline' className='text-xs text-amber-600 dark:text-amber-400'>
                                   {t('models.unassociated.archived')}
                                 </Badge>
                               )}
@@ -509,7 +509,7 @@ export function ModelsUnassociatedDialog() {
           </div>
         )}
 
-        <div className='flex flex-shrink-0 flex-col gap-2 border-t pt-4 sm:flex-row sm:items-center sm:justify-between'>
+        <DialogFooter pinned divided align='between' gap='lg'>
           <div className='text-muted-foreground text-sm'>
             {selected.length > 0
               ? t('models.unassociated.footerSummary', {
@@ -530,7 +530,7 @@ export function ModelsUnassociatedDialog() {
               {t('models.unassociated.importButton', { count: selected.length })}
             </Button>
           </div>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -724,7 +724,7 @@ function TargetSelect({
                         </Badge>
                       )}
                       {model.status === 'archived' && (
-                        <Badge variant='outline' className='shrink-0 text-[10px] text-(--warning-soft-fg) dark:text-(--warning-soft-fg)'>
+                        <Badge variant='outline' className='shrink-0 text-[10px] text-amber-600 dark:text-amber-400'>
                           {t('models.unassociated.archived')}
                         </Badge>
                       )}

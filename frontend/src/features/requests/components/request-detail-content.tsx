@@ -10,7 +10,6 @@ import { extractNumberID } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { IconBadge } from '@/components/ui/icon-badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { JsonViewer } from '@/components/json-tree-view';
@@ -47,6 +46,7 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
 
   const [showResponseChunks, setShowResponseChunks] = useState(false);
   const [showExecutionChunks, setShowExecutionChunks] = useState(false);
+  const [, setSelectedResponseChunks] = useState<any[]>([]);
   const [selectedExecutionChunks, setSelectedExecutionChunks] = useState<any[]>([]);
   const [showCurlPreview, setShowCurlPreview] = useState(false);
   const [curlCommand, setCurlCommand] = useState('');
@@ -290,6 +290,7 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
 
   const showResponseChunksModal = useCallback(() => {
     if (request?.responseChunks) {
+      setSelectedResponseChunks(request.responseChunks);
       setShowResponseChunks(true);
     }
   }, [request]);
@@ -361,13 +362,13 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
 
   return (
     <div className='space-y-8'>
-      <Card>
+      <Card className='border-0 shadow-sm'>
         <CardHeader className='pb-2'>
           <CardTitle className='flex items-center justify-between'>
             <div className='flex items-center gap-2'>
-              <IconBadge tone='primary' size='sm'>
-                <DashboardIcon />
-              </IconBadge>
+              <div className='bg-primary/10 flex h-7 w-7 items-center justify-center rounded-lg'>
+                <DashboardIcon className='text-primary h-3.5 w-3.5' />
+              </div>
               <span className='text-base'>{t('requests.detail.overview')}</span>
             </div>
             <Badge className={getStatusColor(request.status)} variant='secondary'>
@@ -383,7 +384,7 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                 <span className='text-xs font-medium'>{t('requests.columns.channel')}</span>
               </div>
               <p className='bg-background rounded border px-2 py-0.5 font-mono text-xs'>
-                {request.channel?.name || t('requests.columns.unknown')}
+                {request.channel?.name || executions?.edges?.[0]?.node?.channel?.name || t('requests.columns.unknown')}
               </p>
             </div>
 
@@ -445,13 +446,13 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
           };
 
           return (
-            <Card>
+            <Card className='border-0 shadow-sm'>
               <CardHeader className='pb-2'>
                 <CardTitle className='flex items-center justify-between'>
                   <div className='flex items-center gap-2'>
-                    <IconBadge tone='primary' size='sm'>
-                      <Database />
-                    </IconBadge>
+                    <div className='bg-primary/10 flex h-7 w-7 items-center justify-center rounded-lg'>
+                      <Database className='text-primary h-3.5 w-3.5' />
+                    </div>
                     <span className='text-base'>{t('requests.detail.tabs.usage')}</span>
                   </div>
                   <div className='flex items-center gap-2'>
@@ -470,7 +471,7 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                         <TooltipContent>{t('usageLogs.modelLibraryPriceHint')}</TooltipContent>
                       </Tooltip>
                     )}
-                    <Badge variant='info'>
+                    <Badge className='bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300' variant='secondary'>
                       {t(`usageLogs.source.${usage.source}`)}
                     </Badge>
                   </div>
@@ -503,12 +504,12 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                       <div className='flex flex-wrap items-center gap-1'>
                         <p className='text-sm font-semibold'>{cachedTokens.toLocaleString()}</p>
                         {hasReadCache && (
-                          <Badge variant='success' className='h-4 px-1 text-[10px]'>
+                          <Badge variant='outline' className='h-4 border-green-200 bg-green-50 px-1 text-[10px] text-green-600'>
                             {cacheHitRate}%
                           </Badge>
                         )}
                         {hasWriteCache && (
-                          <Badge variant='info' className='h-4 px-1 text-[10px]'>
+                          <Badge variant='outline' className='h-4 border-blue-200 bg-blue-50 px-1 text-[10px] text-blue-600'>
                             {t('usageLogs.columns.writeCacheTokens')} {writeCacheRate}%
                           </Badge>
                         )}
@@ -534,14 +535,20 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
           );
         })()}
 
-      <Card>
+      <Card className='border-0 shadow-sm'>
         <CardContent className='p-0'>
           <Tabs defaultValue='request' className='w-full'>
-            <div className='border-b px-6 pt-6'>
-              <TabsList>
-                <TabsTrigger value='request'>{t('requests.detail.tabs.request')}</TabsTrigger>
-                <TabsTrigger value='response'>{t('requests.detail.tabs.response')}</TabsTrigger>
-                <TabsTrigger value='executions'>{t('requests.detail.tabs.executions')}</TabsTrigger>
+            <div className='bg-muted/20 border-b px-6 pt-6'>
+              <TabsList className='bg-background grid w-full grid-cols-3'>
+                <TabsTrigger value='request' className='data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'>
+                  {t('requests.detail.tabs.request')}
+                </TabsTrigger>
+                <TabsTrigger value='response' className='data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'>
+                  {t('requests.detail.tabs.response')}
+                </TabsTrigger>
+                <TabsTrigger value='executions' className='data-[state=active]:bg-primary data-[state=active]:text-primary-foreground'>
+                  {t('requests.detail.tabs.executions')}
+                </TabsTrigger>
               </TabsList>
             </div>
 
@@ -551,26 +558,26 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                   variant='outline'
                   size='sm'
                   onClick={() => showRequestCurlPreview(request.requestHeaders, request.requestBody, request.format)}
-                 
+                  className='hover:bg-primary hover:text-primary-foreground'
                 >
-                  <Terminal />
+                  <Terminal className='mr-2 h-4 w-4' />
                   {t('requests.actions.copyCurl')}
                 </Button>
               </div>
               {request.requestHeaders && (
                 <div className='space-y-4'>
                   <div className='flex items-center justify-between'>
-                    <h4 className='flex items-center gap-2 text-sm font-medium'>
+                    <h4 className='flex items-center gap-2 text-base font-semibold'>
                       <FileText className='text-primary h-4 w-4' />
                       {t('requests.columns.requestHeaders')}
                     </h4>
                     <div className='flex gap-2'>
-                      <Button variant='outline' size='sm' onClick={() => copyToClipboard(formatJson(request.requestHeaders))}>
-                        <Copy />
+                      <Button variant='outline' size='sm' onClick={() => copyToClipboard(formatJson(request.requestHeaders))} className='hover:bg-primary hover:text-primary-foreground'>
+                        <Copy className='mr-2 h-4 w-4' />
                         {t('requests.dialogs.jsonViewer.copy')}
                       </Button>
-                      <Button variant='outline' size='sm' onClick={() => downloadFile(formatJson(request.requestHeaders), `request-headers-${request.id}.json`)}>
-                        <Download />
+                      <Button variant='outline' size='sm' onClick={() => downloadFile(formatJson(request.requestHeaders), `request-headers-${request.id}.json`)} className='hover:bg-primary hover:text-primary-foreground'>
+                        <Download className='mr-2 h-4 w-4' />
                         {t('requests.dialogs.jsonViewer.download')}
                       </Button>
                     </div>
@@ -582,24 +589,24 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
               )}
               <div className='space-y-4'>
                 <div className='flex flex-wrap items-center justify-between gap-2'>
-                  <h4 className='flex items-center gap-2 text-sm font-medium'>
+                  <h4 className='flex items-center gap-2 text-base font-semibold'>
                     <FileText className='text-primary h-4 w-4' />
                     {t('requests.columns.requestBody')}
                   </h4>
                   <div className='flex flex-wrap items-center gap-2'>
                     <Tabs value={requestBodyView} onValueChange={(v: any) => setRequestBodyView(v)} className='w-auto'>
-                      <TabsList>
+                      <TabsList className='grid w-[220px] grid-cols-2'>
                         <TabsTrigger value='conversation'>{t('requests.detail.tabs.conversation')}</TabsTrigger>
                         <TabsTrigger value='json'>{t('requests.detail.tabs.json')}</TabsTrigger>
                       </TabsList>
                     </Tabs>
                     <div className='flex gap-2'>
-                      <Button variant='outline' size='sm' onClick={() => copyToClipboard(formatJson(request.requestBody))}>
-                        <Copy />
+                      <Button variant='outline' size='sm' onClick={() => copyToClipboard(formatJson(request.requestBody))} className='hover:bg-primary hover:text-primary-foreground'>
+                        <Copy className='mr-2 h-4 w-4' />
                         {t('requests.dialogs.jsonViewer.copy')}
                       </Button>
-                      <Button variant='outline' size='sm' onClick={() => downloadFile(formatJson(request.requestBody), `request-body-${request.id}.json`)}>
-                        <Download />
+                      <Button variant='outline' size='sm' onClick={() => downloadFile(formatJson(request.requestBody), `request-body-${request.id}.json`)} className='hover:bg-primary hover:text-primary-foreground'>
+                        <Download className='mr-2 h-4 w-4' />
                         {t('requests.dialogs.jsonViewer.download')}
                       </Button>
                     </div>
@@ -641,7 +648,7 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
               )}
               <Tabs value={responseView} onValueChange={(v: any) => setResponseView(v)} className='w-full'>
                 <div className='flex flex-wrap items-center justify-between gap-4'>
-                  <TabsList className='w-full sm:w-[300px]'>
+                  <TabsList className='grid w-full grid-cols-2 sm:w-[300px]'>
                     <TabsTrigger value='preview'>{t('requests.detail.tabs.preview')}</TabsTrigger>
                     <TabsTrigger value='json'>{t('requests.detail.tabs.json')}</TabsTrigger>
                   </TabsList>
@@ -653,9 +660,9 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                         size='sm'
                         onClick={downloadVideo}
                         disabled={isDownloadingVideo}
-                       
+                        className='hover:bg-primary hover:text-primary-foreground'
                       >
-                        <Download />
+                        <Download className='mr-2 h-4 w-4' />
                         {t('requests.actions.downloadVideo')}
                       </Button>
                     )}
@@ -665,9 +672,9 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                         size='sm'
                         onClick={downloadAudio}
                         disabled={isLoadingAudio}
-                       
+                        className='hover:bg-primary hover:text-primary-foreground'
                       >
-                        <Download />
+                        <Download className='mr-2 h-4 w-4' />
                         {t('requests.actions.downloadAudio')}
                       </Button>
                     )}
@@ -676,9 +683,9 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                       size='sm'
                       onClick={showResponseChunksModal}
                       disabled={!hasResponseChunks}
-                     
+                      className='hover:bg-primary hover:text-primary-foreground disabled:opacity-50'
                     >
-                      <Layers />
+                      <Layers className='mr-2 h-4 w-4' />
                       {request?.stream && request?.status === 'processing'
                         ? t('requests.actions.preview')
                         : t('requests.columns.responseChunks')}
@@ -694,9 +701,9 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                         }
                       }}
                       disabled={responseView === 'preview' ? !extractResponseText() : !hasResponseBody}
-                     
+                      className='hover:bg-primary hover:text-primary-foreground disabled:opacity-50'
                     >
-                      <Copy />
+                      <Copy className='mr-2 h-4 w-4' />
                       {t('requests.dialogs.jsonViewer.copy')}
                     </Button>
                     <Button
@@ -704,9 +711,9 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                       size='sm'
                       onClick={() => downloadFile(formatJson(request.responseBody), `response-body-${request.id}.json`)}
                       disabled={!hasResponseBody}
-                     
+                      className='hover:bg-primary hover:text-primary-foreground disabled:opacity-50'
                     >
-                      <Download />
+                      <Download className='mr-2 h-4 w-4' />
                       {t('requests.dialogs.jsonViewer.download')}
                     </Button>
                   </div>
@@ -817,11 +824,11 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                     const execution = edge.node;
                     const modelVerdict = getExecutionModelAuditVerdict(execution, t);
                     return (
-                      <Card key={execution.id} className='bg-muted/30'>
+                      <Card key={execution.id} className='bg-muted/20 border-0 shadow-sm'>
                         <CardHeader className='pb-4'>
                           <div className='flex items-center justify-between'>
-                            <h5 className='flex items-center gap-2 text-sm font-medium'>
-                              <div className='bg-primary/10 text-primary flex size-6 items-center justify-center rounded-md text-xs font-semibold tabular-nums'>
+                            <h5 className='flex items-center gap-2 text-base font-semibold'>
+                              <div className='bg-primary/10 text-primary flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold'>
                                 {index + 1}
                               </div>
                               {t('requests.dialogs.requestDetail.execution', { index: index + 1 })}
@@ -830,7 +837,9 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                               {t(`requests.status.${execution.status}`)}
                             </Badge>
                             {execution.passThroughApplied && (
-                              <Badge variant='warning'>{t('requests.passThrough.applied')}</Badge>
+                              <Badge className='border-amber-200 bg-amber-100 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300'>
+                                {t('requests.passThrough.applied')}
+                              </Badge>
                             )}
                           </div>
                         </CardHeader>
@@ -931,8 +940,8 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
 
                           {(execution.requestHeaders || execution.requestBody) && (
                             <div className='flex justify-end'>
-                              <Button variant='outline' size='sm' onClick={() => showExecutionCurlPreview(execution.requestHeaders, execution.requestBody, execution.channel, execution.format, execution.requestURL)}>
-                                <Terminal />
+                              <Button variant='outline' size='sm' onClick={() => showExecutionCurlPreview(execution.requestHeaders, execution.requestBody, execution.channel, execution.format, execution.requestURL)} className='hover:bg-primary hover:text-primary-foreground'>
+                                <Terminal className='mr-2 h-4 w-4' />
                                 {t('requests.actions.copyCurl')}
                               </Button>
                             </div>
@@ -941,17 +950,17 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                           {execution.requestHeaders && (
                             <div className='space-y-3'>
                               <div className='flex items-center justify-between'>
-                                <span className='flex items-center gap-2 text-sm font-medium'>
+                                <span className='flex items-center gap-2 text-sm font-semibold'>
                                   <FileText className='text-primary h-4 w-4' />
                                   {t('requests.columns.requestHeaders')}
                                 </span>
                                 <div className='flex gap-2'>
-                                  <Button variant='outline' size='sm' onClick={() => copyToClipboard(formatJson(execution.requestHeaders))}>
-                                    <Copy />
+                                  <Button variant='outline' size='sm' onClick={() => copyToClipboard(formatJson(execution.requestHeaders))} className='hover:bg-primary hover:text-primary-foreground'>
+                                    <Copy className='mr-2 h-4 w-4' />
                                     {t('requests.dialogs.jsonViewer.copy')}
                                   </Button>
-                                  <Button variant='outline' size='sm' onClick={() => downloadFile(formatJson(execution.requestHeaders), `execution-${execution.id}-request-headers.json`)}>
-                                    <Download />
+                                  <Button variant='outline' size='sm' onClick={() => downloadFile(formatJson(execution.requestHeaders), `execution-${execution.id}-request-headers.json`)} className='hover:bg-primary hover:text-primary-foreground'>
+                                    <Download className='mr-2 h-4 w-4' />
                                     {t('requests.dialogs.jsonViewer.download')}
                                   </Button>
                                 </div>
@@ -989,17 +998,17 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                           {execution.requestBody && (
                             <div className='space-y-3'>
                               <div className='flex items-center justify-between'>
-                                <span className='flex items-center gap-2 text-sm font-medium'>
+                                <span className='flex items-center gap-2 text-sm font-semibold'>
                                   <FileText className='text-primary h-4 w-4' />
                                   {t('requests.columns.requestBody')}
                                 </span>
                                 <div className='flex gap-2'>
-                                  <Button variant='outline' size='sm' onClick={() => copyToClipboard(formatJson(execution.requestBody))}>
-                                    <Copy />
+                                  <Button variant='outline' size='sm' onClick={() => copyToClipboard(formatJson(execution.requestBody))} className='hover:bg-primary hover:text-primary-foreground'>
+                                    <Copy className='mr-2 h-4 w-4' />
                                     {t('requests.dialogs.jsonViewer.copy')}
                                   </Button>
-                                  <Button variant='outline' size='sm' onClick={() => downloadFile(formatJson(execution.requestBody), `execution-${execution.id}-request-body.json`)}>
-                                    <Download />
+                                  <Button variant='outline' size='sm' onClick={() => downloadFile(formatJson(execution.requestBody), `execution-${execution.id}-request-body.json`)} className='hover:bg-primary hover:text-primary-foreground'>
+                                    <Download className='mr-2 h-4 w-4' />
                                     {t('requests.dialogs.jsonViewer.download')}
                                   </Button>
                                 </div>
@@ -1013,21 +1022,21 @@ export function RequestDetailContent({ requestId, projectId, previewRequest, isP
                           {execution.responseBody && (
                             <div className='space-y-3'>
                               <div className='flex items-center justify-between'>
-                                <span className='flex items-center gap-2 text-sm font-medium'>
+                                <span className='flex items-center gap-2 text-sm font-semibold'>
                                   <FileText className='text-primary h-4 w-4' />
                                   {t('requests.columns.responseBody')}
                                 </span>
                                 <div className='flex gap-2'>
-                                  <Button variant='outline' size='sm' onClick={() => copyToClipboard(formatJson(execution.responseBody))}>
-                                    <Copy />
+                                  <Button variant='outline' size='sm' onClick={() => copyToClipboard(formatJson(execution.responseBody))} className='hover:bg-primary hover:text-primary-foreground'>
+                                    <Copy className='mr-2 h-4 w-4' />
                                     {t('requests.dialogs.jsonViewer.copy')}
                                   </Button>
-                                  <Button variant='outline' size='sm' onClick={() => downloadFile(formatJson(execution.responseBody), `execution-${execution.id}-response-body.json`)}>
-                                    <Download />
+                                  <Button variant='outline' size='sm' onClick={() => downloadFile(formatJson(execution.responseBody), `execution-${execution.id}-response-body.json`)} className='hover:bg-primary hover:text-primary-foreground'>
+                                    <Download className='mr-2 h-4 w-4' />
                                     {t('requests.dialogs.jsonViewer.download')}
                                   </Button>
-                                  <Button variant='outline' size='sm' onClick={() => showExecutionChunksModal(execution.responseChunks || [])} disabled={!execution.responseChunks || execution.responseChunks.length === 0}>
-                                    <Layers />
+                                  <Button variant='outline' size='sm' onClick={() => showExecutionChunksModal(execution.responseChunks || [])} disabled={!execution.responseChunks || execution.responseChunks.length === 0} className='hover:bg-primary hover:text-primary-foreground'>
+                                    <Layers className='mr-2 h-4 w-4' />
                                     {t('requests.columns.responseChunks')}
                                   </Button>
                                 </div>

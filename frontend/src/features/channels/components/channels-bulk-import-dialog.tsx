@@ -272,7 +272,7 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
                         {parsedChannels.length > 0 && (
                           <Badge
                             variant='secondary'
-                            className='bg-success/10 dark:bg-success/30 border-0 text-(--success-soft-fg) dark:text-(--success-soft-fg)'
+                            className='bg-green-500/10 dark:bg-green-500/30 border-0 text-green-600 dark:text-green-600'
                           >
                             <CheckCircle2 className='mr-1 h-3 w-3' />
                             {t('channels.dialogs.bulkImport.validRecords', { count: parsedChannels.length })}
@@ -281,7 +281,7 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
                         {parseErrors.length > 0 && (
                           <Badge
                             variant='secondary'
-                            className='bg-destructive/10 dark:bg-destructive/30 border-0 text-(--destructive-soft-fg) dark:text-(--destructive-soft-fg)'
+                            className='bg-destructive/10 dark:bg-destructive/30 border-0 text-destructive dark:text-destructive'
                           >
                             <AlertCircle className='mr-1 h-3 w-3' />
                             {t('channels.dialogs.bulkImport.errors', { count: parseErrors.length })}
@@ -290,12 +290,12 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
                       </div>
                     </div>
                     {parseErrors.length > 0 ? (
-                      <div className='flex items-center gap-2 text-xs font-medium text-(--destructive-soft-fg) dark:text-(--destructive-soft-fg)'>
+                      <div className='flex items-center gap-2 text-xs font-medium text-destructive dark:text-destructive'>
                         <XCircle className='h-4 w-4' />
                         {t('channels.dialogs.bulkImport.status.blocked')}
                       </div>
                     ) : parsedChannels.length > 0 ? (
-                      <div className='flex items-center gap-2 text-xs font-medium text-(--success-soft-fg) dark:text-(--success-soft-fg)'>
+                      <div className='flex items-center gap-2 text-xs font-medium text-green-600 dark:text-green-600'>
                         <CheckCircle2 className='h-4 w-4' />
                         {t('channels.dialogs.bulkImport.status.ready')}
                       </div>
@@ -307,7 +307,7 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
                   {parseErrors.length > 0 && (
                     <div className='space-y-2'>
                       <div className='flex items-center justify-between'>
-                        <span className='text-xs font-medium text-(--destructive-soft-fg) dark:text-(--destructive-soft-fg)'>
+                        <span className='text-xs font-medium text-destructive dark:text-destructive'>
                           {t('channels.dialogs.bulkImport.errorMessages')}
                         </span>
                         <span className='text-muted-foreground text-xs'>{t('channels.dialogs.bulkImport.status.blockedHint')}</span>
@@ -332,7 +332,7 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
                   {/* Valid Channels */}
                   {parsedChannels.length > 0 && (
                     <div className='space-y-3'>
-                      <div className='flex items-center gap-2 text-xs font-medium text-(--success-soft-fg) dark:text-(--success-soft-fg)'>
+                      <div className='flex items-center gap-2 text-xs font-medium text-green-600 dark:text-green-600'>
                         <CheckCircle2 className='h-4 w-4' />
                         {t('channels.dialogs.bulkImport.validChannels')}
                       </div>
@@ -356,7 +356,7 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
                                   <div className='text-muted-foreground text-xs'>
                                     {t('channels.dialogs.bulkImport.fieldLabels.baseUrl')}
                                   </div>
-                                  <div className='truncate font-mono text-xs text-(--info-soft-fg) dark:text-(--info-soft-fg)'>
+                                  <div className='truncate font-mono text-xs text-blue-600 dark:text-blue-600'>
                                     {channel.baseURL}
                                   </div>
                                 </div>
@@ -401,7 +401,7 @@ deepseek_anthropic,DeepSeek Anthropic,https://api.deepseek.com/anthropic,sk-xxx,
           </div>
         </div>
 
-        <DialogFooter className='bg-muted/30 flex-shrink-0 gap-3 border-t pt-4'>
+        <DialogFooter pinned divided gap='xl' className='bg-muted/30'>
           <Button variant='outline' onClick={handleClose} className='min-w-[100px]'>
             {t('common.buttons.cancel')}
           </Button>

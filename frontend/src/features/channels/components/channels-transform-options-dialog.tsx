@@ -29,7 +29,6 @@ const transformOptionsFormSchema = z.object({
   forceArrayInstructions: z.boolean().optional(),
   forceArrayInputs: z.boolean().optional(),
   replaceDeveloperRoleWithSystem: z.boolean().optional(),
-  reasoningFilter: z.boolean().optional(),
   reasoningEffortMapping: z
     .array(
       z.object({
@@ -61,7 +60,6 @@ export function ChannelsTransformOptionsDialog({ open, onOpenChange, currentRow 
       forceArrayInstructions: currentRow.settings?.transformOptions?.forceArrayInstructions || false,
       forceArrayInputs: currentRow.settings?.transformOptions?.forceArrayInputs || false,
       replaceDeveloperRoleWithSystem: currentRow.settings?.transformOptions?.replaceDeveloperRoleWithSystem || false,
-      reasoningFilter: currentRow.settings?.reasoningFilter || false,
       reasoningEffortMapping: currentRow.settings?.transformOptions?.reasoningEffortMapping || [],
     },
   });
@@ -76,7 +74,6 @@ export function ChannelsTransformOptionsDialog({ open, onOpenChange, currentRow 
         forceArrayInstructions: currentRow.settings?.transformOptions?.forceArrayInstructions || false,
         forceArrayInputs: currentRow.settings?.transformOptions?.forceArrayInputs || false,
         replaceDeveloperRoleWithSystem: currentRow.settings?.transformOptions?.replaceDeveloperRoleWithSystem || false,
-        reasoningFilter: currentRow.settings?.reasoningFilter || false,
         reasoningEffortMapping: currentRow.settings?.transformOptions?.reasoningEffortMapping || [],
       });
       setDraft({ from: '', to: '' });
@@ -117,7 +114,6 @@ export function ChannelsTransformOptionsDialog({ open, onOpenChange, currentRow 
       transformOptions.reasoningEffortMapping = values.reasoningEffortMapping || [];
       const nextSettings = mergeChannelSettingsForUpdate(currentRow.settings, {
         transformOptions,
-        reasoningFilter: values.reasoningFilter,
       });
 
       await updateChannel.mutateAsync({
@@ -214,27 +210,6 @@ export function ChannelsTransformOptionsDialog({ open, onOpenChange, currentRow 
                           </FormLabel>
                           <p className='text-muted-foreground text-xs'>
                             {t('channels.dialogs.fields.transformOptions.replaceDeveloperRoleWithSystem.description')}
-                          </p>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name='reasoningFilter'
-                    render={({ field }) => (
-                      <FormItem className='flex items-center gap-2'>
-                        <FormControl>
-                          <Checkbox checked={field.value || false} onCheckedChange={field.onChange} />
-                        </FormControl>
-                        <div className='space-y-0.5'>
-                          <FormLabel className='cursor-pointer text-sm font-normal'>
-                            {t('channels.dialogs.fields.transformOptions.reasoningFilter.label')}
-                          </FormLabel>
-                          <p className='text-muted-foreground text-xs'>
-                            {t('channels.dialogs.fields.transformOptions.reasoningFilter.description')}
                           </p>
                         </div>
                         <FormMessage />

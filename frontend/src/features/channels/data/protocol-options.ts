@@ -1,4 +1,4 @@
-import type { ApiFormat, ChannelEndpoint, ChannelType, ModelAPIFormatPolicy } from './schema';
+import type { ApiFormat, ChannelEndpoint, ChannelType, ModelAPIFormatPolicy, ModelProtocol } from './schema';
 
 type ProtocolEndpoint = {
   readonly apiFormat?: string | null;
@@ -44,19 +44,8 @@ export function getApiFormatsForProvider(provider: string, configs: ProtocolConf
     }
   }
 
-  // Native video is a ZenMux channel type, so it is only offered when the
-  // provider actually includes the ZenMux channel type in its config.
-  if (providerConfig.channelTypes.includes('zenmux') && !formats.includes('zenmux/video')) {
-    formats.push('zenmux/video');
-  }
-
   return formats;
 }
-
-// Every channel type that belongs to the ZenMux family. The backend accepts the
-// native video api_format on all of them, so the endpoints dialog must offer it
-// everywhere in the family and nowhere else.
-const ZENMUX_CHANNEL_TYPES: readonly ChannelType[] = ['zenmux', 'zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini', 'zenmux_video'];
 
 /**
  * Custom endpoint formats the endpoints dialog may offer for a channel.
@@ -67,19 +56,20 @@ const ZENMUX_CHANNEL_TYPES: readonly ChannelType[] = ['zenmux', 'zenmux_response
  * System One is offered on TypeSafe, OpenAI and Cloudflare Workers AI channels only.
  * Other custom endpoint formats remain available everywhere.
  */
-export function getConfigurableApiFormatsForChannelType(channelType: ChannelType, configurableFormats: readonly string[]): string[] {
+export function getConfigurableApiFormatsForChannelType(
+  channelType: ChannelType,
+  configurableFormats: readonly string[]
+): string[] {
   if (channelType === 'typesafe') {
     return ['typesafe/systemone'];
   }
-
   const filtered = configurableFormats
     .filter((format) => channelType === 'openai' || channelType === 'openai_multiprotocol' || channelType === 'cloudflare' || format !== 'typesafe/systemone')
     .filter((format) => channelType === 'openai' || format !== 'openai/decisions')
     .filter((format) => channelType !== 'codex' || !isResponsesFamilyFormat(format));
-  if (ZENMUX_CHANNEL_TYPES.includes(channelType)) {
+  if (['zenmux', 'zenmux_responses', 'zenmux_anthropic', 'zenmux_gemini', 'zenmux_video'].includes(channelType)) {
     return [...filtered];
   }
-
   return filtered.filter((format) => format !== 'zenmux/video');
 }
 
@@ -91,7 +81,7 @@ export function getChannelTypeForApiFormat(provider: string, apiFormat: ApiForma
   // channel type when the provider config actually includes the ZenMux
   // channel type.
   if (apiFormat === 'zenmux/video') {
-    return providerConfig.channelTypes.includes('zenmux') ? 'zenmux' : undefined;
+    return providerConfig.channelTypes.includes('zenmux_video') ? 'zenmux_video' : undefined;
   }
 
   for (const channelType of providerConfig.channelTypes) {
@@ -102,6 +92,49 @@ export function getChannelTypeForApiFormat(provider: string, apiFormat: ApiForma
 
   return undefined;
 }
+
+export function getModelProtocolsForApiFormat(
+  apiFormat: ApiFormat,
+  models: readonly string[],
+  existingProtocols: readonly ModelProtocol[] | null | undefined = []
+): ModelProtocol[] {
+  if (apiFormat !== 'zenmux/video') {
+    return (existingProtocols ?? [])
+      .map((protocol) => ({
+        ...protocol,
+        apiFormats: protocol.apiFormats.filter((format) => format !== 'zenmux/video'),
+      }))
+      .filter((protocol) => protocol.apiFormats.length > 0);
+  }
+
+  // Native video selection must not clobber per-model protocol overrides:
+  // preserve any existing explicit selection for a model and only assign the
+  // video format to models the user has not pinned to a protocol yet.
+  const existingByModel = new Map((existingProtocols ?? []).map((protocol) => [protocol.model, protocol]));
+  return models.map((model) => {
+    const existing = existingByModel.get(model);
+    if (existing) {
+      return { ...existing };
+    }
+    return { model, apiFormats: [apiFormat], enabled: true };
+  });
+}
+
+export function getInitialApiFormatForChannel(
+  channelType: ChannelType,
+  defaultApiFormat: ApiFormat,
+  modelProtocols: readonly ModelProtocol[] | null | undefined
+): ApiFormat {
+  if (
+    channelType === 'zenmux' &&
+    modelProtocols?.some((protocol) => protocol.enabled !== false && protocol.apiFormats.includes('zenmux/video'))
+  ) {
+    return 'zenmux/video';
+  }
+
+  return defaultApiFormat;
+}
+
 
 const OPENAI_RESPONSES_FORMAT = 'openai/responses';
 const OPENAI_RESPONSES_WEBSOCKET_FORMAT = 'openai/responses-ws';
@@ -170,9 +203,7 @@ export function hasCodexResponsesWebSocketOverrideReplacement(channel?: CodexRes
   if (!channel) return false;
 
   const http = channel.endpoints?.find((endpoint) => resolveResponsesFormat(endpoint, channel.baseURL) === OPENAI_RESPONSES_FORMAT);
-  const webSocket = channel.endpoints?.find(
-    (endpoint) => resolveResponsesFormat(endpoint, channel.baseURL) === OPENAI_RESPONSES_WEBSOCKET_FORMAT
-  );
+  const webSocket = channel.endpoints?.find((endpoint) => resolveResponsesFormat(endpoint, channel.baseURL) === OPENAI_RESPONSES_WEBSOCKET_FORMAT);
   if (!http || !webSocket) return false;
 
   return http.baseURL !== webSocket.baseURL || http.path !== webSocket.path;
@@ -274,6 +305,25 @@ function getLegacyResponsesFormat(channel: CodexResponsesChannel): string {
  * format (mirrors the backend legacy identity). Returns undefined when nothing
  * changes.
  */
+export function translateLegacyCodexModelProtocols(
+  channel: CodexResponsesChannel,
+  modelProtocols: readonly ModelProtocol[] | null | undefined
+): ModelProtocol[] | undefined {
+  if (
+    !modelProtocols?.some((protocol) => protocol.apiFormats.includes(OPENAI_RESPONSES_FORMAT)) ||
+    getLegacyResponsesFormat(channel) !== OPENAI_RESPONSES_WEBSOCKET_FORMAT
+  ) {
+    return undefined;
+  }
+
+  return modelProtocols.map((protocol) => ({
+    ...protocol,
+    apiFormats: Array.from(
+      new Set(protocol.apiFormats.map((format) => (format === OPENAI_RESPONSES_FORMAT ? OPENAI_RESPONSES_WEBSOCKET_FORMAT : format)))
+    ),
+  }));
+}
+
 export function translateLegacyResponsesModelPolicies(
   channel: CodexResponsesChannel,
   policies: readonly ModelAPIFormatPolicy[] | null | undefined

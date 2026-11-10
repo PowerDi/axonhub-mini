@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
+import { cva, type VariantProps } from 'class-variance-authority';
 import { XIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -25,9 +26,8 @@ function DialogOverlay({ className, ...props }: React.ComponentProps<typeof Dial
   return (
     <DialogPrimitive.Overlay
       data-slot='dialog-overlay'
-      // spec §3.6: 10% black + light frost, not 50% black
       className={cn(
-        'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 bg-(--overlay) fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs',
+        'data-[state=open]:animate-dialog-in data-[state=closed]:animate-dialog-out fixed inset-0 z-50 flex items-center justify-center bg-black/50',
         className
       )}
       {...props}
@@ -47,10 +47,8 @@ const DialogContent = React.forwardRef<
         <DialogPrimitive.Content
           ref={ref}
           data-slot='dialog-content'
-          // spec §3.6: rounded-xl + ring (no border), popover surface, 100ms zoom+fade,
-          // flex-col so sticky header/footer can span the full scroll width
           className={cn(
-            'bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 relative z-50 flex max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] flex-col gap-4 overflow-y-auto rounded-xl p-4 ring-1 ring-foreground/10 shadow-md duration-100 sm:max-w-lg',
+            'bg-background data-[state=open]:animate-dialog-in data-[state=closed]:animate-dialog-out relative z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] gap-4 overflow-y-auto rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg',
             className
           )}
           onInteractOutside={(e) => {
@@ -62,8 +60,7 @@ const DialogContent = React.forwardRef<
           {showCloseButton && (
             <DialogPrimitive.Close
               data-slot='dialog-close'
-              data-hit-area
-            className="text-muted-foreground hover:bg-muted hover:text-foreground absolute top-2 right-2 rounded-md p-1.5 transition-colors focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+              className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
             >
               <XIcon />
               <span className='sr-only'>Close</span>
@@ -76,31 +73,70 @@ const DialogContent = React.forwardRef<
 });
 
 function DialogHeader({ className, ...props }: React.ComponentProps<'div'>) {
-  // Sticky so the title stays visible while long dialog bodies scroll (spec §3.6)
-  return (
-    <div
-      data-slot='dialog-header'
-      className={cn('bg-popover sticky top-0 flex flex-col gap-2 text-center sm:text-left', className)}
-      {...props}
-    />
-  );
+  return <div data-slot='dialog-header' className={cn('flex flex-col gap-2 text-center sm:text-left', className)} {...props} />;
 }
 
-function DialogFooter({ className, ...props }: React.ComponentProps<'div'>) {
+// Footers stack full width below `sm` (primary action first) and become a row
+// above it. Call sites pick spacing and chrome from these variants instead of
+// re-declaring flex direction, alignment, and gaps.
+// Buttons grow to a 44px touch target on phones, where they are the primary way
+// out of the dialog, and return to the normal control height on wider screens.
+const dialogFooterVariants = cva('flex flex-col-reverse gap-2 sm:flex-row sm:justify-end [&_button]:min-h-11 sm:[&_button]:min-h-0', {
+  variants: {
+    // `inline` keeps a footer on one line at every width. Only for footers with
+    // content on both ends (e.g. Reset on the left, Done on the right).
+    // `content` keeps source order below `sm` instead of reversing it, for
+    // footers whose first child is explanatory text rather than a secondary
+    // action — reversing those would push the message below the buttons.
+    layout: {
+      stacked: '',
+      inline: 'flex-row',
+      content: 'flex-col',
+    },
+    align: {
+      end: '',
+      between: 'sm:justify-between',
+    },
+    gap: {
+      default: '',
+      // Tightening below sm keeps phones compact; `xl` holds the gap at every width.
+      lg: 'gap-3 sm:gap-2',
+      xl: 'gap-3',
+    },
+    divided: {
+      true: 'border-t pt-4',
+    },
+    pinned: {
+      true: 'shrink-0',
+    },
+  },
+  compoundVariants: [
+    // An inline footer split across both ends needs the spacing at every width;
+    // `sm:justify-between` alone would leave the two ends packed together below sm.
+    { layout: 'inline', align: 'between', class: 'justify-between' },
+  ],
+  defaultVariants: {
+    align: 'end',
+    gap: 'default',
+  },
+});
+
+function DialogFooter({
+  className,
+  layout,
+  align,
+  gap,
+  divided,
+  pinned,
+  ...props
+}: React.ComponentProps<'div'> & VariantProps<typeof dialogFooterVariants>) {
   return (
-    <div
-      data-slot='dialog-footer'
-      className={cn(
-        'bg-popover sticky bottom-0 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end',
-        className
-      )}
-      {...props}
-    />
+    <div data-slot='dialog-footer' className={cn(dialogFooterVariants({ layout, align, gap, divided, pinned }), className)} {...props} />
   );
 }
 
 function DialogTitle({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Title>) {
-  return <DialogPrimitive.Title data-slot='dialog-title' className={cn('text-base leading-snug font-medium', className)} {...props} />;
+  return <DialogPrimitive.Title data-slot='dialog-title' className={cn('text-lg leading-none font-semibold', className)} {...props} />;
 }
 
 function DialogDescription({ className, ...props }: React.ComponentProps<typeof DialogPrimitive.Description>) {
@@ -110,6 +146,7 @@ function DialogDescription({ className, ...props }: React.ComponentProps<typeof 
 }
 
 export {
+  dialogFooterVariants,
   Dialog,
   DialogClose,
   DialogContent,

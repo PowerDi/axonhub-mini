@@ -168,7 +168,7 @@ export function ApiKeyAutoDisableRulesEditor({ rules, onChange, allowDelete = tr
                     setModeFlag(setCustomCronModes, field.id, false);
                   }}
                 >
-                  <IconTrash className='h-4 w-4 text-(--destructive-soft-fg)' />
+                  <IconTrash className='h-4 w-4 text-red-500' />
                 </Button>
               </div>
 

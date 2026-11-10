@@ -109,7 +109,7 @@ export function TokensByAPIKeyChart({ timePeriod }: TokensByAPIKeyChartProps) {
     <div className='relative space-y-6'>
       {hasError ? (
         <div className='flex h-[300px] items-center justify-center'>
-          <div className='text-sm text-(--destructive-soft-fg)'>
+          <div className='text-sm text-red-500'>
             {t('dashboard.charts.errorLoadingTokenData')} {error.message}
           </div>
         </div>
@@ -120,40 +120,45 @@ export function TokensByAPIKeyChart({ timePeriod }: TokensByAPIKeyChartProps) {
       ) : (
         <>
           <ResponsiveContainer width='100%' height={320}>
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' strokeOpacity={0.6} vertical={false} />
-              <XAxis dataKey='name' tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }} tickLine={false} axisLine={false} />
-              <YAxis
-                tickLine={false}
-                axisLine={false}
-                width={60}
-                tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
-                tickFormatter={(value) => formatNumber(value)}
-              />
-              <Tooltip content={tooltipContent} cursor={{ fill: 'var(--muted)' }} />
-              <Bar
-                dataKey='inputTokens'
-                fill={TOKEN_COLORS.input}
-                name={t('dashboard.stats.inputTokens')}
-                radius={[6, 6, 0, 0]}
-                isAnimationActive={false}
-              />
-              <Bar
-                dataKey='outputTokens'
-                fill={TOKEN_COLORS.output}
-                name={t('dashboard.stats.outputTokens')}
-                radius={[6, 6, 0, 0]}
-                isAnimationActive={false}
-              />
-              <Bar
-                dataKey='cachedTokens'
-                fill={TOKEN_COLORS.cached}
-                name={t('dashboard.stats.cachedTokens')}
-                radius={[6, 6, 0, 0]}
-                isAnimationActive={false}
-              />
-            </BarChart>
-          </ResponsiveContainer>
+        <BarChart data={chartData}>
+          <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' vertical={false} />
+          <XAxis
+            dataKey='name'
+            tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
+            tickLine={false}
+            axisLine={false}
+          />
+          <YAxis
+            tickLine={false}
+            axisLine={false}
+            width={60}
+            tick={{ fontSize: 12, fill: 'var(--muted-foreground)' }}
+            tickFormatter={(value) => formatNumber(value)}
+          />
+          <Tooltip content={tooltipContent} cursor={{ fill: 'var(--muted)' }} />
+          <Bar
+            dataKey='inputTokens'
+            fill={TOKEN_COLORS.input}
+            name={t('dashboard.stats.inputTokens')}
+            radius={[6, 6, 0, 0]}
+            isAnimationActive={false}
+          />
+          <Bar
+            dataKey='outputTokens'
+            fill={TOKEN_COLORS.output}
+            name={t('dashboard.stats.outputTokens')}
+            radius={[6, 6, 0, 0]}
+            isAnimationActive={false}
+          />
+          <Bar
+            dataKey='cachedTokens'
+            fill={TOKEN_COLORS.cached}
+            name={t('dashboard.stats.cachedTokens')}
+            radius={[6, 6, 0, 0]}
+            isAnimationActive={false}
+          />
+        </BarChart>
+      </ResponsiveContainer>
 
           <ChartLegend items={legendItems} />
         </>

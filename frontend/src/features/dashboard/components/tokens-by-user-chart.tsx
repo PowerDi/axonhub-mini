@@ -110,7 +110,7 @@ export function TokensByUserChart({ timePeriod }: TokensByUserChartProps) {
     <div className='relative space-y-6'>
       {error ? (
         <div className='flex h-[300px] items-center justify-center'>
-          <div className='text-sm text-(--destructive-soft-fg)'>
+          <div className='text-sm text-red-500'>
             {t('dashboard.charts.errorLoadingChart')} {error.message}
           </div>
         </div>
@@ -122,7 +122,7 @@ export function TokensByUserChart({ timePeriod }: TokensByUserChartProps) {
         <>
           <ResponsiveContainer width='100%' height={320}>
             <BarChart data={chartData} barSize={32}>
-              <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' strokeOpacity={0.6} vertical={false} />
+              <CartesianGrid strokeDasharray='3 3' stroke='var(--border)' vertical={false} />
               <XAxis dataKey='userName' hide />
               <YAxis
                 yAxisId='left'

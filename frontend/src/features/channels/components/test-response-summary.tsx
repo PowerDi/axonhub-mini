@@ -31,12 +31,12 @@ export function TestResponseSummary({ message, error, className = '' }: Props) {
       <div className={`max-w-full space-y-1 ${className}`}>
         {code && (
           <div>
-            <Badge variant='outline' className='text-(--destructive-soft-fg) font-mono text-xs'>
+            <Badge variant='outline' className='text-destructive font-mono text-xs'>
               {code}
             </Badge>
           </div>
         )}
-        <div className='text-(--destructive-soft-fg) text-xs break-words whitespace-pre-wrap'>{errorText}</div>
+        <div className='text-destructive text-xs break-words whitespace-pre-wrap'>{errorText}</div>
       </div>
     );
   }
@@ -132,11 +132,11 @@ export function TestResultInline({ error, message, className = '' }: TestResultI
             className={`flex w-full max-w-full min-w-0 items-center gap-1 text-left focus:outline-none ${className}`}
           >
             {code && (
-              <Badge variant='outline' className='text-(--destructive-soft-fg) shrink-0 px-1.5 font-mono text-[10px]'>
+              <Badge variant='outline' className='text-destructive shrink-0 px-1.5 font-mono text-[10px]'>
                 {code}
               </Badge>
             )}
-            <span className='text-(--destructive-soft-fg) truncate text-xs hover:underline'>{summary}</span>
+            <span className='text-destructive truncate text-xs hover:underline'>{summary}</span>
           </button>
         </PopoverTrigger>
         <PopoverContent className='w-96 max-w-[80vw] p-3' align='start'>

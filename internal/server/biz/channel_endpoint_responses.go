@@ -185,3 +185,20 @@ func normalizePolicyEndpoints(source *ent.Channel) []objects.ChannelEndpoint {
 	}
 	return endpoints
 }
+
+func normalizeModelProtocols(settings *objects.ChannelSettings, source *ent.Channel) *objects.ChannelSettings {
+	if settings == nil || len(settings.ModelProtocols) == 0 || legacyResponsesFormat(source) != llm.APIFormatOpenAIResponseWebSocket.String() {
+		return settings
+	}
+	copy := *settings
+	copy.ModelProtocols = slices.Clone(settings.ModelProtocols)
+	for i, mp := range copy.ModelProtocols {
+		copy.ModelProtocols[i].APIFormats = slices.Clone(mp.APIFormats)
+		for j, format := range mp.APIFormats {
+			if format == llm.APIFormatOpenAIResponse.String() {
+				copy.ModelProtocols[i].APIFormats[j] = llm.APIFormatOpenAIResponseWebSocket.String()
+			}
+		}
+	}
+	return &copy
+}

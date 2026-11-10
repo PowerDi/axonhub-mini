@@ -75,10 +75,8 @@ test('policy dialog reports success only after the settings mutation resolves', 
   assert.match(source, /await updateChannel\.mutateAsync\([\s\S]*?toast\.success\(t\('channels\.messages\.updateSuccess'\)\);\s*onOpenChange\(false\)/);
 });
 
-test('warning banner retains theme variables and mobile wrapping; battery never shrinks', () => {
+test('native warning banner retains mobile wrapping; battery never shrinks', () => {
   const banner = read('features/channels/components/channels-error-banner.tsx');
-  assert.doesNotMatch(banner, /(?:border|text|bg)-orange-/);
-  assert.match(banner, /border-warning\/40 bg-warning\/10 text-\(--warning-soft-fg\)/);
   assert.match(banner, /flex-col[\s\S]*sm:flex-row/);
   assert.match(banner, /self-start sm:self-auto/);
   assert.match(badges, /<BatteryIcon\s+className=\{`h-4 w-4 shrink-0/);

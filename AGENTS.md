@@ -2,7 +2,7 @@
 
 This file provides guidance to AI coding assistants when working with code in this repository.
 
-> **Detailed rules are split into focused files under `.agent/rules/`**. See [Rules Index](#rules-index) below.
+> **Detailed rules are split into focused files under `.agents/rules/`**. See [Rules Index](#rules-index) below.
 
 ## Global Rules
 
@@ -66,19 +66,19 @@ AxonHub is an all-in-one AI development platform that serves as a unified API ga
 
 ## Rules Index
 
-All detailed rules are in `.agent/rules/`:
+All detailed rules are in `.agents/rules/`:
 
 | File | Scope | Description |
 |------|-------|-------------|
-| [go-general.md](.agent/rules/go-general.md) | `**/*.go` | Go 通用约定、错误处理、依赖注入、开发命令约束 |
-| [ent-graphql.md](.agent/rules/ent-graphql.md) | `internal/ent/schema/**/*.go`, `internal/server/gql/**/*.go`, `internal/server/gql/**/*.graphql`, `gqlgen.yml` | Ent、GraphQL、代码生成、schema 变更规则 |
-| [database-indexes.md](.agent/rules/database-indexes.md) | `internal/ent/schema/**/*.go` | 数据库索引设计、命名、跨方言兼容与迁移验证规则 |
-| [biz-services.md](.agent/rules/biz-services.md) | `internal/server/biz/**/*.go` | Biz service、上下文取值、事务与级联删除规则 |
-| [cache-compat.md](.agent/rules/cache-compat.md) | `**/*.go` | 缓存结构兼容性与升级安全规则 |
-| [frontend-general.md](.agent/rules/frontend-general.md) | `frontend/**/*.ts`, `frontend/**/*.tsx` | 前端通用开发约定、GraphQL 数据约束、页面作用域 |
-| [frontend-i18n.md](.agent/rules/frontend-i18n.md) | `frontend/src/**/*.ts`, `frontend/src/**/*.tsx`, `frontend/src/locales/*.json` | i18n 与货币格式规则 |
-| [frontend-ui.md](.agent/rules/frontend-ui.md) | `frontend/**/*.tsx` | 前端 UI 组件使用规则 |
-| [e2e.md](.agent/rules/e2e.md) | `frontend/tests/**/*.ts` | E2E testing rules |
-| [docs.md](.agent/rules/docs.md) | `docs/**/*.md` | Documentation rules |
-| [workflows/add-channel.md](.agent/rules/workflows/add-channel.md) | Manual | Workflow for adding a new channel |
-| [release.md](.agent/rules/release.md) | Manual | Docker 镜像发布流程：mini 计数器 bump、触发 workflow、tag 规则 |
+| [go-general.md](.agents/rules/go-general.md) | `**/*.go` | Go 通用约定、错误处理、依赖注入、开发命令约束 |
+| [ent-graphql.md](.agents/rules/ent-graphql.md) | `internal/ent/schema/**/*.go`, `internal/server/gql/**/*.go`, `internal/server/gql/**/*.graphql`, `gqlgen.yml` | Ent、GraphQL、代码生成、schema 变更规则 |
+| [database-indexes.md](.agents/rules/database-indexes.md) | `internal/ent/schema/**/*.go` | 数据库索引设计、命名、跨方言兼容与迁移验证规则 |
+| [biz-services.md](.agents/rules/biz-services.md) | `internal/server/biz/**/*.go` | Biz service、上下文取值、事务与级联删除规则 |
+| [cache-compat.md](.agents/rules/cache-compat.md) | `**/*.go` | 缓存结构兼容性与升级安全规则 |
+| [frontend-general.md](.agents/rules/frontend-general.md) | `frontend/**/*.ts`, `frontend/**/*.tsx` | 前端通用开发约定、GraphQL 数据约束、页面作用域 |
+| [frontend-i18n.md](.agents/rules/frontend-i18n.md) | `frontend/src/**/*.ts`, `frontend/src/**/*.tsx`, `frontend/src/locales/*.json` | i18n 与货币格式规则 |
+| [frontend-ui.md](.agents/rules/frontend-ui.md) | `frontend/**/*.tsx` | 前端 UI 组件使用规则 |
+| [e2e.md](.agents/rules/e2e.md) | `frontend/tests/**/*.ts` | E2E testing rules |
+| [docs.md](.agents/rules/docs.md) | `docs/**/*.md` | Documentation rules |
+| [workflows/add-channel.md](.agents/rules/workflows/add-channel.md) | Manual | Workflow for adding a new channel |
+| [release.md](.agents/rules/release.md) | Manual | Docker 镜像发布流程：mini 计数器 bump、触发 workflow、tag 规则 |

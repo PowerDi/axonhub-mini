@@ -1,13 +1,13 @@
 export const getStatusColor = (status: string) => {
   switch (status) {
     case 'completed':
-      return 'border-success/40 bg-success/10 text-(--success-soft-fg)';
+      return 'border-green-500/40 bg-green-500/10 text-green-600';
     case 'failed':
-      return 'border-destructive/40 bg-destructive/10 text-(--destructive-soft-fg)';
+      return 'border-destructive/40 bg-destructive/10 text-destructive';
     case 'pending':
-      return 'border-warning/40 bg-warning/10 text-(--warning-soft-fg)';
+      return 'border-amber-500/40 bg-amber-500/10 text-amber-600';
     case 'processing':
-      return 'border-info/40 bg-info/10 text-(--info-soft-fg)';
+      return 'border-blue-500/40 bg-blue-500/10 text-blue-600';
     default:
       return 'border-border bg-muted text-muted-foreground';
   }

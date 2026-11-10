@@ -17,7 +17,7 @@ export default function SignIn() {
       <TwoColumnAuth
         title={t('auth.signIn.title')}
         description={t('auth.signIn.subtitle')}
-        rightFooter={<p className='text-xs leading-relaxed text-muted-foreground sm:text-sm'>{t('auth.signIn.footer.agreement')}</p>}
+        rightFooter={<p className='text-xs leading-relaxed text-slate-500 sm:text-sm'>{t('auth.signIn.footer.agreement')}</p>}
       >
         <UserAuthForm redirect={redirect} />
       </TwoColumnAuth>

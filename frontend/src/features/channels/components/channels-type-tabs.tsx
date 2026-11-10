@@ -82,7 +82,7 @@ export const ChannelsTypeTabs = memo(function ChannelsTypeTabs({ typeCounts, sel
     <div className={cn('mb-3 sm:mb-6 w-full overflow-hidden', className)}>
       <div
         ref={scrollRef}
-        className='no-scrollbar flex flex-nowrap items-center gap-2 overflow-x-auto scroll-smooth'
+        className='hide-scroll flex flex-nowrap items-center gap-2 overflow-x-auto scroll-smooth'
       >
         {/* All tab */}
         <button
@@ -111,8 +111,6 @@ export const ChannelsTypeTabs = memo(function ChannelsTypeTabs({ typeCounts, sel
           return (
             <button
               key={prefix}
-              data-testid={`channel-provider-${prefix}`}
-              aria-pressed={selectedTab === prefix}
               onClick={() => onTabChange(prefix)}
               className={cn(
                 'flex shrink-0 items-center gap-2 rounded-full px-4 py-1.5 text-sm font-medium whitespace-nowrap transition-all',

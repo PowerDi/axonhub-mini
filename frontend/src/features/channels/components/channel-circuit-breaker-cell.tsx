@@ -35,8 +35,8 @@ export const ChannelCircuitBreakerCell = memo(({ stats }: ChannelCircuitBreakerC
                 variant='outline'
                 className={cn(
                   'cursor-help max-w-36 truncate text-[10px]',
-                  isOpen && 'border-(--destructive-soft-fg)/40 bg-(--destructive-soft-fg)/10 text-(--destructive-soft-fg)',
-                  isHalfOpen && 'border-(--warning-soft-fg)/40 bg-(--warning-soft-fg)/10 text-(--warning-soft-fg)'
+                  isOpen && 'border-(--destructive-soft-fg)/40 bg-(--destructive-soft-fg)/10 text-destructive',
+                  isHalfOpen && 'border-(--warning-soft-fg)/40 bg-(--warning-soft-fg)/10 text-amber-600'
                 )}
               >
                 {item.modelID}

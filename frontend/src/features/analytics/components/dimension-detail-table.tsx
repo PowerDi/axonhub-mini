@@ -51,7 +51,7 @@ export function DimensionDetailTable({ channelStats, modelStats, apiKeyStats, us
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className='hover-card'>
         <CardHeader>
           <Skeleton className='h-6 w-[200px]' />
         </CardHeader>
@@ -63,7 +63,7 @@ export function DimensionDetailTable({ channelStats, modelStats, apiKeyStats, us
   }
 
   return (
-    <Card>
+    <Card className='hover-card'>
       <CardHeader className='flex flex-row items-center justify-between'>
         <CardTitle>{t('analytics.table.title')}</CardTitle>
         <Tabs value={dimension} onValueChange={(v) => setDimension(v as Dimension)}>
@@ -88,7 +88,7 @@ export function DimensionDetailTable({ channelStats, modelStats, apiKeyStats, us
           <div className='text-muted-foreground flex h-[200px] items-center justify-center text-sm'>{t('analytics.table.noData')}</div>
         ) : (
           <div className='overflow-x-auto'>
-            <table className='w-full min-w-[800px] table-fixed caption-bottom text-sm tabular-nums'>
+            <table className='w-full min-w-[1100px] table-fixed caption-bottom text-sm'>
               <colgroup>
                 <col className='w-[20%]' />
                 <col className='w-[8%]' />
@@ -103,48 +103,40 @@ export function DimensionDetailTable({ channelStats, modelStats, apiKeyStats, us
                 <col className='w-[8%]' />
               </colgroup>
               <thead className='[&_tr]:border-b'>
-                <tr className='border-b'>
-                  <th className='text-foreground sticky left-0 z-10 h-10 bg-(--table-header) px-2 text-left text-xs font-medium'>
-                    {t('analytics.table.name')}
-                  </th>
-                  <th className='text-foreground h-10 px-2 text-right text-xs font-medium'>{t('analytics.table.totalTokens')}</th>
-                  <th className='text-foreground h-10 px-2 text-right text-xs font-medium'>{t('analytics.table.inputTokens')}</th>
-                  <th className='text-foreground h-10 px-2 text-right text-xs font-medium'>{t('analytics.table.cachedTokens')}</th>
-                  <th className='text-foreground h-10 px-2 text-right text-xs font-medium'>{t('analytics.table.uncachedTokens')}</th>
-                  <th className='text-foreground h-10 px-2 text-right text-xs font-medium'>{t('analytics.table.outputTokens')}</th>
-                  <th className='text-foreground h-10 px-2 text-right text-xs font-medium'>{t('analytics.table.cacheHitRate')}</th>
-                  <th className='text-foreground h-10 px-2 text-right text-xs font-medium'>{t('analytics.table.requests')}</th>
-                  <th className='text-foreground h-10 px-2 text-right text-xs font-medium'>{t('analytics.table.tokensPerSecond')}</th>
-                  <th className='text-foreground h-10 px-2 text-right text-xs font-medium'>{t('analytics.table.ttft')}</th>
-                  <th className='text-foreground h-10 px-2 text-right text-xs font-medium'>{t('analytics.table.cost')}</th>
+                <tr className='border-b transition-colors hover:bg-muted/50'>
+                  <th className='sticky left-0 z-10 bg-card px-4 py-2 text-left text-xs font-medium text-muted-foreground'>{t('analytics.table.name')}</th>
+                  <th className='px-4 py-2 text-right text-xs font-medium text-muted-foreground'>{t('analytics.table.totalTokens')}</th>
+                  <th className='px-4 py-2 text-right text-xs font-medium text-muted-foreground'>{t('analytics.table.inputTokens')}</th>
+                  <th className='px-4 py-2 text-right text-xs font-medium text-muted-foreground'>{t('analytics.table.cachedTokens')}</th>
+                  <th className='px-4 py-2 text-right text-xs font-medium text-muted-foreground'>{t('analytics.table.uncachedTokens')}</th>
+                  <th className='px-4 py-2 text-right text-xs font-medium text-muted-foreground'>{t('analytics.table.outputTokens')}</th>
+                  <th className='px-4 py-2 text-right text-xs font-medium text-muted-foreground'>{t('analytics.table.cacheHitRate')}</th>
+                  <th className='px-4 py-2 text-right text-xs font-medium text-muted-foreground'>{t('analytics.table.requests')}</th>
+                  <th className='px-4 py-2 text-right text-xs font-medium text-muted-foreground'>{t('analytics.table.tokensPerSecond')}</th>
+                  <th className='px-4 py-2 text-right text-xs font-medium text-muted-foreground'>{t('analytics.table.ttft')}</th>
+                  <th className='px-4 py-2 text-right text-xs font-medium text-muted-foreground'>{t('analytics.table.cost')}</th>
                 </tr>
               </thead>
               <tbody className='[&_tr:last-child]:border-0'>
                 {currentData.map((item) => (
-                  <tr key={item.id} className='border-b transition-colors duration-100 hover:bg-(--table-row-hover)'>
-                    <td className='bg-card sticky left-0 z-10 truncate px-2 py-2 text-sm font-medium'>{item.name}</td>
-                    <td className='px-2 py-2 text-right text-sm font-medium whitespace-nowrap tabular-nums'>
-                      {formatExactNumber(item.totalTokens)}
-                    </td>
-                    <td className='px-2 py-2 text-right text-sm whitespace-nowrap tabular-nums'>{formatExactNumber(item.inputTokens)}</td>
-                    <td className='px-2 py-2 text-right text-sm whitespace-nowrap tabular-nums'>
-                      {formatExactNumber(item.cachedInputTokens)}
-                    </td>
-                    <td className='px-2 py-2 text-right text-sm whitespace-nowrap tabular-nums'>
-                      {formatExactNumber(item.inputTokens - item.cachedInputTokens)}
-                    </td>
-                    <td className='px-2 py-2 text-right text-sm whitespace-nowrap tabular-nums'>{formatExactNumber(item.outputTokens)}</td>
-                    <td className='px-2 py-2 text-right text-sm whitespace-nowrap tabular-nums'>
+                  <tr key={item.id} className='border-b transition-colors hover:bg-muted/50'>
+                    <td className='sticky left-0 z-10 truncate bg-card px-4 py-2 text-sm font-medium'>{item.name}</td>
+                    <td className='whitespace-nowrap px-4 py-2 text-right text-sm font-medium tabular-nums'>{formatExactNumber(item.totalTokens)}</td>
+                    <td className='whitespace-nowrap px-4 py-2 text-right text-sm tabular-nums'>{formatExactNumber(item.inputTokens)}</td>
+                    <td className='whitespace-nowrap px-4 py-2 text-right text-sm tabular-nums'>{formatExactNumber(item.cachedInputTokens)}</td>
+                    <td className='whitespace-nowrap px-4 py-2 text-right text-sm tabular-nums'>{formatExactNumber(item.inputTokens - item.cachedInputTokens)}</td>
+                    <td className='whitespace-nowrap px-4 py-2 text-right text-sm tabular-nums'>{formatExactNumber(item.outputTokens)}</td>
+                    <td className='whitespace-nowrap px-4 py-2 text-right text-sm tabular-nums'>
                       {item.inputTokens > 0 ? ((item.cachedInputTokens / item.inputTokens) * 100).toFixed(1) : '0'}%
                     </td>
-                    <td className='px-4 py-2 text-right text-sm whitespace-nowrap tabular-nums'>{formatExactNumber(item.requestCount)}</td>
-                    <td className='px-4 py-2 text-right text-sm whitespace-nowrap tabular-nums'>
+                    <td className='whitespace-nowrap px-4 py-2 text-right text-sm tabular-nums'>{formatExactNumber(item.requestCount)}</td>
+                    <td className='whitespace-nowrap px-4 py-2 text-right text-sm tabular-nums'>
                       {item.tokensPerSecond == null ? '—' : item.tokensPerSecond.toFixed(2)}
                     </td>
-                    <td className='px-4 py-2 text-right text-sm whitespace-nowrap tabular-nums'>
+                    <td className='whitespace-nowrap px-4 py-2 text-right text-sm tabular-nums'>
                       {item.ttftMs == null ? '—' : Math.round(item.ttftMs).toLocaleString()}
                     </td>
-                    <td className='px-4 py-2 text-right text-sm whitespace-nowrap tabular-nums'>{formatCurrency(item.cost)}</td>
+                    <td className='whitespace-nowrap px-4 py-2 text-right text-sm tabular-nums'>{formatCurrency(item.cost)}</td>
                   </tr>
                 ))}
               </tbody>

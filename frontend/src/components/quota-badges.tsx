@@ -49,10 +49,10 @@ import { capitalizeZenmuxTier, getZenmuxMonthlyQuotaUSD, getZenmuxUsagePercentag
 const syntheticWeeklyRegenTickPct = 0.02;
 
 const BADGE_COLOR_CLASSES: Record<string, string> = {
-  green: 'bg-success/10 text-(--success-soft-fg) border-success/40 hover:bg-success/20',
-  red: 'bg-destructive/10 text-(--destructive-soft-fg) border-destructive/40 hover:bg-destructive/20',
-  amber: 'bg-warning/10 text-(--warning-soft-fg) border-warning/40 hover:bg-warning/20',
-  blue: 'bg-info/10 text-(--info-soft-fg) border-info/40 hover:bg-info/20',
+  green: 'bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20',
+  red: 'bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/20',
+  amber: 'bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500/20',
+  blue: 'bg-blue-500/10 text-blue-500 border-blue-500/20 hover:bg-blue-500/20',
 };
 
 const STATUS_LABELS = {
@@ -61,6 +61,20 @@ const STATUS_LABELS = {
   exhausted: 'quota.status.exhausted',
   unknown: 'quota.status.unknown',
 } as const;
+
+// Codex reset credits expire (typically 30 days after they are granted). Show
+// the redeem action shortly before the earliest credit lapses even while the
+// channel still has quota left, otherwise the credit is wasted.
+const RESET_CREDIT_EXPIRING_SOON_MS = 72 * 60 * 60 * 1000;
+
+function isResetCreditExpiringSoon(expiresAt?: string, now = Date.now()): boolean {
+  if (!expiresAt) return false;
+  const expiresAtMs = new Date(expiresAt).getTime();
+  if (Number.isNaN(expiresAtMs)) return false;
+  // A credit that already lapsed is stale cached quota data, not a redemption
+  // reminder: only a credit that is still valid can be "expiring soon".
+  return expiresAtMs > now && expiresAtMs - now <= RESET_CREDIT_EXPIRING_SOON_MS;
+}
 
 // Effective routing mode for a channel: its own mode wins unless it defers
 // via INHERIT to the global default. Null when the global default is
@@ -252,15 +266,6 @@ function getChannelPercentage(channel: ProviderQuotaChannel): number {
     if ((qd?.credits?.purchased_usd ?? 0) > 0) {
       percentage = Math.min(percentage, 94);
     }
-  } else if (isCommandCodeType(channel.type)) {
-    const qd = channel.quotaStatus.quotaData as ProviderCommandCodeQuotaData | undefined;
-    percentage = Math.max(
-      qd?.windows?.five_hour?.usage_percent ?? 0,
-      qd?.windows?.weekly?.usage_percent ?? 0,
-      qd?.credits?.monthly_limit_usd != null && qd.credits.monthly_limit_usd > 0
-        ? ((qd.credits.monthly_limit_usd - (qd.credits.monthly_remaining_usd ?? 0)) / qd.credits.monthly_limit_usd) * 100
-        : 0
-    );
   } else if (isCommandCodeType(channel.type)) {
     const qd = channel.quotaStatus.quotaData as ProviderCommandCodeQuotaData | undefined;
     percentage = Math.max(
@@ -482,6 +487,15 @@ function PeriodQuotaEstimate({ limits, currency }: { limits: ProviderQuotaLimit[
   );
 }
 
+// Cached quota data can outlive the reset credit it describes: a credit that
+// lapsed after the last quota poll is no longer redeemable. Excluding those
+// keeps the "expires at" row from advertising a date in the past.
+function isResetCreditUnexpired(reset: { expiresAt?: string }, now = Date.now()): boolean {
+  if (!reset.expiresAt) return false;
+  const expiresAtMs = new Date(reset.expiresAt).getTime();
+  return !Number.isNaN(expiresAtMs) && expiresAtMs > now;
+}
+
 function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; effectiveMode: QuotaRoutingMode | null }) {
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
@@ -623,12 +637,29 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? value : format(date, 'yyyy-MM-dd HH:mm');
   };
+
+  // Compact remaining time for an expiring reset credit, e.g. "2d 3h". The
+  // quota unit labels keep the hint localized without a second formatter key.
+  const formatResetCreditRemaining = (expiresAt?: string) => {
+    if (!expiresAt) return '';
+    const diffMs = new Date(expiresAt).getTime() - Date.now();
+    if (Number.isNaN(diffMs)) return '';
+    // Callers only pass credits that are still valid, but one less than a
+    // minute from expiry must not read as "0m".
+    const totalMinutes = Math.max(1, Math.floor(diffMs / 60000));
+    const days = Math.floor(totalMinutes / (24 * 60));
+    const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+    const minutes = totalMinutes % 60;
+    if (days > 0) return `${days}${t('quota.label.d')} ${hours}${t('quota.label.h')}`;
+    if (hours > 0) return `${hours}${t('quota.label.h')} ${minutes}${t('quota.label.m')}`;
+    return `${minutes}${t('quota.label.m')}`;
+  };
   return (
     <div className='min-w-0 space-y-3 border-b py-3 first:pt-1 last:border-0 last:pb-1'>
       <div className='flex items-center justify-between'>
         <div className='flex min-w-0 flex-1 items-center gap-2'>
           <BatteryIcon
-            className={`h-4 w-4 shrink-0 ${status === 'exhausted' ? 'text-(--destructive-soft-fg)' : status === 'warning' ? 'text-(--warning-soft-fg)' : 'text-muted-foreground'}`}
+            className={`h-4 w-4 shrink-0 ${status === 'exhausted' ? 'text-red-500' : status === 'warning' ? 'text-yellow-500' : 'text-muted-foreground'}`}
           />
           <span className='text-foreground truncate font-medium' title={channel.name}>
             {channel.name}
@@ -890,12 +921,17 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
             const availableResets = qd._resets?.resets ?? [];
             const availableResetCount = availableResets.length;
             const nextExpiringReset = availableResets
-              .filter((reset) => reset.expiresAt && !Number.isNaN(new Date(reset.expiresAt).getTime()))
+              .filter((reset) => isResetCreditUnexpired(reset))
               .sort((a, b) => new Date(a.expiresAt!).getTime() - new Date(b.expiresAt!).getTime())[0];
             const latestGrantedReset = availableResets
               .filter((reset) => reset.grantedAt && !Number.isNaN(new Date(reset.grantedAt).getTime()))
               .sort((a, b) => new Date(b.grantedAt!).getTime() - new Date(a.grantedAt!).getTime())[0];
             const resetTime = nextExpiringReset?.expiresAt ?? latestGrantedReset?.grantedAt;
+            const expiringSoonReset =
+              nextExpiringReset && isResetCreditExpiringSoon(nextExpiringReset.expiresAt) ? nextExpiringReset : undefined;
+            const resetCreditExpiryHint = expiringSoonReset?.expiresAt
+              ? t('quota.codex.resetCreditExpiringSoon', { time: formatResetCreditRemaining(expiringSoonReset.expiresAt) })
+              : undefined;
             const hasResetInfo = qd._resets?.supported === true && !qd._resets.error;
             const canAttemptReset = qd._resets?.supported === true && (Boolean(qd._resets.error) || availableResetCount > 0);
             return (
@@ -956,14 +992,19 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                       <span className='text-foreground font-medium'>{formatQuotaResetTime(resetTime)}</span>
                     </div>
                   )}
-                  {(status === 'exhausted' || status === 'warning') && (
-                    <div className='flex items-center justify-end pt-1'>
+                  {(status === 'exhausted' || status === 'warning' || Boolean(expiringSoonReset)) && (
+                    <div className='flex flex-col items-end gap-1 pt-1'>
+                      {resetCreditExpiryHint && (
+                        <p className='text-xs font-medium text-amber-600 dark:text-amber-400' role='status'>
+                          {resetCreditExpiryHint}
+                        </p>
+                      )}
                       <Button
                         size='sm'
                         variant='outline'
                         className='h-7 text-xs'
                         disabled={isResetting || !canAttemptReset}
-                        title={!canAttemptReset ? t('quota.codex.noResetCredits') : undefined}
+                        title={!canAttemptReset ? t('quota.codex.noResetCredits') : resetCreditExpiryHint}
                         onClick={handleResetCodexQuota}
                       >
                         {isResetting ? <Loader2 className='mr-1.5 h-3.5 w-3.5 animate-spin' /> : <Zap className='mr-1.5 h-3.5 w-3.5' />}
@@ -1261,7 +1302,7 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                 <div key='state' className='flex items-center gap-1.5 pt-1'>
                   <Badge
                     variant='outline'
-                    className='border-warning/40 h-4 px-1.5 py-0 text-[10px] font-semibold tracking-wider text-(--warning-soft-fg) uppercase'
+                    className='h-4 border-yellow-500/30 px-1.5 py-0 text-[10px] font-semibold tracking-wider text-yellow-500 uppercase'
                   >
                     {t(stateKey)}
                   </Badge>
@@ -2003,7 +2044,7 @@ function QuotaRow({ channel, effectiveMode }: { channel: ProviderQuotaChannel; e
                   {qd.rollingFiveHourLimit.limited && (
                     <Badge
                       variant='outline'
-                      className='border-warning/40 h-4 px-1.5 py-0 text-[10px] font-semibold tracking-wider text-(--warning-soft-fg) uppercase'
+                      className='h-4 border-yellow-500/30 px-1.5 py-0 text-[10px] font-semibold tracking-wider text-yellow-500 uppercase'
                     >
                       {t('quota.status.limited')}
                     </Badge>
@@ -2487,7 +2528,7 @@ function QuotaBadgeTrigger({ channels, isLoading, isError }: { channels: Provide
   }
 
   if (isError) {
-    return <BatteryWarning className='h-5 w-5 text-(--destructive-soft-fg) transition-colors' />;
+    return <BatteryWarning className='h-5 w-5 text-red-500 transition-colors' />;
   }
 
   const highestUsed = Math.max(...channels.map(getChannelPercentage));
@@ -2502,7 +2543,7 @@ function QuotaBadgeTrigger({ channels, isLoading, isError }: { channels: Provide
 
   const BatteryIcon = getBatteryIcon(level);
   const isWarning = level === 'warning';
-  const textColor = isWarning ? 'text-(--destructive-soft-fg)' : level === 'low' ? 'text-(--warning-soft-fg)' : 'text-muted-foreground';
+  const textColor = isWarning ? 'text-red-500' : level === 'low' ? 'text-yellow-500' : 'text-muted-foreground';
 
   return <BatteryIcon className={`h-5 w-5 ${textColor} transition-colors`} />;
 }
@@ -2810,7 +2851,7 @@ export function QuotaBadges({ isRefreshing, onRefresh }: { isRefreshing: boolean
 
     if (isError) {
       return (
-        <div className='bg-destructive/10 rounded p-2 text-xs break-words text-(--destructive-soft-fg)'>
+        <div className='rounded bg-red-500/10 p-2 text-xs break-words text-red-500'>
           <span className='font-medium'>{t('system.providerQuota.error')}:</span>{' '}
           {error instanceof Error ? error.message : t('quota.label.unavailable')}
         </div>

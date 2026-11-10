@@ -1,10 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useDebounce } from '@/hooks/use-debounce';
 import { usePaginationSearch } from '@/hooks/use-pagination-search';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Main } from '@/components/layout/main';
-import { Header } from '@/components/layout/header';
+import { PageHeader } from '@/components/layout/page-header';
 import { createColumns } from './components/users-columns';
 import { UsersDialogs } from './components/users-dialogs';
 import { UsersPrimaryButtons } from './components/users-primary-buttons';
@@ -34,20 +33,7 @@ function UsersContent() {
     ...paginationArgs,
   });
 
-  const [nameFilter, setNameFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string[]>([]);
-  const [roleFilter, setRoleFilter] = useState<string[]>([]);
-  const debouncedNameFilter = useDebounce(nameFilter, 300);
-  // Project.projectUsers returns the complete membership list without filter
-  // arguments. Filter that list here while preserving project-specific scopes.
-  const projectUsers = useMemo(() => {
-    const search = debouncedNameFilter.trim().toLowerCase();
-    return (data?.edges?.map((edge) => edge.node) || []).filter((user) =>
-      (!search || `${user.firstName} ${user.lastName} ${user.email}`.toLowerCase().includes(search)) &&
-      (statusFilter.length === 0 || statusFilter.includes(user.status)) &&
-      (roleFilter.length === 0 || user.roles?.edges?.some(({ node }) => roleFilter.includes(node.id)))
-    );
-  }, [data, debouncedNameFilter, statusFilter, roleFilter]);
+  const projectUsers = data?.edges?.map((edge) => edge.node) || [];
   const pageInfo = data?.pageInfo;
 
   const handleNextPage = () => {
@@ -77,12 +63,12 @@ function UsersContent() {
         onNextPage={handleNextPage}
         onPreviousPage={handlePreviousPage}
         onPageSizeChange={handlePageSizeChange}
-        nameFilter={nameFilter}
-        statusFilter={statusFilter}
-        roleFilter={roleFilter}
-        onNameFilterChange={setNameFilter}
-        onStatusFilterChange={setStatusFilter}
-        onRoleFilterChange={setRoleFilter}
+        nameFilter={''}
+        statusFilter={[]}
+        roleFilter={[]}
+        onNameFilterChange={() => {}}
+        onStatusFilterChange={() => {}}
+        onRoleFilterChange={() => {}}
       />
     </div>
   );
@@ -93,15 +79,7 @@ export default function UsersManagement() {
 
   return (
     <UsersProvider>
-      <Header fixed>
-        <div className='flex flex-1 items-center justify-between'>
-          <div>
-            <h2 className='text-lg font-normal tracking-tight'>{t('projectUsers.title')}</h2>
-            <p className='text-sm text-muted-foreground'>{t('projectUsers.description')}</p>
-          </div>
-          <UsersPrimaryButtons />
-        </div>
-      </Header>
+      <PageHeader title={t('projectUsers.title')} description={t('projectUsers.description')} actions={<UsersPrimaryButtons />} />
 
       <Main fixed>
         <UsersContent />

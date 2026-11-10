@@ -151,6 +151,7 @@ export function mergeChannelSettingsForUpdate(
   return {
     extraModelPrefix: pick('extraModelPrefix', existing?.extraModelPrefix ?? ''),
     modelMappings: pick('modelMappings', existing?.modelMappings ?? []),
+    modelProtocols: pick('modelProtocols', existing?.modelProtocols ?? []),
     modelApiFormatPolicies: pick('modelApiFormatPolicies', existing?.modelApiFormatPolicies ?? []),
     autoTrimedModelPrefixes: pick('autoTrimedModelPrefixes', existing?.autoTrimedModelPrefixes ?? []),
     hideOriginalModels: pick('hideOriginalModels', existing?.hideOriginalModels ?? false),

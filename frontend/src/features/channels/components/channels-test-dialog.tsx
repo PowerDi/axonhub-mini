@@ -149,7 +149,7 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
         return <Badge variant='secondary'>{t('channels.dialogs.test.testingModel')}</Badge>;
       case 'success':
         return (
-          <Badge variant='default' className='border-success/40 bg-success/10 text-(--success-soft-fg)'>
+          <Badge variant='default' className='border-green-500/40 bg-green-500/10 text-green-600'>
             {t('channels.dialogs.test.testSuccess')}
           </Badge>
         );
@@ -261,7 +261,7 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
                             className='scale-100 sm:scale-75'
                           />
                         </TableCell>
-                        <TableCell className='py-2.5 pr-4 align-top text-xs font-medium break-all sm:pr-8'>
+                        <TableCell className='pr-4 font-medium sm:pr-8'>
                           <div>{model}</div>
                         </TableCell>
                         <TableCell className='w-48 min-w-[192px] py-2.5 align-top sm:w-64'>
@@ -282,7 +282,7 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
                             variant='outline'
                             onClick={() => testModel(model)}
                             disabled={result?.status === 'testing' || testChannel.isPending}
-                            className='h-7 gap-1 px-2 text-xs'
+                            className='h-9 gap-1 px-2 text-xs sm:h-8'
                           >
                             <IconPlayerPlay className='h-3 w-3' />
                             {result?.status === 'testing' ? t('channels.dialogs.test.testingModel') : t('channels.dialogs.test.testModel')}
@@ -297,15 +297,15 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
           </div>
         </div>
 
-        <DialogFooter className='flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-2'>
-          <div className='flex flex-col sm:flex-row gap-2 w-full sm:w-auto'>
-            <Button variant='outline' onClick={() => onOpenChange(false)} className='h-8 w-full text-xs sm:w-auto'>
+        <DialogFooter gap='lg'>
+          <div className='flex w-full flex-col gap-2 sm:w-auto sm:flex-row'>
+            <Button variant='outline' onClick={() => onOpenChange(false)} className='w-full sm:w-auto'>
               {t('common.buttons.cancel')}
             </Button>
             {failedModels.length > 0 && (
               <Popover open={isRemovePopoverOpen} onOpenChange={setIsRemovePopoverOpen}>
                 <PopoverTrigger asChild>
-                  <Button variant='destructive' size='sm' className='h-7 text-xs'>
+                  <Button variant='destructive' size='sm'>
                     {t('channels.dialogs.test.removeFailed')} ({failedModels.length})
                   </Button>
                 </PopoverTrigger>
@@ -330,7 +330,7 @@ export function ChannelsTestDialog({ open, onOpenChange, channel }: Props) {
               </Popover>
             )}
           </div>
-          <Button onClick={handleTestSelected} disabled={selectedModels.length === 0 || isTesting} className='h-8 text-xs sm:h-8'>
+          <Button onClick={handleTestSelected} disabled={selectedModels.length === 0 || isTesting}>
             <IconPlayerPlay className='mr-2 h-4 w-4' />
             {t('channels.dialogs.test.testAllButton', { count: selectedModels.length })}
           </Button>

@@ -7,7 +7,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { type DateTimeRangeValue } from '@/utils/date-range';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Main } from '@/components/layout/main';
-import { Header } from '@/components/layout/header';
+import { PageHeader } from '@/components/layout/page-header';
 import { createColumns } from './components/apikeys-columns';
 import { ApiKeysDialogs } from './components/apikeys-dialogs';
 import { ApiKeysPrimaryButtons } from './components/apikeys-primary-buttons';
@@ -219,7 +219,7 @@ function ApiKeysContent() {
   return (
     <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
       <Tabs value={activeTab} onValueChange={handleTabChange} className='w-full'>
-        <TabsList className='border-border bg-background grid w-full grid-cols-5 rounded-2xl border'>
+        <TabsList className='shadow-soft border-border bg-background grid w-full grid-cols-5 rounded-2xl border'>
           <TabsTrigger value='all' data-value='all'>
             {t('apikeys.tabs.all')}
           </TabsTrigger>
@@ -272,15 +272,7 @@ export default function ApiKeysManagement() {
 
   return (
     <ApiKeysProvider>
-      <Header fixed>
-        <div className='flex flex-1 items-center justify-between'>
-          <div>
-            <h2 className='text-lg font-normal tracking-tight'>{t('apikeys.title')}</h2>
-            <p className='text-sm text-muted-foreground'>{t('apikeys.description')}</p>
-          </div>
-          <ApiKeysPrimaryButtons />
-        </div>
-      </Header>
+      <PageHeader title={t('apikeys.title')} description={t('apikeys.description')} actions={<ApiKeysPrimaryButtons />} />
 
       <Main fixed className='[--page-body-min-height:22rem]'>
         <ApiKeysContent />
