@@ -77,10 +77,11 @@ jobs:
           # GHCR rejects uppercase characters in a package path.
           IMAGE="ghcr.io/$(printf '%s' "$OWNER" | tr '[:upper:]' '[:lower:]')/${PACKAGE}"
 
-          # internal/build/VERSION only moves when upstream cuts a release
-          # (release.yml writes the pushed v* tag into it), so it cannot on its
-          # own distinguish two of our builds. It is the *base* here, never the
-          # whole version.
+          # internal/build/VERSION records the upstream release actually merged
+          # into this fork and must be updated when that baseline changes.
+          # Upstream release.yml skips this update for beta/rc releases, so the
+          # source tree can otherwise retain an older version after a merge.
+          # This is the base; MINI distinguishes our builds of that baseline.
           SEMVER_RE='^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z][0-9A-Za-z.-]*)?$'
 
           BASE_VERSION=$(tr -d '[:space:]' < internal/build/VERSION)
@@ -275,9 +276,9 @@ jobs:
             SOURCES="$SOURCES ${IMAGE}:${PINNED}-${arch}"
           done
 
-          # Both tags are repointed by a rebuild: PINNED only carries a date, so
-          # a second build on the same day reuses it. Deployments that need a
-          # guaranteed-identical image should pin the digest, not the tag.
+          # Each release must use a fresh Mini counter for its version tag;
+          # MOVING follows the newest build. Deployments that need a guaranteed
+          # identical image should pin the digest, not the moving tag.
           # shellcheck disable=SC2086
           docker buildx imagetools create -t "${IMAGE}:${PINNED}" -t "${IMAGE}:${MOVING}" $SOURCES
 
