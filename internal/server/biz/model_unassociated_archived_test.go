@@ -84,9 +84,6 @@ func TestQueryUnassociatedChannels_AssociationsAreChannelScoped(t *testing.T) {
 					require.ElementsMatch(t, []string{"gpt-6-astra", "gpt-6.1-sol"}, byChannel[backup.ID])
 					if status == channel.StatusEnabled {
 						expected := []string{"target-only"}
-						if rule.disabled {
-							expected = append(expected, "gpt-6-astra")
-						}
 						require.ElementsMatch(t, expected, byChannel[target.ID])
 						require.Len(t, result, 2)
 					} else {
@@ -151,9 +148,8 @@ func TestFindUnassociatedChannels_RequestModelKey(t *testing.T) {
 }
 
 // TestFindUnassociatedChannels_IgnoresDisabledRuleOnExcludedChannel verifies a
-// disabled channel_model rule stays inert even when it points at a disabled or
-// archived channel. Otherwise it masquerades as a global association and hides
-// the model on unrelated enabled channels.
+// configured channel_model rule cannot cover another channel, including when
+// the rule is disabled or its original channel is no longer in the working set.
 func TestFindUnassociatedChannels_IgnoresDisabledRuleOnExcludedChannel(t *testing.T) {
 	channels := []*ent.Channel{
 		{

@@ -54,8 +54,9 @@ type ImportUnassociatedModelItem struct {
 	Sources       []*ImportModelSource `json:"sources"`
 }
 
-// ImportUnassociatedModelsResult reports what the import did. Warnings are
-// advisory: they never abort the import.
+// ImportUnassociatedModelsResult reports what the import did. Created and
+// Appended count models actually changed, not accepted items that were skipped.
+// Warnings are advisory: they never abort the import.
 type ImportUnassociatedModelsResult struct {
 	Created  int          `json:"created"`
 	Appended int          `json:"appended"`
@@ -100,12 +101,15 @@ func (svc *ModelService) ImportUnassociatedModels(
 		)
 
 		if item.TargetModelID != nil {
-			imported, warnings, err = svc.appendImportedAssociations(ctx, *item.TargetModelID, item.Sources, channels)
+			var changed bool
+			imported, changed, warnings, err = svc.appendImportedAssociations(ctx, *item.TargetModelID, item.Sources, channels)
 			if err != nil {
 				return nil, err
 			}
 
-			result.Appended++
+			if changed {
+				result.Appended++
+			}
 		} else {
 			imported, warnings, err = svc.createImportedModel(ctx, item, channels)
 			if err != nil {
@@ -272,14 +276,14 @@ func (svc *ModelService) appendImportedAssociations(
 	targetModelID int,
 	sources []*ImportModelSource,
 	channels map[int]*Channel,
-) (*ent.Model, []string, error) {
+) (*ent.Model, bool, []string, error) {
 	target, err := svc.entFromContext(ctx).Model.Get(ctx, targetModelID)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, nil, xerrors.NotFoundError(fmt.Sprintf("model with id '%d'", targetModelID))
+			return nil, false, nil, xerrors.NotFoundError(fmt.Sprintf("model with id '%d'", targetModelID))
 		}
 
-		return nil, nil, fmt.Errorf("failed to query target model: %w", err)
+		return nil, false, nil, fmt.Errorf("failed to query target model: %w", err)
 	}
 
 	settings := target.Settings
@@ -291,12 +295,12 @@ func (svc *ModelService) appendImportedAssociations(
 
 	added, warnings := buildImportedAssociations(target.ModelID, sources, existing, channels)
 	if len(existing)+len(added) > MaxModelAssociations {
-		return nil, nil, associationLimitError(target.ModelID, len(existing)+len(added))
+		return nil, false, nil, associationLimitError(target.ModelID, len(existing)+len(added))
 	}
 
 	if len(added) == 0 {
 		// Every source is already associated; leave the Model untouched.
-		return target, warnings, nil
+		return target, false, warnings, nil
 	}
 
 	updated := &objects.ModelSettings{
@@ -307,17 +311,17 @@ func (svc *ModelService) appendImportedAssociations(
 	}
 
 	if err := validateModelSettings(updated); err != nil {
-		return nil, nil, err
+		return nil, false, nil, err
 	}
 
 	saved, err := svc.entFromContext(ctx).Model.UpdateOne(target).
 		SetSettings(updated).
 		Save(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to append model associations: %w", err)
+		return nil, false, nil, fmt.Errorf("failed to append model associations: %w", err)
 	}
 
-	return saved, warnings, nil
+	return saved, true, warnings, nil
 }
 
 // buildImportedAssociations turns upstream sources into channel_model

@@ -361,9 +361,9 @@ func TestImportUnassociatedModels_AppendSkipsDuplicateSources(t *testing.T) {
 
 	ch := createImportChannel(t, ctx, client, "Channel A", []string{"gpt-4", "gpt-4o"})
 
-	target := createImportModel(t, ctx, client, "gpt-4", model.StatusEnabled, []*objects.ModelAssociation{
-		channelModelAssoc(ch.ID, "gpt-4", 0),
-	})
+	existing := channelModelAssoc(ch.ID, "gpt-4", 0)
+	existing.Disabled = true
+	target := createImportModel(t, ctx, client, "gpt-4", model.StatusEnabled, []*objects.ModelAssociation{existing})
 
 	result, err := svc.ImportUnassociatedModels(ctx, []*ImportUnassociatedModelItem{
 		{
@@ -387,48 +387,65 @@ func TestImportUnassociatedModels_AppendSkipsDuplicateSources(t *testing.T) {
 
 	associations := result.Models[0].Settings.Associations
 	require.Len(t, associations, 2)
+	require.True(t, associations[0].Disabled, "a skipped duplicate must remain disabled")
+	require.False(t, associations[1].Disabled)
 	require.Equal(t, []int{0, 1}, assocPriorities(associations))
 	require.Equal(t, "gpt-4o", associations[1].ChannelModel.ModelID)
 }
 
 func TestImportUnassociatedModels_AppendAllDuplicatesLeavesModelUntouched(t *testing.T) {
-	svc, ctx, client := setupImportTest(t, "file:import_append_all_dup?mode=memory&_fk=0")
+	for _, tt := range []struct {
+		name     string
+		disabled bool
+	}{
+		{name: "active"},
+		{name: "disabled", disabled: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			svc, ctx, client := setupImportTest(t, "file:import_append_all_dup_"+tt.name+"?mode=memory&_fk=0")
 
-	ch := createImportChannel(t, ctx, client, "Channel A", []string{"gpt-4", "gpt-4o"})
+			ch := createImportChannel(t, ctx, client, "Channel A", []string{"gpt-4", "gpt-4o"})
 
-	existing := []*objects.ModelAssociation{
-		channelModelAssoc(ch.ID, "gpt-4", 0),
-		channelModelAssoc(ch.ID, "gpt-4o", 1),
+			existing := []*objects.ModelAssociation{
+				channelModelAssoc(ch.ID, "gpt-4", 0),
+				channelModelAssoc(ch.ID, "gpt-4o", 1),
+			}
+			for _, association := range existing {
+				association.Disabled = tt.disabled
+			}
+			target := createImportModel(t, ctx, client, "gpt-4", model.StatusEnabled, existing)
+
+			before, err := client.Model.Get(ctx, target.ID)
+			require.NoError(t, err)
+
+			result, err := svc.ImportUnassociatedModels(ctx, []*ImportUnassociatedModelItem{
+				{
+					TargetModelID: &target.ID,
+					Sources: []*ImportModelSource{
+						{ChannelID: ch.ID, UpstreamModelID: "gpt-4"},
+						{ChannelID: ch.ID, UpstreamModelID: "gpt-4o"},
+					},
+				},
+			})
+			require.NoError(t, err)
+
+			// Count only models actually changed, not items accepted and skipped.
+			require.Zero(t, result.Created)
+			require.Zero(t, result.Appended)
+			require.Len(t, result.Warnings, 2)
+
+			require.Len(t, result.Models[0].Settings.Associations, 2)
+			require.Equal(t, []int{0, 1}, assocPriorities(result.Models[0].Settings.Associations))
+
+			// No write happened: updated_at is unchanged.
+			after, err := client.Model.Get(ctx, target.ID)
+			require.NoError(t, err)
+			require.Equal(t, before.UpdatedAt, after.UpdatedAt)
+			require.Len(t, after.Settings.Associations, 2)
+			require.Equal(t, []int{0, 1}, assocPriorities(after.Settings.Associations))
+			require.Equal(t, before.Settings, after.Settings, "duplicate import must not reactivate or rewrite rules")
+		})
 	}
-	target := createImportModel(t, ctx, client, "gpt-4", model.StatusEnabled, existing)
-
-	before, err := client.Model.Get(ctx, target.ID)
-	require.NoError(t, err)
-
-	result, err := svc.ImportUnassociatedModels(ctx, []*ImportUnassociatedModelItem{
-		{
-			TargetModelID: &target.ID,
-			Sources: []*ImportModelSource{
-				{ChannelID: ch.ID, UpstreamModelID: "gpt-4"},
-				{ChannelID: ch.ID, UpstreamModelID: "gpt-4o"},
-			},
-		},
-	})
-	require.NoError(t, err)
-
-	// Appended still counts the item even though nothing changed.
-	require.Equal(t, 1, result.Appended)
-	require.Len(t, result.Warnings, 2)
-
-	require.Len(t, result.Models[0].Settings.Associations, 2)
-	require.Equal(t, []int{0, 1}, assocPriorities(result.Models[0].Settings.Associations))
-
-	// No write happened: updated_at is unchanged.
-	after, err := client.Model.Get(ctx, target.ID)
-	require.NoError(t, err)
-	require.Equal(t, before.UpdatedAt, after.UpdatedAt)
-	require.Len(t, after.Settings.Associations, 2)
-	require.Equal(t, []int{0, 1}, assocPriorities(after.Settings.Associations))
 }
 
 func TestImportUnassociatedModels_AppendExceedsAssociationLimit(t *testing.T) {
@@ -987,4 +1004,35 @@ func TestCheckUpstreamModelServed(t *testing.T) {
 		require.Empty(t, checkUpstreamModelServed(
 			&ImportModelSource{ChannelID: 2, UpstreamModelID: "openai/gpt-4"}, channels))
 	})
+}
+
+func TestImportUnassociatedModels_MixedCreateAppendAndNoOp(t *testing.T) {
+	svc, ctx, client := setupImportTest(t, "file:import_mixed_noop?mode=memory&_fk=0")
+	ch := createImportChannel(t, ctx, client, "test", []string{"unchanged", "updated", "extra-source", "created"})
+	disabled := channelModelAssoc(ch.ID, "unchanged", 0)
+	disabled.Disabled = true
+	unchanged := createImportModel(t, ctx, client, "unchanged", model.StatusEnabled, []*objects.ModelAssociation{disabled})
+	updated := createImportModel(t, ctx, client, "updated", model.StatusEnabled, []*objects.ModelAssociation{
+		channelModelAssoc(ch.ID, "updated", 0),
+	})
+
+	result, err := svc.ImportUnassociatedModels(ctx, []*ImportUnassociatedModelItem{
+		{TargetModelID: &unchanged.ID, Sources: []*ImportModelSource{{ChannelID: ch.ID, UpstreamModelID: "unchanged"}}},
+		{TargetModelID: &updated.ID, Sources: []*ImportModelSource{{ChannelID: ch.ID, UpstreamModelID: "extra-source"}}},
+		{Metadata: importMetadata("created"), Sources: []*ImportModelSource{{ChannelID: ch.ID, UpstreamModelID: "created"}}},
+	})
+	require.NoError(t, err)
+	require.Equal(t, 1, result.Created)
+	require.Equal(t, 1, result.Appended, "do not count the unchanged target")
+	require.Len(t, result.Models, 3, "unchanged targets remain in the result in input order")
+	require.Equal(t, unchanged.ID, result.Models[0].ID)
+	require.Equal(t, updated.ID, result.Models[1].ID)
+	require.Equal(t, "created", result.Models[2].ModelID)
+	require.Len(t, result.Models[1].Settings.Associations, 2)
+	require.Len(t, result.Warnings, 1)
+
+	after, err := client.Model.Get(ctx, unchanged.ID)
+	require.NoError(t, err)
+	require.Equal(t, unchanged.UpdatedAt, after.UpdatedAt)
+	require.Equal(t, unchanged.Settings, after.Settings)
 }

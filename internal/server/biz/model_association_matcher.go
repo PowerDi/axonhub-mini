@@ -65,9 +65,9 @@ func (k ChannelModelKey) String() string {
 	return fmt.Sprintf("%d:%s", k.ChannelID, k.ModelID)
 }
 
-// isActiveAssociation reports whether an association participates in
-// structural matching. Nil and disabled rules are inert everywhere so callers
-// share one definition of what counts.
+// isActiveAssociation reports whether an association participates in active
+// matching. Disabled rules cannot produce routable connections, even though
+// they still count as configured coverage when auditing unassociated models.
 func isActiveAssociation(association *objects.ModelAssociation) bool {
 	return association != nil && !association.Disabled
 }
@@ -87,6 +87,29 @@ func MatchConnections(
 		if !isActiveAssociation(assoc) {
 			continue
 		}
+		connections := matchSingleAssociation(assoc, channels, tracker)
+		result = append(result, connections...)
+	}
+
+	return result
+}
+
+// matchConfiguredConnections resolves saved associations for configuration
+// auditing, including disabled rules. Disabling a rule changes routing, not
+// whether its channel-model combination has already been configured.
+// Keep this separate from active matching and never mutate the saved rules.
+func matchConfiguredConnections(
+	associations []*objects.ModelAssociation,
+	channels []*Channel,
+) []*ModelChannelConnection {
+	result := make([]*ModelChannelConnection, 0)
+	tracker := NewDuplicateKeyTracker()
+
+	for _, assoc := range associations {
+		if assoc == nil {
+			continue
+		}
+
 		connections := matchSingleAssociation(assoc, channels, tracker)
 		result = append(result, connections...)
 	}

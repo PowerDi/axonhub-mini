@@ -868,12 +868,16 @@ export function useImportUnassociatedModels() {
       // has to be dropped too or a reopened dialog shows the imported models
       // as still unassociated.
       queryClient.invalidateQueries({ queryKey: ['unassociatedChannels'] });
-      toast.success(
-        t('models.unassociated.import.success', {
-          created: result.created,
-          appended: result.appended,
-        })
-      );
+      if (result.created === 0 && result.appended === 0) {
+        toast.info(t('models.unassociated.import.noChanges'));
+      } else {
+        toast.success(
+          t('models.unassociated.import.success', {
+            created: result.created,
+            appended: result.appended,
+          })
+        );
+      }
       // Warnings are advisory (an upstream model the channel does not list, or a
       // source that was already associated); the import itself succeeded.
       result.warnings.forEach((warning) => toast.warning(warning));

@@ -216,7 +216,7 @@
   "models.dialogs.settings.autoReasoningEffort.label": "自动推理强度",
   "models.dialogs.settings.autoReasoningEffort.description": "启用后，像 gpt-5.4-xhigh 这样的模型名会被规范化为 gpt-5.4，并自动将 reasoning_effort 设置为 xhigh、max、low、medium 或 high。",
   "models.unassociated.title": "导入未关联模型",
-  "models.unassociated.description": "从渠道已提供但尚未关联到任何模型配置的模型中批量导入",
+  "models.unassociated.description": "从启用渠道中补充尚未配置关联的模型来源；未归档模型中已保存的关联（含停用）不会重复列出。",
   "models.unassociated.summary": "发现 {{channelCount}} 个渠道有 {{modelCount}} 个未关联的模型",
   "models.unassociated.noUnassociated": "所有渠道模型都已正确关联",
   "models.unassociated.searchPlaceholder": "搜索模型...",
@@ -310,5 +310,6 @@
   "models.unassociated.footerSummary": "已选 {{selected}} 项 · 新建 {{created}} · 追加 {{appended}}",
   "models.unassociated.importButton": "导入 {{count}} 项",
   "models.unassociated.import.success": "导入成功：新建 {{created}} 个，更新 {{appended}} 个",
+  "models.unassociated.import.noChanges": "没有新增模型或关联，无需更新。",
   "models.groupedView.groupCount": "{{count}} 个模型"
 }

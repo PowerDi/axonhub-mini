@@ -216,7 +216,7 @@
   "models.dialogs.settings.autoReasoningEffort.label": "Auto Reasoning Effort",
   "models.dialogs.settings.autoReasoningEffort.description": "When enabled, models like gpt-5.4-xhigh are normalized to gpt-5.4 and reasoning_effort is automatically set to xhigh, max, low, medium, or high.",
   "models.unassociated.title": "Import Unassociated Models",
-  "models.unassociated.description": "Bulk import models that channels already serve but that are not associated with any model configuration",
+  "models.unassociated.description": "Import unconfigured model sources from enabled channels. Existing associations on non-archived models, including disabled rules, are not listed.",
   "models.unassociated.summary": "Found {{channelCount}} channels with {{modelCount}} unassociated models",
   "models.unassociated.noUnassociated": "All channel models are properly associated",
   "models.unassociated.searchPlaceholder": "Search models...",
@@ -310,5 +310,6 @@
   "models.unassociated.footerSummary": "{{selected}} selected · {{created}} new · {{appended}} appended",
   "models.unassociated.importButton": "Import {{count}}",
   "models.unassociated.import.success": "Imported successfully: {{created}} created, {{appended}} updated",
+  "models.unassociated.import.noChanges": "No models or associations were added. No update was needed.",
   "models.groupedView.groupCount": "{{count}} model(s)"
 }

@@ -889,7 +889,7 @@ func (svc *ModelService) modelSettingsOrDefault(ctx context.Context) *SystemMode
 	return svc.systemService.ModelSettingsOrDefault(ctx)
 }
 
-// findUnassociatedChannels lists channel-side model IDs not covered by an active
+// findUnassociatedChannels lists channel-side model IDs not covered by a configured
 // association. Coverage is scoped to (channel ID, request model), never model ID alone.
 func findUnassociatedChannels(channels []*ent.Channel, associations []*objects.ModelAssociation) []*UnassociatedChannel {
 	if len(channels) == 0 {
@@ -902,8 +902,8 @@ func findUnassociatedChannels(channels []*ent.Channel, associations []*objects.M
 		channelWrappers = append(channelWrappers, &Channel{Channel: ch})
 	}
 
-	// Resolve active associations into concrete channel-model connections.
-	connections := MatchConnections(associations, channelWrappers)
+	// Resolve configured associations, including disabled rules, into coverage.
+	connections := matchConfiguredConnections(associations, channelWrappers)
 
 	// Build a map of associated (channelID, modelID) combinations
 	associatedMap := make(map[ChannelModelKey]bool)
