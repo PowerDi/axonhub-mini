@@ -9,6 +9,10 @@ This file provides guidance to AI coding assistants when working with code in th
 1. Do NOT run lint or build commands unless explicitly requested by the user.
 2. Do NOT restart the development server — it's already started and managed.
 3. All summary files should be stored in `.agent/summary` directory if available.
+4. Limit code changes to the smallest feature explicitly confirmed by the user for the current conversation. Do not bundle unrelated refactors, optimizations, formatting changes, or fixes.
+5. If investigation or review reveals another issue, report it to the user and obtain separate explicit approval before modifying it.
+6. Before editing code, first propose a plan numbered `T0` through `TN`. Each entry must identify the concrete file path, the affected module/function, and a brief change description. Group all changes to the same file/code location into one entry; do not list it repeatedly. Wait for the user's explicit confirmation before implementing the plan.
+7. If the implementation requires additional files or a broader scope than the approved plan, explain the change, update the plan, and obtain renewed confirmation before making those additional changes.
 
 ## Configuration
 
