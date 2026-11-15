@@ -17,7 +17,54 @@
 
 **[PowerDi/axonhub-mini](https://github.com/PowerDi/axonhub-mini)** 基于原始项目 **[looplj/axonhub](https://github.com/looplj/axonhub)** 二次开发。原项目提供了完整、优秀的多协议 AI 网关能力，在此向原作者与社区致以诚挚感谢 🙏。
 
-本仓库以 **AxonHub v1.0.0-rc2 原生实现**为基础，围绕多渠道运维保留必要增量。页面、导航、设置和公共组件跟随上游，原生功能与插件入口共用同一套界面；外观偏好通过可选的 **Mini 配色**提供，保留原生明暗模式、配色和字体切换。
+本仓库以 **AxonHub v1.0.0-rc.4 及后续上游更新**为基础，围绕多渠道运维保留必要增量。页面、导航、设置和公共组件跟随上游，原生功能与插件入口共用同一套界面；外观偏好通过可选的 **Mini 配色**提供，保留原生明暗模式、配色和字体切换。
+
+### 上游赞助商
+
+<table width="100%">
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <a href="https://apikey.fun/register?aff=axonhub" target="_blank">
+        <img src="docs/sponsors/apikey-fun.png" alt="APIKEY.FUN" height="50"/>
+        <br/>
+        <strong>APIKEY.FUN</strong>
+      </a>
+      <div align="center">
+        <a href="https://apikey.fun/register?aff=axonhub" target="_blank">
+          <img src="docs/sponsors/api-key.fun.banner.png" alt="APIKEY.FUN banner" width="100%"/>
+        </a>
+      </div>
+      <div align="left">
+        APIKEY.FUN 是一家专业的企业级 AI 中转站，致力于为企业和个人开发者提供稳定、高效、低成本的 AI 模型 API 接入服务。<br/>
+        平台支持 Claude、OpenAI、Gemini 等主流热门模型，价格低至官方原价的 7%。<br/>
+        AxonHub 用户通过<a href="https://apikey.fun/register?aff=axonhub" target="_blank">专属链接注册</a>，还可享受最高充值永久 95 折专属优惠。
+      </div>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <a href="https://lj.s.gy/DUq59H" target="_blank">
+        <img src="https://www.infistar.cc/logo.png" alt="无限星河 Infistar.cc" height="50"/>
+        <br/>
+        <strong>无限星河 Infistar.cc</strong>
+      </a>
+      <div align="center">
+        <a href="https://lj.s.gy/DUq59H" target="_blank">
+          <img src="docs/sponsors/infistar-banner.png" alt="Infistar.cc 无限星河" width="100%"/>
+        </a>
+      </div>
+      <div align="left">
+       <strong>AxonHub × Infistar.cc 无限星河｜高可用全模型 API</strong>
+      </div>
+      <div align="left">
+        ⚡ 企业级高并发稳定调度｜官方 1 折起 · 透明倍率 · 多节点冗余<br/>
+        🧠 全系模型支持｜ChatGPT · Claude · Gemini · DeepSeek<br/>
+        🎨 全模态接入｜文本 · 图像 · 视频 · Embedding / Rerank
+      </div>
+      <div align="left">
+        AxonHub 用户通过<a href="https://lj.s.gy/DUq59H" target="_blank">专属链接</a>注册，可享专属特惠。
+      </div>
+    </td>
+  </tr>
+</table>
 
 ### ✨ 本 Fork 重点解决的问题
 

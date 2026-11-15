@@ -836,6 +836,7 @@ const GET_CHANNEL_DISABLED_API_KEYS_QUERY = `
           errorCode
           reason
           expiresAt
+          quotaDisabled
         }
       }
     }
@@ -1361,6 +1362,7 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
             errorCode
             reason
             expiresAt
+            quotaDisabled
           }
           liveLimiterStats {
             inFlight
@@ -1401,6 +1403,7 @@ const CHANNEL_QUERY_LIST_NODE_BASE_SELECTION = `
             errorCode
             reason
             expiresAt
+            quotaDisabled
            }
 `;
 
@@ -1987,6 +1990,15 @@ export function useClearChannelErrorMessage() {
   });
 }
 
+function invalidateChannelAssociationQueries(queryClient: ReturnType<typeof useQueryClient>, deleted = false) {
+  queryClient.invalidateQueries({ queryKey: ['allChannelSummarys'] });
+  queryClient.invalidateQueries({ queryKey: ['models'] });
+  queryClient.invalidateQueries({ queryKey: ['unassociatedChannels'] });
+  if (deleted) {
+    queryClient.invalidateQueries({ queryKey: ['modelSettings'] });
+  }
+}
+
 export function useUpdateChannelStatus() {
   const queryClient = useQueryClient();
   const { t } = useTranslation();
@@ -2008,6 +2020,7 @@ export function useUpdateChannelStatus() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['channels'] });
       queryClient.invalidateQueries({ queryKey: ['allChannelTags'] });
+      invalidateChannelAssociationQueries(queryClient);
       const statusText =
         variables.status === 'enabled'
           ? t('channels.status.enabled')
@@ -2065,6 +2078,7 @@ export function useBulkArchiveChannels() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['channels'] });
       queryClient.invalidateQueries({ queryKey: ['allChannelTags'] });
+      invalidateChannelAssociationQueries(queryClient);
       toast.success(t('channels.messages.bulkArchiveSuccess', { count: variables.length }));
     },
   });
@@ -2088,6 +2102,7 @@ export function useBulkDisableChannels() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['channels'] });
       queryClient.invalidateQueries({ queryKey: ['allChannelTags'] });
+      invalidateChannelAssociationQueries(queryClient);
       toast.success(t('channels.messages.bulkDisableSuccess', { count: variables.length }));
     },
   });
@@ -2111,6 +2126,7 @@ export function useBulkEnableChannels() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['channels'] });
       queryClient.invalidateQueries({ queryKey: ['allChannelTags'] });
+      invalidateChannelAssociationQueries(queryClient);
       toast.success(t('channels.messages.bulkEnableSuccess', { count: variables.length }));
     },
   });
@@ -2134,6 +2150,7 @@ export function useBulkRecoverChannels() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['channels'] });
       queryClient.invalidateQueries({ queryKey: ['allChannelTags'] });
+      invalidateChannelAssociationQueries(queryClient);
       queryClient.invalidateQueries({ queryKey: ['errorChannelsCount'] });
       toast.success(t('channels.messages.bulkRecoverSuccess', { count: variables.length }));
     },
@@ -2158,6 +2175,7 @@ export function useDeleteChannel() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['channels'] });
       queryClient.invalidateQueries({ queryKey: ['allChannelTags'] });
+      invalidateChannelAssociationQueries(queryClient, true);
       toast.success(t('channels.messages.deleteSuccess'));
     },
   });
@@ -2181,6 +2199,7 @@ export function useBulkDeleteChannels() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['channels'] });
       queryClient.invalidateQueries({ queryKey: ['allChannelTags'] });
+      invalidateChannelAssociationQueries(queryClient, true);
       toast.success(t('channels.messages.bulkDeleteSuccess', { count: variables.length }));
     },
   });
@@ -2706,6 +2725,7 @@ export function useChannelDisabledAPIKeys(channelId: string, options?: { enabled
               errorCode: number;
               reason?: string | null;
               expiresAt?: string | null;
+              quotaDisabled?: boolean;
             }>;
           };
         }>(GET_CHANNEL_DISABLED_API_KEYS_QUERY, { id: channelId });
@@ -2740,6 +2760,8 @@ export function useDisableChannelAPIKey() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['channelDisabledAPIKeys', variables.channelID] });
       queryClient.invalidateQueries({ queryKey: ['channels'] });
+      // Key eligibility feeds the quota popover, so its cache is stale too.
+      queryClient.invalidateQueries({ queryKey: ['provider-quotas'] });
       toast.success(t('channels.messages.disableAPIKeySuccess'));
     },
   });
@@ -2766,6 +2788,8 @@ export function useEnableChannelAPIKey() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['channelDisabledAPIKeys', variables.channelID] });
       queryClient.invalidateQueries({ queryKey: ['channels'] });
+      // Key eligibility feeds the quota popover, so its cache is stale too.
+      queryClient.invalidateQueries({ queryKey: ['provider-quotas'] });
       toast.success(t('channels.messages.enableAPIKeySuccess'));
     },
   });
@@ -2791,6 +2815,8 @@ export function useEnableAllChannelAPIKeys() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['channelDisabledAPIKeys', variables.channelID] });
       queryClient.invalidateQueries({ queryKey: ['channels'] });
+      // Key eligibility feeds the quota popover, so its cache is stale too.
+      queryClient.invalidateQueries({ queryKey: ['provider-quotas'] });
       toast.success(t('channels.messages.enableAllAPIKeysSuccess'));
     },
   });
@@ -2817,6 +2843,8 @@ export function useEnableSelectedChannelAPIKeys() {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['channelDisabledAPIKeys', variables.channelID] });
       queryClient.invalidateQueries({ queryKey: ['channels'] });
+      // Key eligibility feeds the quota popover, so its cache is stale too.
+      queryClient.invalidateQueries({ queryKey: ['provider-quotas'] });
       toast.success(t('channels.messages.enableSelectedAPIKeysSuccess'));
     },
   });
@@ -2843,6 +2871,8 @@ export function useDeleteDisabledChannelAPIKeys() {
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['channelDisabledAPIKeys', variables.channelID] });
       queryClient.invalidateQueries({ queryKey: ['channels'] });
+      // Key eligibility feeds the quota popover, so its cache is stale too.
+      queryClient.invalidateQueries({ queryKey: ['provider-quotas'] });
 
       // Show appropriate message based on the result
       if (data.message === 'ONE_KEY_PRESERVED') {

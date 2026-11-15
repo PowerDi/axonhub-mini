@@ -199,6 +199,10 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 
 	err := json.Unmarshal(event.Data, &streamEvent)
 	if err != nil {
+		if errorEvent := newErrorEventResponseError(event.Data, event.Type); errorEvent != nil {
+			return errorEvent
+		}
+
 		return fmt.Errorf("failed to unmarshal responses api stream event: %w", err)
 	}
 	if streamEvent.Type == "" && event.Type == string(StreamEventTypeResponseMetadata) {
@@ -815,39 +819,24 @@ func (s *responsesOutboundStream) transformStreamChunk(event *httpclient.StreamE
 		}
 
 	case StreamEventTypeError:
-		detail := llm.ErrorDetail{
-			Code:    streamEvent.Code,
-			Message: streamEvent.Message,
-			Type:    string(streamEvent.Type),
-			Param:   lo.FromPtr(streamEvent.Param),
-		}
-		if streamEvent.Error != nil {
-			if streamEvent.Error.Type != "" {
-				detail.Type = streamEvent.Error.Type
-			}
-			if streamEvent.Error.Code != "" {
-				detail.Code = streamEvent.Error.Code
-			}
-			if streamEvent.Error.Message != "" {
-				detail.Message = streamEvent.Error.Message
-			}
-			if streamEvent.Error.Param != "" {
-				detail.Param = streamEvent.Error.Param
-			}
-		}
-		// Responses-API error events carry `status` only when the provider
-		// bothers to set it; relays commonly omit it, leaving StatusCode 0 and
-		// making every status-based gateway decision treat an upstream 429 as
-		// an unknown failure. Fall back to inferring it from the error
-		// code/type, keeping an explicit upstream status when present.
-		if streamEvent.Status != 0 {
-			return &llm.ResponseError{
-				StatusCode: streamEvent.Status,
-				Detail:     detail,
-			}
+		errorEvent := newErrorEventResponseError(event.Data, event.Type)
+		if errorEvent == nil {
+			return fmt.Errorf("failed to decode websocket error event")
 		}
 
-		return llm.NewStreamResponseError(detail)
+		// Relays can omit status on SSE errors. Keep Mini's code/type inference
+		// while preserving an explicit provider status, including string values.
+		var frame struct {
+			Status any `json:"status"`
+		}
+		if json.Unmarshal(event.Data, &frame) == nil {
+			if _, explicit := webSocketErrorStatus(frame.Status); !explicit {
+				if inferred := llm.InferStatusCode(errorEvent.Detail); inferred != 0 {
+					errorEvent.StatusCode = inferred
+				}
+			}
+		}
+		return errorEvent
 
 	case StreamEventTypeImageGenerationPartialImage,
 		StreamEventTypeImageGenerationGenerating,

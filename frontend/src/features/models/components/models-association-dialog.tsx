@@ -727,7 +727,7 @@ function buildDeveloperChannelPreview(associations: AssociationFormRow[], channe
   const connections: ModelChannelConnection[] = [];
 
   const addChannel = (channel: ChannelOption, priority: number) => {
-    if (seen.has(channel.value)) {
+    if (channel.status === 'archived' || seen.has(channel.value)) {
       return;
     }
 
@@ -774,7 +774,10 @@ export function ModelsAssociationDialog() {
   const updateModel = useUpdateModel();
   const updateModelSettings = useUpdateModelSettings();
   const { data: settings, isLoading: isSettingsLoading } = useModelSettings();
-  const { data: channelsData } = useAllChannelSummarys(undefined, { enabled: open === 'association' || open === 'developerAssociation' });
+  const { data: channelsData, isSuccess: channelsLoaded } = useAllChannelSummarys(undefined, {
+    enabled: open === 'association' || open === 'developerAssociation',
+    includeArchived: true,
+  });
   const { data: availableModels, mutateAsync: fetchModels } = useQueryModels();
   const { data: allTags = [] } = useAllChannelTags();
   const { mutateAsync: queryConnections } = useQueryModelChannelConnections();
@@ -1321,6 +1324,7 @@ export function ModelsAssociationDialog() {
                                     form={form}
                                     isDeveloperMode={isDeveloperMode}
                                     channelOptions={channelOptions}
+                                    channelsLoaded={channelsLoaded}
                                     allModelOptions={allModelOptions}
                                     allTags={allTags}
                                     onRemove={() => handleRemoveAssociation(row.id)}
@@ -1584,6 +1588,7 @@ interface AssociationRowProps {
   form: ReturnType<typeof useForm<AssociationFormData>>;
   isDeveloperMode: boolean;
   channelOptions: ChannelOption[];
+  channelsLoaded: boolean;
   allModelOptions: { value: string; label: string }[];
   allTags: string[];
   onRemove: () => void;
@@ -1614,7 +1619,19 @@ function AssociationTypeSelectContent({ isDeveloperMode }: { isDeveloperMode: bo
   );
 }
 
-function AssociationRow({ rowID, index, priority, form, isDeveloperMode, channelOptions, allModelOptions, allTags, onRemove, portalContainer }: AssociationRowProps) {
+function AssociationRow({
+  rowID,
+  index,
+  priority,
+  form,
+  isDeveloperMode,
+  channelOptions,
+  channelsLoaded,
+  allModelOptions,
+  allTags,
+  onRemove,
+  portalContainer,
+}: AssociationRowProps) {
   const { t } = useTranslation();
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: rowID });
 
@@ -1642,6 +1659,28 @@ function AssociationRow({ rowID, index, priority, form, isDeveloperMode, channel
   }, [modelId]);
 
   const showChannel = type === 'channel_model' || type === 'channel_regex';
+  const selectedChannel = channelOptions.find((option) => option.value === channelId);
+  // Archived channels can resolve an existing selection, but cannot be added to a new rule.
+  const channelItems = channelOptions
+    .filter((option) => option.status !== 'archived' || option.value === channelId)
+    .map((option) => ({ value: option.value.toString(), label: option.label }));
+  const missingChannelLabel = channelId
+    ? channelsLoaded
+      ? t('models.dialogs.association.channelStatus.missing', { id: channelId })
+      : `#${channelId}`
+    : '';
+  if (channelId && !selectedChannel) {
+    channelItems.push({ value: channelId.toString(), label: missingChannelLabel });
+  }
+  const channelStatusMessage = !showChannel
+    ? null
+    : selectedChannel?.status === 'archived'
+      ? t('models.dialogs.association.channelStatus.archived')
+      : selectedChannel?.status === 'disabled'
+        ? t('models.dialogs.association.channelStatus.disabled')
+        : channelsLoaded && channelId && !selectedChannel
+          ? missingChannelLabel
+          : null;
   const showChannelTags = type === 'channel_tags_model' || type === 'channel_tags_regex';
   const showModel = !isDeveloperMode && (type === 'channel_model' || type === 'model' || type === 'channel_tags_model');
   const showPattern = !isDeveloperMode && (type === 'channel_regex' || type === 'regex' || type === 'channel_tags_regex');
@@ -1761,7 +1800,7 @@ function AssociationRow({ rowID, index, priority, form, isDeveloperMode, channel
                   <AutoCompleteSelect
                     selectedValue={field.value?.toString() || ''}
                     onSelectedValueChange={(value) => field.onChange(Number(value))}
-                    items={channelOptions.map((opt) => ({ value: opt.value.toString(), label: opt.label }))}
+                    items={channelItems}
                     placeholder={t('models.dialogs.association.selectChannel')}
                     emptyMessage={t('models.dialogs.association.noModelsAvailable')}
                     portalContainer={portalContainer}
@@ -2113,7 +2152,7 @@ function AssociationRow({ rowID, index, priority, form, isDeveloperMode, channel
                           field.onChange(ids);
                         }}
                         placeholder={t('models.dialogs.association.excludeChannelIds')}
-                        suggestions={channelOptions.map((opt) => opt.label)}
+                        suggestions={channelOptions.filter((opt) => opt.status !== 'archived').map((opt) => opt.label)}
                         className='h-auto min-h-10 sm:min-h-9 py-1'
                       />
                     </FormControl>
@@ -2123,6 +2162,12 @@ function AssociationRow({ rowID, index, priority, form, isDeveloperMode, channel
               />
             </div>
           )}
+        </div>
+      )}
+
+      {channelStatusMessage && (
+        <div role='status' className='text-muted-foreground ml-0 sm:ml-[6.25rem] text-xs'>
+          {channelStatusMessage}
         </div>
       )}
 

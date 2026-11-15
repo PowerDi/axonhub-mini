@@ -3802,6 +3802,7 @@ enum ProviderQuotaStatusProviderType @goModel(model: "github.com/looplj/axonhub/
   charm_hyper
   zenmux
   commandcode
+  deepseek
   ollama
 }
 """
