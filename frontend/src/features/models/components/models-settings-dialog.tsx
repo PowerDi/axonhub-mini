@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   SETTINGS_DIALOG_CONTENT_CLASS,
   SettingsDialogBody,
@@ -15,6 +16,7 @@ import {
   SettingsSwitchRow,
 } from '@/components/settings-dialog-layout';
 import {
+  useCatalogProxyPresets,
   useCatalogSettings,
   useModelSettings,
   useUpdateCatalogSettings,
@@ -41,6 +43,8 @@ const SECTIONS: { key: SettingsSectionKey; titleKey: string; descriptionKey: str
   { key: 'catalog', titleKey: 'system.catalog.title', descriptionKey: 'system.catalog.description', icon: BookOpen },
 ];
 
+const CATALOG_PROXY_PRESET_PREFIX = 'preset:';
+
 export function ModelSettingsDialog() {
   const { t } = useTranslation();
   const { open, setOpen } = useModels();
@@ -51,6 +55,7 @@ export function ModelSettingsDialog() {
 
   const isOpen = open === 'settings';
   const [activeSection, setActiveSection] = React.useState<SettingsSectionKey>('routing');
+  const { data: catalogProxyPresets, isError: catalogProxyPresetsError } = useCatalogProxyPresets(isOpen && activeSection === 'catalog');
 
   const [fallbackEnabled, setFallbackEnabled] = React.useState(false);
   const [queryAllChannelModels, setQueryAllChannelModels] = React.useState(false);
@@ -59,6 +64,7 @@ export function ModelSettingsDialog() {
   const [modelBlacklistRegex, setModelBlacklistRegex] = React.useState('');
   const [hideUnroutableModelsInList, setHideUnroutableModelsInList] = React.useState(false);
   const [catalogUpstreamURL, setCatalogUpstreamURL] = React.useState('');
+  const [catalogProxySelection, setCatalogProxySelection] = React.useState('environment');
 
   // Reset the form from the server state whenever the dialog opens.
   React.useEffect(() => {
@@ -81,6 +87,11 @@ export function ModelSettingsDialog() {
   React.useEffect(() => {
     if (catalogSettings && isOpen) {
       setCatalogUpstreamURL(catalogSettings.upstreamURL);
+      setCatalogProxySelection(
+        catalogSettings.proxyMode === 'preset'
+          ? `${CATALOG_PROXY_PRESET_PREFIX}${catalogSettings.proxyPresetURL}`
+          : catalogSettings.proxyMode
+      );
     }
   }, [catalogSettings, isOpen]);
 
@@ -93,7 +104,18 @@ export function ModelSettingsDialog() {
       (settings.modelBlacklistRegex ?? '') !== modelBlacklistRegex ||
       settings.hideUnroutableModelsInList !== hideUnroutableModelsInList);
 
-  const catalogChanged = !!catalogSettings && catalogSettings.upstreamURL !== catalogUpstreamURL.trim();
+  const usesCatalogProxyPreset = catalogProxySelection.startsWith(CATALOG_PROXY_PRESET_PREFIX);
+  const catalogProxyMode = usesCatalogProxyPreset ? 'preset' : catalogProxySelection === 'direct' ? 'direct' : 'environment';
+  const catalogProxyPresetURL = usesCatalogProxyPreset ? catalogProxySelection.slice(CATALOG_PROXY_PRESET_PREFIX.length) : '';
+  const catalogProxyPreset = catalogProxyPresets?.find((preset) => preset.url === catalogProxyPresetURL);
+  const missingCatalogProxyPreset = usesCatalogProxyPreset && !!catalogProxyPresets && !catalogProxyPreset && !catalogProxyPresetsError;
+
+  const catalogChanged =
+    !!catalogSettings &&
+    (catalogSettings.upstreamURL !== catalogUpstreamURL.trim() ||
+      catalogSettings.proxyMode !== catalogProxyMode ||
+      catalogSettings.proxyPresetURL !== catalogProxyPresetURL);
+  const catalogPresetUnavailable = catalogChanged && usesCatalogProxyPreset && (!catalogProxyPreset || catalogProxyPresetsError);
 
   const isSaving = updateModelSettings.isPending || updateCatalogSettings.isPending;
 
@@ -115,6 +137,8 @@ export function ModelSettingsDialog() {
     if (catalogChanged) {
       await updateCatalogSettings.mutateAsync({
         upstreamURL: catalogUpstreamURL.trim(),
+        proxyMode: catalogProxyMode,
+        proxyPresetURL: catalogProxyPresetURL,
       });
     }
     setOpen(null);
@@ -131,6 +155,8 @@ export function ModelSettingsDialog() {
     hideUnroutableModelsInList,
     settings?.developerSettings,
     catalogUpstreamURL,
+    catalogProxyMode,
+    catalogProxyPresetURL,
     setOpen,
   ]);
 
@@ -248,6 +274,47 @@ export function ModelSettingsDialog() {
                     />
                     <p className='text-muted-foreground text-xs'>{t('system.catalog.upstreamURL.description')}</p>
                   </div>
+                  <div className='space-y-1.5'>
+                    <Label htmlFor='catalog-download-proxy' className='text-sm font-medium'>
+                      {t('system.catalog.proxy.label')}
+                    </Label>
+                    <Select value={catalogProxySelection} onValueChange={setCatalogProxySelection} disabled={isSaving}>
+                      <SelectTrigger id='catalog-download-proxy' className='w-full' aria-describedby='catalog-download-proxy-description'>
+                        <SelectValue>
+                          {usesCatalogProxyPreset
+                            ? catalogProxyPreset?.name || catalogProxyPresetURL || t('system.catalog.proxy.presets')
+                            : t(`system.catalog.proxy.${catalogProxyMode}`)}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value='environment'>{t('system.catalog.proxy.environment')}</SelectItem>
+                        <SelectItem value='direct'>{t('system.catalog.proxy.direct')}</SelectItem>
+                        {!!catalogProxyPresets?.length && (
+                          <SelectGroup>
+                            <SelectLabel>{t('system.catalog.proxy.presets')}</SelectLabel>
+                            {catalogProxyPresets.map((preset) => (
+                              <SelectItem key={preset.url} value={`${CATALOG_PROXY_PRESET_PREFIX}${preset.url}`}>
+                                {preset.name || preset.url}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <p id='catalog-download-proxy-description' className='text-muted-foreground text-xs'>
+                      {t('system.catalog.proxy.description')}
+                    </p>
+                    {missingCatalogProxyPreset && (
+                      <p className='text-destructive text-xs' role='status'>
+                        {t('system.catalog.proxy.missingPreset')}
+                      </p>
+                    )}
+                    {catalogProxyPresetsError && (
+                      <p className='text-destructive text-xs' role='status'>
+                        {t('system.catalog.proxy.loadFailed')}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </SettingsSection>
             )}
@@ -260,7 +327,7 @@ export function ModelSettingsDialog() {
           </Button>
           <Button
             onClick={handleSave}
-            disabled={isSaving || isLoading || isLoadingCatalog}
+            disabled={isSaving || isLoading || isLoadingCatalog || catalogPresetUnavailable}
             className='w-full sm:w-auto'
           >
             {isSaving ? (

@@ -627,7 +627,9 @@ type UpdateBrandSettingsInput struct {
 }
 
 type UpdateCatalogSettingsInput struct {
-	UpstreamURL *string `json:"upstreamURL,omitempty"`
+	UpstreamURL    *string `json:"upstreamURL,omitempty"`
+	ProxyMode      *string `json:"proxyMode,omitempty"`
+	ProxyPresetURL *string `json:"proxyPresetURL,omitempty"`
 }
 
 type UpdateDefaultDataStorageInput struct {

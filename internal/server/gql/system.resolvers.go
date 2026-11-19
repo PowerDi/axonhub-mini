@@ -376,17 +376,22 @@ func (r *mutationResolver) UpdateCatalogSettings(ctx context.Context, input Upda
 		return false, fmt.Errorf("permission denied: requires write_settings scope")
 	}
 
-	settings := r.systemService.CatalogSettingsOrDefault(ctx)
+	settings, err := r.systemService.CatalogSettings(ctx)
+	if err != nil {
+		return false, fmt.Errorf("failed to get catalog settings: %w", err)
+	}
 	if input.UpstreamURL != nil {
 		settings.UpstreamURL = *input.UpstreamURL
 	}
-
-	if err := r.systemService.SetCatalogSettings(ctx, settings); err != nil {
-		return false, fmt.Errorf("failed to update catalog settings: %w", err)
+	if input.ProxyMode != nil {
+		settings.ProxyMode = *input.ProxyMode
+	}
+	if input.ProxyPresetURL != nil {
+		settings.ProxyPresetURL = *input.ProxyPresetURL
 	}
 
-	if r.catalogService != nil {
-		r.catalogService.Invalidate()
+	if err := r.catalogService.SetSettings(ctx, *settings); err != nil {
+		return false, fmt.Errorf("failed to update catalog settings: %w", err)
 	}
 
 	return true, nil

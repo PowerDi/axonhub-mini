@@ -398,10 +398,14 @@ type ProvidersCatalog {
 
 type CatalogSettings {
   upstreamURL: String!
+  proxyMode: String!
+  proxyPresetURL: String!
 }
 
 input UpdateCatalogSettingsInput {
   upstreamURL: String
+  proxyMode: String
+  proxyPresetURL: String
 }
 
 type CodexCompatibilitySettings {

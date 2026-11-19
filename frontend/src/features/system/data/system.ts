@@ -1894,6 +1894,17 @@ const CATALOG_SETTINGS_QUERY = `
   query CatalogSettings {
     catalogSettings {
       upstreamURL
+      proxyMode
+      proxyPresetURL
+    }
+  }
+`;
+
+const CATALOG_PROXY_PRESETS_QUERY = `
+  query CatalogProxyPresets {
+    proxyPresets {
+      name
+      url
     }
   }
 `;
@@ -1904,12 +1915,27 @@ const UPDATE_CATALOG_SETTINGS_MUTATION = `
   }
 `;
 
+export type CatalogProxyMode = 'environment' | 'direct' | 'preset';
+
 export interface CatalogSettings {
   upstreamURL: string;
+  proxyMode: CatalogProxyMode;
+  proxyPresetURL: string;
 }
 
-export interface UpdateCatalogSettingsInput {
-  upstreamURL?: string;
+export type UpdateCatalogSettingsInput = Partial<CatalogSettings>;
+
+export function useCatalogProxyPresets(enabled: boolean) {
+  const { hasSystemScope } = usePermissions();
+
+  return useQuery({
+    queryKey: ['proxyPresets', 'catalogOptions'],
+    enabled: enabled && hasSystemScope('read_settings'),
+    queryFn: async () => {
+      const data = await graphqlRequest<{ proxyPresets: Pick<ProxyPreset, 'name' | 'url'>[] }>(CATALOG_PROXY_PRESETS_QUERY);
+      return data.proxyPresets;
+    },
+  });
 }
 
 export function useCatalogSettings() {

@@ -13,6 +13,7 @@ import (
 
 	_ "embed"
 
+	"github.com/looplj/axonhub/internal/ent"
 	"github.com/looplj/axonhub/internal/log"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/llm/httpclient"
@@ -67,6 +68,7 @@ type CatalogService struct {
 	httpClient *httpclient.HttpClient
 
 	mu         sync.Mutex
+	revision   uint64
 	filtered   heldCatalog
 	unfiltered heldCatalog
 	holdTTL    time.Duration
@@ -90,28 +92,47 @@ func (s *CatalogService) Snapshot(ctx context.Context, filtered bool) (CatalogSn
 	return snapshotFromPayload(payload, filtered), nil
 }
 
-// Invalidate releases both held variants so the next request refetches, e.g.
-// after the upstream URL changes.
+// SetSettings saves the settings and invalidates the snapshots after the write commits.
+func (s *CatalogService) SetSettings(ctx context.Context, settings CatalogSettings) error {
+	inTransaction := ent.TxFromContext(ctx) != nil
+	var saved bool
+	if inTransaction {
+		// Register before the settings write so the inner commit hook clears the system cache first.
+		runAfterCommit(ctx, func(context.Context) {
+			if saved {
+				s.Invalidate()
+			}
+		})
+	}
+	if err := s.system.SetCatalogSettings(ctx, settings); err != nil {
+		return err
+	}
+	saved = true
+	if !inTransaction {
+		s.Invalidate()
+	}
+	return nil
+}
+
+// Invalidate releases both held variants and prevents older fetches from retaining their results.
 func (s *CatalogService) Invalidate() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	s.revision++
 	s.filtered.clear()
 	s.unfiltered.clear()
 }
 
 func (s *CatalogService) ensure(ctx context.Context, filtered bool) (*catalogPayload, error) {
-	if held := s.held(filtered); held != nil {
+	held, revision := s.held(filtered)
+	if held != nil {
 		return held, nil
 	}
 
-	key := "catalog-unfiltered"
-	if filtered {
-		key = "catalog-filtered"
-	}
-
+	key := fmt.Sprintf("catalog-%t-%d", filtered, revision)
 	value, err, _ := s.sf.Do(key, func() (any, error) {
-		if held := s.held(filtered); held != nil {
+		if held, _ := s.held(filtered); held != nil {
 			return held, nil
 		}
 
@@ -120,7 +141,7 @@ func (s *CatalogService) ensure(ctx context.Context, filtered bool) (*catalogPay
 			return nil, err
 		}
 
-		return s.hold(filtered, data, source), nil
+		return s.hold(filtered, revision, data, source), nil
 	})
 	if err != nil {
 		return nil, err
@@ -141,12 +162,11 @@ func (s *CatalogService) load(ctx context.Context, filtered bool) ([]byte, strin
 	// Callers share this load through singleflight, so one caller going away
 	// must not turn the shared result into a held fallback.
 	ctx = context.WithoutCancel(ctx)
-	settings := s.system.CatalogSettingsOrDefault(ctx)
 
 	fetchCtx, cancel := context.WithTimeout(ctx, catalogFetchTimeout)
 	defer cancel()
 
-	body, err := s.fetchUpstream(fetchCtx, settings.EffectiveUpstreamURL())
+	body, err := s.fetchUpstream(fetchCtx)
 	if err == nil {
 		if !filtered {
 			return body, catalogSourceUpstream, nil
@@ -175,20 +195,34 @@ func (s *CatalogService) load(ctx context.Context, filtered bool) ([]byte, strin
 // fetchUpstream returns the upstream catalog body after checking it is a JSON
 // document with a providers object. The body is served verbatim to the admin
 // UI, so it must be valid JSON.
-func (s *CatalogService) fetchUpstream(ctx context.Context, upstreamURL string) ([]byte, error) {
+func (s *CatalogService) fetchUpstream(ctx context.Context) ([]byte, error) {
 	if s.httpClient == nil {
 		return nil, fmt.Errorf("catalog http client is not configured")
 	}
 
-	resp, err := s.httpClient.Do(ctx, &httpclient.Request{
+	settings, err := s.system.CatalogSettings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	proxy, err := s.system.catalogProxyConfig(ctx, *settings)
+	if err != nil {
+		return nil, err
+	}
+	client := s.httpClient
+	if proxy != nil {
+		client = client.WithProxy(proxy)
+		defer client.CloseIdleConnections()
+	}
+
+	resp, err := client.Do(ctx, &httpclient.Request{
 		Method: http.MethodGet,
-		URL:    upstreamURL,
+		URL:    settings.EffectiveUpstreamURL(),
 		Headers: http.Header{
 			"Accept": []string{"application/json"},
 		},
 	})
 	if err != nil {
-		return nil, fmt.Errorf("fetch catalog: %w", err)
+		return nil, fmt.Errorf("fetch catalog (%s proxy mode): %w", settings.ProxyMode, err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -268,15 +302,15 @@ func (s *CatalogService) slot(filtered bool) *heldCatalog {
 	return &s.unfiltered
 }
 
-func (s *CatalogService) held(filtered bool) *catalogPayload {
+func (s *CatalogService) held(filtered bool) (*catalogPayload, uint64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	return s.slot(filtered).payload
+	return s.slot(filtered).payload, s.revision
 }
 
-// hold keeps the payload for holdTTL, then releases it.
-func (s *CatalogService) hold(filtered bool, data []byte, source string) *catalogPayload {
+// hold keeps the payload until its TTL expires or the settings are invalidated.
+func (s *CatalogService) hold(filtered bool, revision uint64, data []byte, source string) *catalogPayload {
 	payload := &catalogPayload{
 		data:      data,
 		fetchedAt: time.Now().UTC(),
@@ -285,6 +319,9 @@ func (s *CatalogService) hold(filtered bool, data []byte, source string) *catalo
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if revision != s.revision {
+		return payload
+	}
 
 	slot := s.slot(filtered)
 	slot.clear()

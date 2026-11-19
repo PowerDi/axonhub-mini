@@ -348,7 +348,9 @@ type ComplexityRoot struct {
 	}
 
 	CatalogSettings struct {
-		UpstreamURL func(childComplexity int) int
+		ProxyMode      func(childComplexity int) int
+		ProxyPresetURL func(childComplexity int) int
+		UpstreamURL    func(childComplexity int) int
 	}
 
 	Channel struct {
@@ -3798,6 +3800,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.BulkUpdateChannelOrderingResult.Updated(childComplexity), true
 
+	case "CatalogSettings.proxyMode":
+		if e.complexity.CatalogSettings.ProxyMode == nil {
+			break
+		}
+
+		return e.complexity.CatalogSettings.ProxyMode(childComplexity), true
+	case "CatalogSettings.proxyPresetURL":
+		if e.complexity.CatalogSettings.ProxyPresetURL == nil {
+			break
+		}
+
+		return e.complexity.CatalogSettings.ProxyPresetURL(childComplexity), true
 	case "CatalogSettings.upstreamURL":
 		if e.complexity.CatalogSettings.UpstreamURL == nil {
 			break
@@ -22292,6 +22306,64 @@ func (ec *executionContext) _CatalogSettings_upstreamURL(ctx context.Context, fi
 }
 
 func (ec *executionContext) fieldContext_CatalogSettings_upstreamURL(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogSettings_proxyMode(ctx context.Context, field graphql.CollectedField, obj *biz.CatalogSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogSettings_proxyMode,
+		func(ctx context.Context) (any, error) {
+			return obj.ProxyMode, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogSettings_proxyMode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogSettings_proxyPresetURL(ctx context.Context, field graphql.CollectedField, obj *biz.CatalogSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogSettings_proxyPresetURL,
+		func(ctx context.Context) (any, error) {
+			return obj.ProxyPresetURL, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogSettings_proxyPresetURL(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "CatalogSettings",
 		Field:      field,
@@ -54045,6 +54117,10 @@ func (ec *executionContext) fieldContext_Query_catalogSettings(_ context.Context
 			switch field.Name {
 			case "upstreamURL":
 				return ec.fieldContext_CatalogSettings_upstreamURL(ctx, field)
+			case "proxyMode":
+				return ec.fieldContext_CatalogSettings_proxyMode(ctx, field)
+			case "proxyPresetURL":
+				return ec.fieldContext_CatalogSettings_proxyPresetURL(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type CatalogSettings", field.Name)
 		},
@@ -93887,7 +93963,7 @@ func (ec *executionContext) unmarshalInputUpdateCatalogSettingsInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"upstreamURL"}
+	fieldsInOrder := [...]string{"upstreamURL", "proxyMode", "proxyPresetURL"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -93901,6 +93977,20 @@ func (ec *executionContext) unmarshalInputUpdateCatalogSettingsInput(ctx context
 				return it, err
 			}
 			it.UpstreamURL = data
+		case "proxyMode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("proxyMode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProxyMode = data
+		case "proxyPresetURL":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("proxyPresetURL"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProxyPresetURL = data
 		}
 	}
 
@@ -102162,6 +102252,16 @@ func (ec *executionContext) _CatalogSettings(ctx context.Context, sel ast.Select
 			out.Values[i] = graphql.MarshalString("CatalogSettings")
 		case "upstreamURL":
 			out.Values[i] = ec._CatalogSettings_upstreamURL(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "proxyMode":
+			out.Values[i] = ec._CatalogSettings_proxyMode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "proxyPresetURL":
+			out.Values[i] = ec._CatalogSettings_proxyPresetURL(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
