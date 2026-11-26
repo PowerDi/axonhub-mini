@@ -223,6 +223,15 @@ type ChannelSettings struct {
 	// And if other channel support "deepseek/deepseek-chat", "deepseek/deepseek-reasoner" modles, the two channels can accept the request both.
 	ExtraModelPrefix string `json:"extraModelPrefix"`
 
+	// IndependentListing publishes and routes this channel's prefixed entries
+	// independently of the global channel-list and fallback settings. An absent
+	// value remains false so existing channels retain their previous behavior.
+	IndependentListing bool `json:"independentListing,omitempty"`
+
+	// IndependentDisplayName is the channel label appended to independently
+	// published model names. Empty uses the channel name, not the routing prefix.
+	IndependentDisplayName string `json:"independentDisplayName,omitempty"`
+
 	// AutoTrimedModelPrefixes configures prefixes to automatically trim the model name when added to supported models.
 	// e.g. a channel
 	// supported_modles is ["deepseek-ai/deepseek-chat", "openai/gpt-4"]

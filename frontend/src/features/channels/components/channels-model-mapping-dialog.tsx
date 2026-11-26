@@ -30,9 +30,11 @@ interface Props {
 }
 
 // 扩展 schema 以包含模型映射的校验规则
-const createModelMappingFormSchema = (supportedModels: string[]) =>
+const createModelMappingFormSchema = (supportedModels: string[], prefixRequiredMessage: string) =>
   z.object({
     extraModelPrefix: z.string().optional(),
+    independentListing: z.boolean().optional(),
+    independentDisplayName: z.string().optional(),
     modelMappings: z
       .array(
         z.object({
@@ -63,6 +65,9 @@ const createModelMappingFormSchema = (supportedModels: string[]) =>
     hideOriginalModels: z.boolean().optional(),
     hideMappedModels: z.boolean().optional(),
     lowercaseModelId: z.boolean().optional(),
+  }).refine((values) => !values.independentListing || Boolean(values.extraModelPrefix?.trim()), {
+    path: ['extraModelPrefix'],
+    message: prefixRequiredMessage,
   });
 
 const extractAliasFromModelPath = (modelPath: string): string => {
@@ -105,12 +110,14 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
 
   const prefixSuggestions = useMemo(() => extractAllPrefixes(currentRow.supportedModels), [currentRow.supportedModels]);
 
-  const modelMappingFormSchema = createModelMappingFormSchema(currentRow.supportedModels);
+  const modelMappingFormSchema = createModelMappingFormSchema(currentRow.supportedModels, t('channels.dialogs.settings.independentModels.prefixRequired'));
 
   const form = useForm<z.infer<typeof modelMappingFormSchema>>({
     resolver: zodResolver(modelMappingFormSchema),
     defaultValues: {
       extraModelPrefix: currentRow.settings?.extraModelPrefix || '',
+      independentListing: currentRow.settings?.independentListing ?? false,
+      independentDisplayName: currentRow.settings?.independentDisplayName ?? '',
       modelMappings: currentRow.settings?.modelMappings || [],
       autoTrimedModelPrefixes: currentRow.settings?.autoTrimedModelPrefixes || [],
       hideOriginalModels: currentRow.settings?.hideOriginalModels || false,
@@ -121,6 +128,16 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
 
   const previewSettings = form.watch();
   const preview = useChannelModelPreview(currentRow.supportedModels, previewSettings, open);
+  const independentPreview = useMemo(
+    () => (preview.data ?? [])
+      .filter((entry) => entry.source === 'prefix')
+      .map((entry) => ({
+        ...entry,
+        displayName: `${entry.actualModel} · ${previewSettings.independentDisplayName?.trim() || currentRow.name}`,
+      }))
+      .sort((a, b) => a.requestModel.localeCompare(b.requestModel)),
+    [preview.data, previewSettings.independentDisplayName, currentRow.name]
+  );
 
   const handleAutoExtractAllPrefixes = useCallback(() => {
     if (prefixSuggestions.length === 0) {
@@ -213,6 +230,8 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
     setNewMapping({ from: '', to: '' });
     form.reset({
       extraModelPrefix: nextExtraModelPrefix,
+      independentListing: currentRow.settings?.independentListing ?? false,
+      independentDisplayName: currentRow.settings?.independentDisplayName ?? '',
       modelMappings: nextMappings,
       autoTrimedModelPrefixes: currentRow.settings?.autoTrimedModelPrefixes || [],
       hideOriginalModels: currentRow.settings?.hideOriginalModels || false,
@@ -296,6 +315,8 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
     try {
       const modelNameSettings = {
         extraModelPrefix: values.extraModelPrefix,
+        independentListing: values.independentListing ?? false,
+        independentDisplayName: values.independentDisplayName?.trim() ?? '',
         modelMappings: values.modelMappings,
         autoTrimedModelPrefixes: values.autoTrimedModelPrefixes || [],
         hideOriginalModels: values.hideOriginalModels,
@@ -399,6 +420,59 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
                   {form.formState.errors.extraModelPrefix?.message && (
                     <p className='text-destructive mt-2 text-sm'>{form.formState.errors.extraModelPrefix.message.toString()}</p>
                   )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className='text-lg'>{t('channels.dialogs.settings.independentModels.title')}</CardTitle>
+                  <CardDescription>{t('channels.dialogs.settings.independentModels.description')}</CardDescription>
+                </CardHeader>
+                <CardContent className='space-y-4'>
+                  <FormField
+                    control={form.control}
+                    name='independentListing'
+                    render={({ field }) => (
+                      <FormItem className='flex items-start gap-3 space-y-0'>
+                        <FormControl>
+                          <Checkbox
+                            id='independentListing'
+                            checked={field.value ?? false}
+                            onCheckedChange={(checked) => {
+                              field.onChange(checked === true);
+                              if (checked === true && !form.getValues('extraModelPrefix')?.trim()) {
+                                form.setValue('extraModelPrefix', currentRow.name.trim(), { shouldDirty: true, shouldValidate: true });
+                              }
+                            }}
+                          />
+                        </FormControl>
+                        <label htmlFor='independentListing' className='cursor-pointer text-sm leading-none font-medium'>
+                          {t('channels.dialogs.settings.independentModels.enabled')}
+                        </label>
+                      </FormItem>
+                    )}
+                  />
+                  <p className='text-muted-foreground text-xs'>{t('channels.dialogs.settings.independentModels.prefixHint')}</p>
+                  <FormField
+                    control={form.control}
+                    name='independentDisplayName'
+                    render={({ field }) => (
+                      <FormItem>
+                        <label htmlFor='independentDisplayName' className='text-sm font-medium'>
+                          {t('channels.dialogs.settings.independentModels.displayName')}
+                        </label>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            id='independentDisplayName'
+                            value={field.value ?? ''}
+                            placeholder={t('channels.dialogs.settings.independentModels.displayNamePlaceholder')}
+                          />
+                        </FormControl>
+                        <p className='text-muted-foreground text-xs'>{t('channels.dialogs.settings.independentModels.displayNameDescription')}</p>
+                      </FormItem>
+                    )}
+                  />
                 </CardContent>
               </Card>
 
@@ -669,6 +743,30 @@ export function ChannelsModelMappingDialog({ open, onOpenChange, currentRow }: P
             </div>
 
               <aside className='flex min-h-0 flex-col border-t pt-4 sm:border-t-0 sm:border-l sm:pt-0 sm:pl-4'>
+                {previewSettings.independentListing && (
+                  <section className='mb-4 max-h-[50%] shrink-0 overflow-y-auto rounded-lg border bg-muted/20 p-3' data-testid='independent-model-preview'>
+                    <h3 className='text-sm font-semibold'>{t('channels.dialogs.settings.independentModels.previewTitle')}</h3>
+                    <p className='text-muted-foreground mt-1 text-xs'>{t('channels.dialogs.settings.independentModels.previewDescription')}</p>
+                    <div className='mt-3 max-h-52 space-y-3 overflow-y-auto' aria-busy={preview.isUpdating}>
+                      {preview.isError ? (
+                        <p role='alert' className='text-destructive text-xs'>{t('common.errors.loadFailed')}</p>
+                      ) : preview.isUpdating ? (
+                        <p role='status' className='text-muted-foreground text-xs'>{t('channels.dialogs.settings.independentModels.loading')}</p>
+                      ) : independentPreview.length === 0 ? (
+                        <p className='text-muted-foreground text-xs'>{t('channels.dialogs.settings.independentModels.empty')}</p>
+                      ) : independentPreview.map((entry) => (
+                        <dl key={entry.requestModel} className='space-y-1 rounded-md border bg-background p-2 text-xs'>
+                          <dt className='text-muted-foreground'>{t('channels.dialogs.settings.independentModels.modelLabel')}</dt>
+                          <dd className='break-all font-medium'>{entry.displayName}</dd>
+                          <dt className='text-muted-foreground'>{t('channels.dialogs.settings.independentModels.requestModel')}</dt>
+                          <dd className='break-all font-mono'>{entry.requestModel}</dd>
+                          <dt className='text-muted-foreground'>{t('channels.dialogs.settings.independentModels.actualModel')}</dt>
+                          <dd className='break-all font-mono'>{entry.actualModel}</dd>
+                        </dl>
+                      ))}
+                    </div>
+                  </section>
+                )}
                 <ChannelModelPreview
                   models={currentRow.supportedModels}
                   entries={preview.data ?? []}

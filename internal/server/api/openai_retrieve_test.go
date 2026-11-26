@@ -757,3 +757,63 @@ func TestOpenAIHandlers_ListModels_ExtendedModeWithZeroAllowedModelsReturnsEmpty
 	require.NoError(t, json.NewDecoder(w.Body).Decode(&got))
 	require.Empty(t, got.Data, "API key with no matching models should return empty list")
 }
+
+func TestOpenAIHandlers_IndependentModelNames(t *testing.T) {
+	client, channelSvc, systemSvc, router, ctx := setupOpenAIRetrieveTest(t)
+	entity, err := client.Channel.Create().
+		SetType(channel.TypeAnthropic).SetName("Internal Pool").SetBaseURL("https://api.pool.example").
+		SetCredentials(objects.ChannelCredentials{APIKey: "key"}).
+		SetSupportedModels([]string{"claude-opus-5-5"}).SetDefaultTestModel("claude-opus-5-5").
+		SetSettings(&objects.ChannelSettings{
+			ExtraModelPrefix: "claude官池", IndependentListing: true, IndependentDisplayName: "claude官池",
+		}).SetStatus(channel.StatusEnabled).Save(ctx)
+	require.NoError(t, err)
+	channelSvc.SetEnabledChannelsForTest([]*biz.Channel{{Channel: entity}})
+	require.NoError(t, systemSvc.SetModelSettings(ctx, biz.SystemModelSettings{
+		QueryAllChannelModels: false, FallbackToChannelsOnModelNotFound: false,
+	}))
+
+	for _, query := range []string{"", "?include=name", "?include=all"} {
+		t.Run("list"+query, func(t *testing.T) {
+			response := httptest.NewRecorder()
+			router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/v1/models"+query, nil))
+			require.Equal(t, http.StatusOK, response.Code, response.Body.String())
+			var result struct {
+				Data []OpenAIModel `json:"data"`
+			}
+			require.NoError(t, json.Unmarshal(response.Body.Bytes(), &result))
+			require.Len(t, result.Data, 1)
+			require.Equal(t, "claude官池/claude-opus-5-5", result.Data[0].ID)
+			require.Equal(t, "claude-opus-5-5 · claude官池", result.Data[0].Name)
+			require.Equal(t, result.Data[0].Name, result.Data[0].DisplayName)
+		})
+		t.Run("retrieve"+query, func(t *testing.T) {
+			response := httptest.NewRecorder()
+			router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/v1/models/claude官池/claude-opus-5-5"+query, nil))
+			require.Equal(t, http.StatusOK, response.Code, response.Body.String())
+			var result OpenAIModel
+			require.NoError(t, json.Unmarshal(response.Body.Bytes(), &result))
+			require.Equal(t, "claude官池/claude-opus-5-5", result.ID)
+			require.Equal(t, "claude-opus-5-5 · claude官池", result.Name)
+			require.Equal(t, result.Name, result.DisplayName)
+		})
+	}
+
+	// Anthropic consumes the existing facade display_name without needing a
+	// separate naming or routing implementation.
+	anthropic := &AnthropicHandlers{ModelService: biz.NewModelService(biz.ModelServiceParams{
+		Ent: client, ChannelService: channelSvc, SystemService: systemSvc,
+		ModelCache: biz.NewModelCacheService(biz.ModelCacheServiceParams{Ent: client}),
+	})}
+	router.GET("/anthropic/models", anthropic.ListModels)
+	response := httptest.NewRecorder()
+	router.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/anthropic/models", nil))
+	require.Equal(t, http.StatusOK, response.Code, response.Body.String())
+	var result struct {
+		Data []AnthropicModel `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(response.Body.Bytes(), &result))
+	require.Len(t, result.Data, 1)
+	require.Equal(t, "claude官池/claude-opus-5-5", result.Data[0].ID)
+	require.Equal(t, "claude-opus-5-5 · claude官池", result.Data[0].DisplayName)
+}

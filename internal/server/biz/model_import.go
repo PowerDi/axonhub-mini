@@ -243,6 +243,10 @@ func (svc *ModelService) createImportedModel(
 		return nil, nil, err
 	}
 
+	if err := validateIndependentModelIDs(ctx, svc.entFromContext(ctx), []string{meta.ModelID}); err != nil {
+		return nil, nil, err
+	}
+
 	builder := svc.entFromContext(ctx).Model.Create().
 		SetDeveloper(meta.Developer).
 		SetModelID(meta.ModelID).

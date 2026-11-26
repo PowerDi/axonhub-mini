@@ -1,11 +1,13 @@
 package orchestrator
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/looplj/axonhub/internal/ent/channel"
+	"github.com/looplj/axonhub/internal/ent/model"
 	"github.com/looplj/axonhub/internal/objects"
 	"github.com/looplj/axonhub/internal/server/biz"
 	"github.com/looplj/axonhub/llm"
@@ -338,4 +340,106 @@ func TestSelectedChannelsSelector_Select_EmptyFilter(t *testing.T) {
 	require.Contains(t, channelIDs, channels[0].ID)
 	require.Contains(t, channelIDs, channels[1].ID)
 	require.Contains(t, channelIDs, channels[2].ID)
+}
+
+func TestDefaultSelector_IndependentChannelModels(t *testing.T) {
+	for _, fallback := range []bool{false, true} {
+		t.Run(fmt.Sprintf("fallback=%t", fallback), func(t *testing.T) {
+			ctx, client := setupTest(t)
+			owner, err := client.Channel.Create().
+				SetType(channel.TypeAnthropic).SetName("claude官池").SetBaseURL("https://api.pool.example").
+				SetCredentials(objects.ChannelCredentials{APIKey: "pool-key"}).
+				SetSupportedModels([]string{"claude-opus-5-5"}).SetDefaultTestModel("claude-opus-5-5").
+				SetSettings(&objects.ChannelSettings{ExtraModelPrefix: "claude官池", IndependentListing: true}).
+				SetStatus(channel.StatusEnabled).Save(ctx)
+			require.NoError(t, err)
+			public, err := client.Channel.Create().
+				SetType(channel.TypeAnthropic).SetName("林夕").SetBaseURL("https://api.public.example").
+				SetCredentials(objects.ChannelCredentials{APIKey: "public-key"}).
+				SetSupportedModels([]string{"claude-opus-5-5"}).SetDefaultTestModel("claude-opus-5-5").
+				SetStatus(channel.StatusEnabled).Save(ctx)
+			require.NoError(t, err)
+			_, err = client.Model.Create().
+				SetDeveloper("anthropic").SetModelID("claude-opus-5-5").SetName("Aggregate").SetGroup("").SetIcon("").SetModelCard(&objects.ModelCard{}).
+				SetSettings(&objects.ModelSettings{Associations: []*objects.ModelAssociation{{
+					Type: "channel_model", ChannelModel: &objects.ChannelModelAssociation{ChannelID: public.ID, ModelID: "claude-opus-5-5"},
+				}}}).SetStatus(model.StatusEnabled).Save(ctx)
+			require.NoError(t, err)
+
+			channelSvc := newTestChannelServiceForChannels(client)
+			systemSvc := newTestSystemService(client)
+			require.NoError(t, systemSvc.SetModelSettings(ctx, biz.SystemModelSettings{
+				QueryAllChannelModels: false, FallbackToChannelsOnModelNotFound: fallback,
+			}))
+			selector := NewDefaultSelector(channelSvc, newTestModelService(client), systemSvc)
+			request := &llm.Request{Model: "claude官池/claude-opus-5-5"}
+			result, err := selector.Select(ctx, request)
+			require.NoError(t, err)
+			require.Len(t, result, 1)
+			require.Equal(t, owner.ID, result[0].Channel.ID)
+			require.Equal(t, "claude-opus-5-5", result[0].Models[0].ActualModel)
+			require.Equal(t, request.Model, result[0].Models[0].RequestModel)
+
+			result, err = selector.Select(ctx, &llm.Request{Model: "claude-opus-5-5"})
+			require.NoError(t, err)
+			require.Len(t, result, 1)
+			require.Equal(t, public.ID, result[0].Channel.ID, "independent listing must not modify aggregate rules")
+
+			_, err = selector.Select(ctx, &llm.Request{Model: "claude官池/not-supported"})
+			require.ErrorIs(t, err, biz.ErrInvalidModel, "unknown suffixes must not fall back")
+			filtered := WithSelectedChannelsSelector(selector, []int{public.ID})
+			result, err = filtered.Select(ctx, request)
+			require.NoError(t, err)
+			require.Empty(t, result, "channel scope restrictions must still apply")
+
+			// Bypass service validation deliberately: runtime selection must fail
+			// closed rather than prefer a configured Model or another channel.
+			_, err = client.Model.Create().SetDeveloper("test").SetModelID(request.Model).
+				SetName("Conflict").SetGroup("").SetIcon("").SetModelCard(&objects.ModelCard{}).SetSettings(&objects.ModelSettings{}).SetStatus(model.StatusDisabled).Save(ctx)
+			require.NoError(t, err)
+			_, err = selector.Select(ctx, request)
+			require.ErrorIs(t, err, biz.ErrIndependentModelConflict)
+			require.ErrorIs(t, err, biz.ErrInvalidModel)
+		})
+	}
+}
+
+func TestDefaultSelector_IndependentChannelModelsRespectHiddenMappings(t *testing.T) {
+	ctx, client := setupTest(t)
+	_, err := client.Channel.Create().
+		SetType(channel.TypeOpenai).SetName("Pool").SetBaseURL("https://example.com/v1").
+		SetCredentials(objects.ChannelCredentials{APIKey: "key"}).
+		SetSupportedModels([]string{"m"}).SetDefaultTestModel("m").
+		SetSettings(&objects.ChannelSettings{
+			ExtraModelPrefix: "pool", IndependentListing: true, HideMappedModels: true,
+			ModelMappings: []objects.ModelMapping{{From: "alias", To: "m"}},
+		}).SetStatus(channel.StatusEnabled).Save(ctx)
+	require.NoError(t, err)
+	channelSvc := newTestChannelServiceForChannels(client)
+	systemSvc := newTestSystemService(client)
+	require.NoError(t, systemSvc.SetModelSettings(ctx, biz.SystemModelSettings{FallbackToChannelsOnModelNotFound: true}))
+	selector := NewDefaultSelector(channelSvc, newTestModelService(client), systemSvc)
+	_, err = selector.Select(ctx, &llm.Request{Model: "pool/m"})
+	require.ErrorIs(t, err, biz.ErrInvalidModel)
+}
+
+func TestDefaultSelector_DisabledIndependentOwnerCannotFallBack(t *testing.T) {
+	ctx, client := setupTest(t)
+	_, err := client.Channel.Create().SetName("Disabled Owner").SetType(channel.TypeOpenai).
+		SetBaseURL("https://example.com/v1").SetCredentials(objects.ChannelCredentials{APIKey: "key"}).
+		SetSupportedModels([]string{"m"}).SetDefaultTestModel("m").
+		SetSettings(&objects.ChannelSettings{ExtraModelPrefix: "pool", IndependentListing: true}).
+		SetStatus(channel.StatusDisabled).Save(ctx)
+	require.NoError(t, err)
+	// Simulate an upstream model-sync bypassing edit-time validation.
+	_, err = client.Channel.Create().SetName("Legacy Sync").SetType(channel.TypeOpenai).
+		SetBaseURL("https://example.com/v1").SetCredentials(objects.ChannelCredentials{APIKey: "key"}).
+		SetSupportedModels([]string{"pool/m"}).SetDefaultTestModel("pool/m").
+		SetStatus(channel.StatusEnabled).Save(ctx)
+	require.NoError(t, err)
+	systemSvc := newTestSystemService(client)
+	require.NoError(t, systemSvc.SetModelSettings(ctx, biz.SystemModelSettings{FallbackToChannelsOnModelNotFound: true}))
+	selector := NewDefaultSelector(newTestChannelServiceForChannels(client), newTestModelService(client), systemSvc)
+	_, err = selector.Select(ctx, &llm.Request{Model: "pool/m"})
+	require.ErrorIs(t, err, biz.ErrInvalidModel)
 }

@@ -108,6 +108,8 @@ const CREATE_CHANNEL_MUTATION = `
       defaultTestModel
       settings {
         extraModelPrefix
+        independentListing
+        independentDisplayName
         modelMappings {
           from
           to
@@ -224,6 +226,8 @@ const DUPLICATE_CHANNEL_MUTATION = `
       defaultTestModel
       settings {
         extraModelPrefix
+        independentListing
+        independentDisplayName
         modelMappings {
           from
           to
@@ -340,6 +344,8 @@ const BULK_CREATE_CHANNELS_MUTATION = `
       defaultTestModel
       settings {
         extraModelPrefix
+        independentListing
+        independentDisplayName
         modelMappings {
           from
           to
@@ -455,6 +461,8 @@ const CHANNEL_FIELDS_FRAGMENT = `
       defaultTestModel
       settings {
         extraModelPrefix
+        independentListing
+        independentDisplayName
         modelMappings {
           from
           to
@@ -726,6 +734,8 @@ const BULK_IMPORT_CHANNELS_MUTATION = `
         }
         settings {
           extraModelPrefix
+          independentListing
+          independentDisplayName
           modelMappings {
             from
             to
@@ -990,6 +1000,8 @@ const BULK_UPDATE_CHANNEL_ORDERING_MUTATION = `
         }
         settings {
           extraModelPrefix
+          independentListing
+          independentDisplayName
           modelMappings {
             from
             to
@@ -1239,6 +1251,8 @@ const CHANNEL_QUERY_FULL_NODE_SELECTION = `
           defaultTestModel
           settings {
             extraModelPrefix
+            independentListing
+            independentDisplayName
             modelMappings {
               from
               to

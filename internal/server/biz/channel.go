@@ -657,6 +657,12 @@ func (svc *ChannelService) createChannel(ctx context.Context, input ent.CreateCh
 		return nil, err
 	}
 
+	if err := svc.validateIndependentChannelModels(ctx, &ent.Channel{
+		Type: input.Type, Name: input.Name, Settings: input.Settings, SupportedModels: input.SupportedModels,
+	}); err != nil {
+		return nil, err
+	}
+
 	createBuilder := svc.entFromContext(ctx).Channel.Create().
 		SetType(input.Type).
 		SetNillableBaseURL(input.BaseURL).
@@ -1121,6 +1127,27 @@ func (svc *ChannelService) UpdateChannel(ctx context.Context, id int, input *ent
 	// transaction mutates anything.
 	if err := svc.validateUpdateModelRoutability(ctx, id, input); err != nil {
 		return nil, err
+	}
+
+	if input.Settings != nil || input.SupportedModels != nil {
+		existing, err := authz.RunWithScopeDecision(ctx, scopes.ScopeWriteChannels, func(queryCtx context.Context) (*ent.Channel, error) {
+			return svc.entFromContext(queryCtx).Channel.Query().Where(channel.IDEQ(id)).
+				Select(channel.FieldID, channel.FieldName, channel.FieldType, channel.FieldSettings, channel.FieldSupportedModels).
+				Only(queryCtx)
+		})
+		if err != nil {
+			return nil, fmt.Errorf("load channel for independent model validation: %w", err)
+		}
+		proposed := *existing
+		if input.Settings != nil {
+			proposed.Settings = input.Settings
+		}
+		if input.SupportedModels != nil {
+			proposed.SupportedModels = input.SupportedModels
+		}
+		if err := svc.validateIndependentChannelModels(ctx, &proposed); err != nil {
+			return nil, err
+		}
 	}
 
 	var updated *ent.Channel

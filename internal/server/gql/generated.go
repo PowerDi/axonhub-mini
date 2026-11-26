@@ -605,6 +605,8 @@ type ComplexityRoot struct {
 		HeaderOverrideOperations    func(childComplexity int) int
 		HideMappedModels            func(childComplexity int) int
 		HideOriginalModels          func(childComplexity int) int
+		IndependentDisplayName      func(childComplexity int) int
+		IndependentListing          func(childComplexity int) int
 		LowercaseModelID            func(childComplexity int) int
 		MaxSingleChannelRetries     func(childComplexity int) int
 		ModelAPIFormatPolicies      func(childComplexity int) int
@@ -4830,6 +4832,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.ChannelSettings.HideOriginalModels(childComplexity), true
+	case "ChannelSettings.independentDisplayName":
+		if e.complexity.ChannelSettings.IndependentDisplayName == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.IndependentDisplayName(childComplexity), true
+	case "ChannelSettings.independentListing":
+		if e.complexity.ChannelSettings.IndependentListing == nil {
+			break
+		}
+
+		return e.complexity.ChannelSettings.IndependentListing(childComplexity), true
 	case "ChannelSettings.lowercaseModelId":
 		if e.complexity.ChannelSettings.LowercaseModelID == nil {
 			break
@@ -22816,6 +22830,10 @@ func (ec *executionContext) fieldContext_Channel_settings(_ context.Context, fie
 			switch field.Name {
 			case "extraModelPrefix":
 				return ec.fieldContext_ChannelSettings_extraModelPrefix(ctx, field)
+			case "independentListing":
+				return ec.fieldContext_ChannelSettings_independentListing(ctx, field)
+			case "independentDisplayName":
+				return ec.fieldContext_ChannelSettings_independentDisplayName(ctx, field)
 			case "modelMappings":
 				return ec.fieldContext_ChannelSettings_modelMappings(ctx, field)
 			case "modelProtocols":
@@ -27613,6 +27631,64 @@ func (ec *executionContext) _ChannelSettings_extraModelPrefix(ctx context.Contex
 }
 
 func (ec *executionContext) fieldContext_ChannelSettings_extraModelPrefix(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_independentListing(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSettings_independentListing,
+		func(ctx context.Context) (any, error) {
+			return obj.IndependentListing, nil
+		},
+		nil,
+		ec.marshalOBoolean2bool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_independentListing(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ChannelSettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ChannelSettings_independentDisplayName(ctx context.Context, field graphql.CollectedField, obj *objects.ChannelSettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ChannelSettings_independentDisplayName,
+		func(ctx context.Context) (any, error) {
+			return obj.IndependentDisplayName, nil
+		},
+		nil,
+		ec.marshalOString2string,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ChannelSettings_independentDisplayName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ChannelSettings",
 		Field:      field,
@@ -77262,7 +77338,7 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "modelProtocols", "modelApiFormatPolicies", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "hammerRetry", "reasoningFilter", "maxSingleChannelRetries", "responseTimeout", "apiKeyStrategy", "apiKeyRoundRobinSwitchAfter", "providerQuota", "quotaRoutingMode"}
+	fieldsInOrder := [...]string{"extraModelPrefix", "independentListing", "independentDisplayName", "modelMappings", "modelProtocols", "modelApiFormatPolicies", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "hammerRetry", "reasoningFilter", "maxSingleChannelRetries", "responseTimeout", "apiKeyStrategy", "apiKeyRoundRobinSwitchAfter", "providerQuota", "quotaRoutingMode"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -77276,6 +77352,20 @@ func (ec *executionContext) unmarshalInputChannelSettingsInput(ctx context.Conte
 				return it, err
 			}
 			it.ExtraModelPrefix = data
+		case "independentListing":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("independentListing"))
+			data, err := ec.unmarshalOBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IndependentListing = data
+		case "independentDisplayName":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("independentDisplayName"))
+			data, err := ec.unmarshalOString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IndependentDisplayName = data
 		case "modelMappings":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelMappings"))
 			data, err := ec.unmarshalOModelMappingInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelMappingᚄ(ctx, v)
@@ -94378,7 +94468,7 @@ func (ec *executionContext) unmarshalInputUpdateChannelSettingsInput(ctx context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"extraModelPrefix", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "apiKeyStrategy", "apiKeyRoundRobinSwitchAfter", "providerQuota", "quotaRoutingMode", "modelProtocols", "modelApiFormatPolicies", "hammerRetry", "reasoningFilter", "maxSingleChannelRetries", "responseTimeout"}
+	fieldsInOrder := [...]string{"extraModelPrefix", "independentListing", "independentDisplayName", "modelMappings", "autoTrimedModelPrefixes", "hideOriginalModels", "hideMappedModels", "lowercaseModelId", "proxy", "transformOptions", "headerOverrideOperations", "bodyOverrideOperations", "passThroughUserAgent", "passThroughBody", "rateLimit", "retryableStatusCodes", "retryableErrorPatterns", "apiKeyStrategy", "apiKeyRoundRobinSwitchAfter", "providerQuota", "quotaRoutingMode", "modelProtocols", "modelApiFormatPolicies", "hammerRetry", "reasoningFilter", "maxSingleChannelRetries", "responseTimeout"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -94392,6 +94482,20 @@ func (ec *executionContext) unmarshalInputUpdateChannelSettingsInput(ctx context
 				return it, err
 			}
 			it.ExtraModelPrefix = data
+		case "independentListing":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("independentListing"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IndependentListing = data
+		case "independentDisplayName":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("independentDisplayName"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IndependentDisplayName = data
 		case "modelMappings":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("modelMappings"))
 			data, err := ec.unmarshalOModelMappingInput2ᚕgithubᚗcomᚋloopljᚋaxonhubᚋinternalᚋobjectsᚐModelMappingᚄ(ctx, v)
@@ -104844,6 +104948,10 @@ func (ec *executionContext) _ChannelSettings(ctx context.Context, sel ast.Select
 			out.Values[i] = graphql.MarshalString("ChannelSettings")
 		case "extraModelPrefix":
 			out.Values[i] = ec._ChannelSettings_extraModelPrefix(ctx, field, obj)
+		case "independentListing":
+			out.Values[i] = ec._ChannelSettings_independentListing(ctx, field, obj)
+		case "independentDisplayName":
+			out.Values[i] = ec._ChannelSettings_independentDisplayName(ctx, field, obj)
 		case "modelMappings":
 			out.Values[i] = ec._ChannelSettings_modelMappings(ctx, field, obj)
 		case "modelProtocols":

@@ -3,6 +3,7 @@
 //
 //	internal/server/biz/model_cache.go
 //	internal/server/biz/channel.go
+//	internal/server/biz/channel_independent_models.go
 //	internal/server/orchestrator/candidates.go
 //
 // 注意事项:
@@ -15,6 +16,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -397,6 +399,10 @@ func (svc *ModelService) CreateModel(ctx context.Context, input ent.CreateModelI
 		)
 	}
 
+	if err := validateIndependentModelIDs(ctx, svc.entFromContext(ctx), []string{input.ModelID}); err != nil {
+		return nil, err
+	}
+
 	createBuilder := svc.entFromContext(ctx).Model.Create().
 		SetInput(input)
 
@@ -436,6 +442,10 @@ func (svc *ModelService) BulkCreateModels(ctx context.Context, inputs []*ent.Cre
 
 		inputMap[input.ModelID] = true
 		modelIDs = append(modelIDs, input.ModelID)
+	}
+
+	if err := validateIndependentModelIDs(ctx, svc.entFromContext(ctx), modelIDs); err != nil {
+		return nil, err
 	}
 
 	// Check if any models already exist. Archived models still occupy the
@@ -483,6 +493,12 @@ func (svc *ModelService) UpdateModel(ctx context.Context, id int, input *ent.Upd
 	// Validate regex patterns in settings if provided
 	if input.Settings != nil {
 		if err := svc.validateModelSettings(input.Settings); err != nil {
+			return nil, err
+		}
+	}
+
+	if input.ModelID != nil {
+		if err := validateIndependentModelIDs(ctx, svc.entFromContext(ctx), []string{*input.ModelID}); err != nil {
 			return nil, err
 		}
 	}
@@ -635,6 +651,20 @@ func (svc *ModelService) GetModelByModelID(ctx context.Context, modelID string, 
 	return item, nil
 }
 
+// ConfiguredModelIDExists checks the shared identity cache without filtering by
+// status. Disabled/archived Models must not be bypassed by an independent ID.
+func (svc *ModelService) ConfiguredModelIDExists(ctx context.Context, modelID string) (bool, error) {
+	client := svc.entFromContext(ctx)
+	if err := model.Policy.EvalQuery(ctx, client.Model.Query()); err != nil {
+		return false, err
+	}
+	_, err := svc.modelCache.get(ctx, client, modelID)
+	if ent.IsNotFound(err) {
+		return false, nil
+	}
+	return err == nil, err
+}
+
 // ListModels retrieves all models that have explicit Model entity configuration.
 // Returns models with their status.
 func (svc *ModelService) ListModels(ctx context.Context, statusIn []model.Status) ([]*ModelIdentityWithStatus, error) {
@@ -668,15 +698,17 @@ func (svc *ModelService) ListModels(ctx context.Context, statusIn []model.Status
 // ListEnabledModels returns all unique models across all enabled channels,
 // considering model mappings, prefixes, and auto-trimmed models.
 // It uses GetModelEntries to reduce code duplication.
-// When QueryAllChannelModels in system settings is false, it returns configured models instead.
+// Explicit independent channel entries are published in either global mode.
+// When QueryAllChannelModels is false, other channel-derived entries stay hidden.
 // If an API key is present in context and has an active profile with modelIDs configured,
 // only those models will be returned.
 // When HideUnroutableModelsInList is true, configured models with no capable
 // endpoint on the key-scoped channels are omitted from this public list.
 func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, error) {
 	var (
-		channels = svc.channelService.GetEnabledChannels()
-		profile  *objects.APIKeyProfile
+		allChannels = svc.channelService.GetEnabledChannels()
+		channels    = allChannels
+		profile     *objects.APIKeyProfile
 	)
 
 	ctx = authz.WithScopeDecision(ctx, scopes.ScopeReadChannels)
@@ -730,11 +762,6 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, 
 	}
 
 	settings := svc.systemService.ModelSettingsOrDefault(ctx)
-	if !settings.QueryAllChannelModels {
-		return configuredModels, nil
-	}
-
-	// QueryAllChannelModels=true: merge configured models (higher priority) with channel models
 	var (
 		models    = configuredModels
 		modelSet  = make(map[string]bool, len(configuredModels)+len(suppressedIDs))
@@ -744,38 +771,86 @@ func (svc *ModelService) ListEnabledModels(ctx context.Context) ([]ModelFacade, 
 	for _, m := range configuredModels {
 		modelSet[m.ID] = true
 	}
-	// Hidden configured IDs must not reappear as channel-derived facades.
-	// Routing still binds those IDs to the configured associations.
 	for id := range suppressedIDs {
 		modelSet[id] = true
 	}
 
+	// Publish explicit independent entries first in both global modes. Resolve
+	// ownership against all enabled channels, not just the caller's projection,
+	// so list and request routing detect the same ambiguous identities.
+	var independentIDs []string
 	for _, ch := range channels {
-		entries := ch.GetModelEntries()
-
-		for requestModel := range entries {
-			if modelSet[requestModel] {
+		entries := ch.IndependentModelEntries()
+		ids := lo.Keys(entries)
+		slices.Sort(ids)
+		for _, id := range ids {
+			if len(allowedModelIDs) > 0 && !lo.Contains(allowedModelIDs, id) {
 				continue
 			}
-
-			// Channel-derived models matching the blacklist regex are excluded.
-			// Configured Model entities above are not affected. Cache the decision
-			// in modelSet so the same model ID coming from another channel skips
-			// the regex match.
-			if blacklist != "" && xregexp.MatchString(blacklist, requestModel) {
-				modelSet[requestModel] = true
+			if blacklist != "" && xregexp.MatchString(blacklist, id) {
+				modelSet[id] = true
 				continue
 			}
-
-			modelSet[requestModel] = true
-
+			if _, _, _, err := ResolveIndependentModelEntry(allChannels, id); err != nil {
+				return nil, err
+			}
+			if modelSet[id] {
+				return nil, fmt.Errorf("%w: model %q is already configured", ErrIndependentModelConflict, id)
+			}
+			modelSet[id] = true
+			independentIDs = append(independentIDs, id)
 			models = append(models, ModelFacade{
-				ID:          requestModel,
-				DisplayName: requestModel,
+				ID:          id,
+				DisplayName: ch.IndependentModelDisplayName(entries[id]),
 				CreatedAt:   ch.CreatedAt,
 				Created:     ch.CreatedAt.Unix(),
-				OwnedBy:     ch.Channel.Type.String(),
+				OwnedBy:     ch.Type.String(),
 			})
+		}
+	}
+	if err := checkIndependentEntryConflicts(ctx, svc.entFromContext(ctx), independentIDs); err != nil {
+		return nil, err
+	}
+
+	var reservedPrefixes []string
+	if settings.QueryAllChannelModels || lo.SomeBy(configuredModels, func(m ModelFacade) bool { return strings.Contains(m.ID, "/") }) {
+		var err error
+		reservedPrefixes, err = loadIndependentModelPrefixes(ctx, svc.entFromContext(ctx))
+		if err != nil {
+			return nil, err
+		}
+		for _, m := range configuredModels {
+			for _, prefix := range reservedPrefixes {
+				if independentNamespaceContains(prefix, m.ID) {
+					return nil, fmt.Errorf("%w: configured model %q overlaps an independent namespace", ErrIndependentModelConflict, m.ID)
+				}
+			}
+		}
+	}
+
+	if settings.QueryAllChannelModels {
+		for _, ch := range channels {
+			for requestModel := range ch.GetModelEntries() {
+				if modelSet[requestModel] {
+					continue
+				}
+				// Disabled owners keep their namespaces too. Only explicit entries
+				// published above may appear under these prefixes.
+				if lo.SomeBy(reservedPrefixes, func(prefix string) bool { return independentNamespaceContains(prefix, requestModel) }) {
+					continue
+				}
+				modelSet[requestModel] = true
+				if blacklist != "" && xregexp.MatchString(blacklist, requestModel) {
+					continue
+				}
+				models = append(models, ModelFacade{
+					ID:          requestModel,
+					DisplayName: requestModel,
+					CreatedAt:   ch.CreatedAt,
+					Created:     ch.CreatedAt.Unix(),
+					OwnedBy:     ch.Type.String(),
+				})
+			}
 		}
 	}
 

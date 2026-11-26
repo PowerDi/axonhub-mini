@@ -600,6 +600,7 @@ type OpenAIModel struct {
 	Created         int64         `json:"created"`
 	OwnedBy         string        `json:"owned_by"`
 	Name            string        `json:"name,omitempty"`
+	DisplayName     string        `json:"display_name,omitempty"`
 	Description     string        `json:"description,omitempty"`
 	ContextLength   int           `json:"context_length,omitempty"`
 	MaxOutputTokens int           `json:"max_output_tokens,omitempty"`
@@ -654,12 +655,20 @@ func parseOpenAIModelInclude(includeParam string, defaultIncludeAll bool) (map[s
 }
 
 func convertModelFacadeToOpenAIModel(m biz.ModelFacade) OpenAIModel {
-	return OpenAIModel{
+	result := OpenAIModel{
 		ID:      m.ID,
 		Object:  openAIModelObjectType,
 		Created: m.Created,
 		OwnedBy: m.OwnedBy,
 	}
+	// Independent entries have no Model entity to supply extended metadata.
+	// Their generated label is available to both name/display_name readers;
+	// legacy/basic entries keep exactly their original compatibility shape.
+	if m.DisplayName != "" && m.DisplayName != m.ID {
+		result.Name = m.DisplayName
+		result.DisplayName = m.DisplayName
+	}
+	return result
 }
 
 // convertModelToOpenAIExtended transforms an ent.Model to OpenAIModel with extended metadata fields.

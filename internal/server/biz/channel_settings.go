@@ -28,6 +28,8 @@ import (
 // direct GraphQL callers.
 type UpdateChannelSettingsInput struct {
 	ModelProtocols              []objects.ModelProtocol                 `json:"modelProtocols"`
+	IndependentListing          *bool                                   `json:"independentListing"`
+	IndependentDisplayName      *string                                 `json:"independentDisplayName"`
 	ExtraModelPrefix            *string                                 `json:"extraModelPrefix"`
 	ModelMappings               []objects.ModelMapping                  `json:"modelMappings"`
 	AutoTrimedModelPrefixes     []string                                `json:"autoTrimedModelPrefixes"`
@@ -69,6 +71,12 @@ func (i *UpdateChannelSettingsInput) Apply(base *objects.ChannelSettings) object
 
 	if i.ExtraModelPrefix != nil {
 		merged.ExtraModelPrefix = *i.ExtraModelPrefix
+	}
+	if i.IndependentListing != nil {
+		merged.IndependentListing = *i.IndependentListing
+	}
+	if i.IndependentDisplayName != nil {
+		merged.IndependentDisplayName = *i.IndependentDisplayName
 	}
 	if i.ModelMappings != nil {
 		merged.ModelMappings = i.ModelMappings

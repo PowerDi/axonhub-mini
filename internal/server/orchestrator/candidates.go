@@ -108,6 +108,34 @@ func NewDefaultSelector(channelService *biz.ChannelService, modelService *biz.Mo
 }
 
 func (s *DefaultSelector) Select(ctx context.Context, req *llm.Request) ([]*ChannelModelsCandidate, error) {
+	owner, entry, claimed, err := biz.ResolveIndependentModelEntry(s.ChannelService.GetEnabledChannels(), req.Model)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %w", biz.ErrInvalidModel, err)
+	}
+	if claimed {
+		exists, err := s.ModelService.ConfiguredModelIDExists(ctx, req.Model)
+		if err != nil {
+			return nil, fmt.Errorf("check independent model identity: %w", err)
+		}
+		if exists {
+			return nil, fmt.Errorf("%w: %w: %q", biz.ErrInvalidModel, biz.ErrIndependentModelConflict, req.Model)
+		}
+		if entry.RequestModel == "" {
+			return nil, fmt.Errorf("%w: %q", biz.ErrInvalidModel, req.Model)
+		}
+		apiFormat, usable := selectChannelModelAPIFormat(ctx, owner, entry, req.Model, req)
+		if !usable {
+			return []*ChannelModelsCandidate{}, nil
+		}
+		return []*ChannelModelsCandidate{{
+			Channel: owner, Priority: 0, Models: []biz.ChannelModelEntry{entry}, APIFormat: apiFormat,
+		}}, nil
+	}
+
+	if err := s.ChannelService.RejectUnresolvedIndependentNamespace(ctx, req.Model); err != nil {
+		return nil, err
+	}
+
 	candidates, err := s.selectModelCandidates(ctx, req)
 	if err != nil {
 		if ent.IsNotFound(err) {

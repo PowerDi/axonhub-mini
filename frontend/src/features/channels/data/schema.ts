@@ -395,6 +395,8 @@ export type ChannelResponseTimeout = z.infer<typeof channelResponseTimeoutSchema
 // Channel Settings
 export const channelSettingsSchema = z.object({
   extraModelPrefix: z.string().optional(),
+  independentListing: z.boolean().optional(),
+  independentDisplayName: z.string().optional(),
   modelMappings: z.array(modelMappingSchema).optional().nullable(),
   modelProtocols: z.array(modelProtocolSchema).optional().nullable(),
   modelApiFormatPolicies: z.array(modelApiFormatPolicySchema).optional().nullable(),

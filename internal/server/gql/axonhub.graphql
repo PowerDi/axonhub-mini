@@ -204,6 +204,8 @@ input ChannelProviderQuotaSettingsInput {
 
 type ChannelSettings {
   extraModelPrefix: String
+  independentListing: Boolean
+  independentDisplayName: String
   modelMappings: [ModelMapping!]
   modelProtocols: [ModelProtocol!]
   modelApiFormatPolicies: [ModelAPIFormatPolicy!]
@@ -338,6 +340,8 @@ input ModelAPIFormatPolicyInput {
 
 input ChannelSettingsInput {
   extraModelPrefix: String
+  independentListing: Boolean
+  independentDisplayName: String
   modelMappings: [ModelMappingInput!]
   modelProtocols: [ModelProtocolInput!]
   modelApiFormatPolicies: [ModelAPIFormatPolicyInput!]
@@ -370,6 +374,8 @@ input ChannelSettingsInput {
 # instead of updateChannel's settings input when only some settings change.
 input UpdateChannelSettingsInput {
   extraModelPrefix: String
+  independentListing: Boolean
+  independentDisplayName: String
   modelMappings: [ModelMappingInput!]
   autoTrimedModelPrefixes: [String!]
   hideOriginalModels: Boolean

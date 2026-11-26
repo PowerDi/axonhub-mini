@@ -150,6 +150,8 @@ export function mergeChannelSettingsForUpdate(
 
   return {
     extraModelPrefix: pick('extraModelPrefix', existing?.extraModelPrefix ?? ''),
+    independentListing: pick('independentListing', existing?.independentListing ?? false),
+    independentDisplayName: pick('independentDisplayName', existing?.independentDisplayName ?? ''),
     modelMappings: pick('modelMappings', existing?.modelMappings ?? []),
     modelProtocols: pick('modelProtocols', existing?.modelProtocols ?? []),
     modelApiFormatPolicies: pick('modelApiFormatPolicies', existing?.modelApiFormatPolicies ?? []),
